@@ -1,0 +1,507 @@
+use num_bigint::BigInt;
+//use lexer;
+use crate::ast::{
+    ExpressionP,VariableP,StatementP,BodyElementP,SelectorP,
+    Opcode,VariableType,SignalType, Meta, mark_witness
+};
+
+grammar;
+
+// ====================================================================
+// Body
+// ====================================================================
+
+pub Body : Vec<BodyElementP> = {
+    <BodyElement*> => <>
+}
+
+pub BodyElement : BodyElementP = {
+    <s:@L> "include" <path:STRING> ";" <e:@L>
+    => BodyElementP::Include {
+        meta: Meta::new(s,e),
+        path
+    },
+    
+    <s:@L> "function" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
+    => BodyElementP::FunctionDef {
+        meta: Meta::new(s,e),
+        name,args,stmt
+    },
+
+    <s:@L> "template" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
+    => BodyElementP::TemplateDef {
+        meta: Meta::new(s,e),
+        name,args,stmt
+    },
+    
+    <s:@L> <decl:Declaration> ";" <e:@L>
+    => BodyElementP::Declaration {
+        meta: Meta::new(s,e),
+        decl
+    }
+}
+
+ParameterListDef : Vec<String> = {
+    <v:(<IDENTIFIER> ",")*> <e:IDENTIFIER?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+}
+
+// ====================================================================
+// Statement
+// ====================================================================
+
+
+pub Statement : Box<StatementP> = {
+
+    "if" <IfThenElse>
+    => <>,
+    
+    <s:@L> "for" "(" <init:Substitution> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
+    => Box::new(StatementP::For{
+        meta: Meta::new(s,e),
+        init, cond, step, stmt
+    }),
+
+    <s:@L> "for" "(" <init:Declaration> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
+    => Box::new(StatementP::For{
+        meta: Meta::new(s,e),
+        init, cond, step, stmt
+    }),
+
+    <s:@L> "while" "(" <cond:Expression> ")" <stmt:StatementBlock> <e:@L>
+    => Box::new(StatementP::While{
+        meta: Meta::new(s,e),
+        cond, stmt
+    }),
+    
+    <s:@L> "return" <value:Expression> ";" <e:@L>
+    => Box::new(StatementP::Return{
+        meta: Meta::new(s,e),
+        value
+    }),
+
+    <Declaration> ";"
+      => <>,
+
+    <Substitution> ";"
+     => <>,
+
+    <s:@L> <name:Variable> <op:OpSignalLeftClass> <value:Expression> ";" <e:@L>
+    => Box::new(StatementP::SignalLeft{
+        meta: Meta::new(s,e),
+        name,op,value
+    }),
+     
+    <s:@L> <value:Expression> <op:OpSignalRightClass> <name:Variable> ";" <e:@L>
+    => Box::new(StatementP::SignalRight{
+        meta: Meta::new(s,e),
+        value,op,name
+    }),
+    
+    <s:@L> <lhe:Expression> <op:OpSignalEq> <rhe:Expression> ";" <e:@L>
+    => Box::new(StatementP::SignalEq{
+        meta: Meta::new(s,e),
+        lhe,op,rhe
+    }),
+
+    <s:@L> <name:IDENTIFIER> "!" "(" <args:ExpressionList> ")" ";"<e:@L>
+    =>  Box::new(StatementP::InternalCall{
+        meta: Meta::new(s,e),
+        name, args
+    }),    
+
+    <StatementBlock>
+    => <>,
+
+}
+
+StatementBlock : Box<StatementP> = {
+    <s:@L> "{" <stmts:WitnessStatement*> "}" <e:@L>
+    => Box::new(StatementP::Block{
+        meta: Meta::new(s,e),
+        stmts
+    }),
+}
+
+pub WitnessStatement : Box<StatementP> = {
+    "$" <Statement> => mark_witness(<>),
+    <Statement> => <>
+}
+
+
+IfThenElse : Box<StatementP> = {
+    <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> <e:@L>
+    => Box::new(StatementP::IfThenElse{
+        meta: Meta::new(s,e),
+        xif, xthen,
+        xelse: None
+    }),
+
+    <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> "else" <xelse:StatementBlock> <e:@L>
+    => Box::new(StatementP::IfThenElse{
+        meta: Meta::new(s,e),
+        xif, xthen,
+        xelse: Some(xelse)
+    }),
+
+    <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> "else" "if" <xelse:IfThenElse> <e:@L>
+    => Box::new(StatementP::IfThenElse{
+        meta: Meta::new(s,e),
+        xif, xthen,
+        xelse: Some(xelse)
+    }),
+}
+
+// ====================================================================
+// Declaration
+// ====================================================================
+
+Declaration : Box<StatementP> = {
+    <s:@L> "var" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Var,
+        name,
+        init: None
+    }),
+    
+    <s:@L> "var" <name:SimpleVariableDecl> "=" <value:Expression> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Var,
+        name,
+        init: Some((Opcode::Assig,value))
+    }),
+
+    <s:@L> "component" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Component,
+        name,
+        init: None
+    }),
+
+    <s:@L> "component" <name:SimpleVariableDecl> "=" <value:Expression> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Component,
+        name,
+        init: Some((Opcode::Assig,value))
+    }),
+
+    <s:@L> "signal" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Signal(SignalType::Internal),
+        name,
+        init: None
+    }),
+
+    <s:@L> "signal" "input" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Signal(SignalType::PublicInput),
+        name,
+        init: None
+    }),
+
+    <s:@L> "signal" "private" "input" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Signal(SignalType::PrivateInput),
+        name,
+        init: None
+    }),
+
+    <s:@L> "signal" "output" <name:IndexVariableDecl> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e),
+        xtype: VariableType::Signal(SignalType::Output),
+        name,
+        init: None
+    }),
+
+}
+
+Substitution : Box<StatementP> = { 
+    <s:@L> <name:Variable> <op:OpAssigClass> <value:Expression> <e:@L>
+    => Box::new(StatementP::Substitution{
+        meta: Meta::new(s,e),
+        name,op,value
+    })
+}
+
+// ====================================================================
+// Variable
+// ====================================================================
+
+PinOrIndexSelector: Box<SelectorP> = {
+    <s:@L> "." <name:IDENTIFIER>  <e:@L>
+    => Box::new(SelectorP::Pin{
+        meta : Meta::new(s,e),
+        name
+    }),    
+    
+    <s:@L> "[" <pos:Expression> "]" <e:@L>
+    =>  Box::new(SelectorP::Index{
+        meta: Meta::new(s,e),
+        pos
+    }),    
+}
+
+IndexSelector: Box<SelectorP> = {
+    <s:@L> "[" <pos:Expression> "]" <e:@L>
+    => Box::new(SelectorP::Index{
+        meta: Meta::new(s,e),
+        pos
+    }),    
+}
+
+Variable : Box<VariableP> = {
+    <s:@L> <name:IDENTIFIER> <sels:PinOrIndexSelector*> <e:@L>
+    => Box::new(VariableP{
+        meta: Meta::new(s,e),
+        name: String::from(name),
+        sels
+    }),
+}
+
+SimpleVariableDecl : Box<VariableP> = {
+    <s:@L> <name:IDENTIFIER> <e:@L>
+    => Box::new(VariableP{
+        meta: Meta::new(s,e),
+        name: String::from(name),
+        sels: Vec::new()
+    }),
+}
+
+IndexVariableDecl : Box<VariableP> = {
+    <s:@L> <name:IDENTIFIER> <sels:IndexSelector*> <e:@L>
+    => Box::new(VariableP{
+        meta: Meta::new(s,e),
+        name: String::from(name),
+        sels
+    }),
+}
+
+// ====================================================================
+// Expression
+// ====================================================================
+
+InfixOpTier<Op,NextTier> : Box<ExpressionP> = {
+    
+    <s:@L> <lhe:InfixOpTier<Op,NextTier>> <op:Op> <rhe:NextTier> <e:@L>
+    => Box::new(ExpressionP::InfixOp{
+        meta: Meta::new(s,e),
+        lhe, op, rhe
+    }),
+    
+    NextTier
+}
+
+PrefixOpTier<Op,NextTier >: Box<ExpressionP> = {
+    <s:@L> <op:Op> <rhe:NextTier> <e:@L>
+    => Box::new(ExpressionP::PrefixOp{
+        meta: Meta::new(s,e),
+        op, rhe
+    }),
+    
+    NextTier
+}
+
+ExpressionList : Vec<Box<ExpressionP>> = {
+    <v:(<Expression> ",")*> <e:Expression?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+pub Expression: Box<ExpressionP> = {
+    Expression12,
+};
+
+// ops: ||
+Expression12 = InfixOpTier<OpBoolOr,Expression11>;
+
+// ops: &&
+Expression11 = InfixOpTier<OpBoolAnd,Expression10>;
+
+// ops:  == != < > <= >=
+Expression10 = InfixOpTier<OpCmpClass,Expression9>;
+
+// ops: |
+Expression9 = InfixOpTier<OpBitOr,Expression8>;
+
+// ops: ^
+Expression8 = InfixOpTier<OpBitXor,Expression7>;
+
+// ops: &
+Expression7 = InfixOpTier<OpBitAnd,Expression6>;
+
+// ops: << >> 
+Expression6 = InfixOpTier<OpShiftClass,Expression5>;
+
+// ops: + -
+Expression5 = InfixOpTier<OpAddClass,Expression4>;
+
+// ops: * / \\ %
+Expression4 = InfixOpTier<OpMulClass,Expression3>;
+
+// ops: **
+Expression3 = InfixOpTier<OpExp,Expression2>;
+
+// ops: Unary - !
+Expression2 = PrefixOpTier<OpNegateClass,Expression1>;
+
+// function call, array
+Expression1: Box<ExpressionP> = {
+    <s:@L>  <name:IDENTIFIER> "(" <args:ExpressionList> ")" <e:@L>
+    =>  Box::new(ExpressionP::FunctionCall{
+        meta: Meta::new(s,e),
+        name, args
+    }),
+
+    <s:@L>  "[" <values:ExpressionList> "]" <e:@L>
+    =>  Box::new(ExpressionP::Array{
+        meta: Meta::new(s,e),
+        values
+    }),
+    
+    Expression0
+};
+
+// Literal, parentheses
+Expression0: Box<ExpressionP> = {
+    <s:@L> <name:Variable> <e:@L> 
+    => Box::new(ExpressionP::Variable{
+        meta: Meta::new(s,e),
+        name
+    }),
+    
+    <s:@L> <value:DECNUMBER> <e:@L>
+    => Box::new(ExpressionP::Number{
+        meta: Meta::new(s,e),
+        value
+    }),
+    
+    <s:@L> <value:HEXNUMBER> <e:@L>
+    => Box::new(ExpressionP::Number{
+        meta: Meta::new(s,e),
+        value
+    }),
+    
+    "(" <Expression> ")" 
+};
+
+// ====================================================================
+// Terminals
+// ====================================================================
+
+OpBitOr: Opcode = {
+    "|" => Opcode::BitOr,
+};
+
+OpBitXor: Opcode = {
+    "^" => Opcode::BitXor,
+};
+
+OpBitAnd: Opcode = {
+    "&" => Opcode::BitAnd,
+};
+
+OpShiftClass: Opcode = {
+    "<<" => Opcode::ShiftL,
+    ">>" => Opcode::ShiftR,
+};
+
+OpAddClass: Opcode = {
+    "+" => Opcode::Add,
+    "-" => Opcode::Sub,
+};
+
+OpExp: Opcode = {
+    "**" => Opcode::Pow,
+};
+
+OpMulClass: Opcode = {
+    "*" => Opcode::Mul,
+    "/" => Opcode::Div,
+    "\\" => Opcode::IntDiv,
+    "%" => Opcode::Mod,
+};
+
+OpCmpClass: Opcode = {
+    "==" => Opcode::Eq,
+    "!=" => Opcode::NotEq,
+    "<"  => Opcode::Lesser,
+    ">"  => Opcode::Greater,
+    "<=" => Opcode::LesserEq,
+    ">=" => Opcode::GreaterEq,
+};
+
+OpAssigClass: Opcode = {
+    "="   => Opcode::Assig,
+    "+="  => Opcode::AssigAdd,
+    "-="  => Opcode::AssigSub,
+    "*="  => Opcode::AssigMul,
+    "/="  => Opcode::AssigDiv,
+    "%="  => Opcode::AssigMod,
+    "<<=" => Opcode::AssigShiftL,
+    ">>=" => Opcode::AssigShiftR,
+    "&="  => Opcode::AssigBitAnd,
+    "|="  => Opcode::AssigBitOr,
+    "^="  => Opcode::AssigBitXor,
+};
+
+OpSignalEq: Opcode = {
+    "==="  => Opcode::SignalContrainEq,
+};
+
+OpSignalLeftClass: Opcode = {
+    "<--"  => Opcode::SignalWireLeft,
+    "<=="  => Opcode::SignalContrainLeft,
+};
+
+OpSignalRightClass: Opcode = {
+    "-->"  => Opcode::SignalWireRight,
+    "==>"  => Opcode::SignalContrainRight,
+};
+
+OpBoolAnd: Opcode = {
+    "&&" => Opcode::BoolAnd,
+};
+
+OpBoolOr: Opcode = {
+    "||" => Opcode::BoolOr,
+};
+
+OpNegateClass: Opcode = {
+    "-" => Opcode::Sub,
+    "!" => Opcode::BoolNot,
+};
+
+DECNUMBER: BigInt = {
+    r"[0-9]+" => BigInt::parse_bytes(&<>.as_bytes(),10).expect("failed to parse base10")
+};
+
+HEXNUMBER : BigInt = {
+    r"0x[0-9A-Fa-f]*" => BigInt::parse_bytes(&(<>.as_bytes()[2..]),16).expect("failed to parse base16")
+}
+
+IDENTIFIER : String = {
+    r"[a-zA-Z][a-zA-Z$_0-9]*" => String::from(<>)
+}
+
+STRING : String = {
+    <s:r#""[^"]*""#> => String::from(&s[1..s.len()-1])
+}

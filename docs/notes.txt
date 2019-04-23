@@ -1,0 +1,51 @@
+-- jaz.jison operator precendence, C-based -----------------------------
+
+leftHandExpression,DECNUMBER,HEXNUMBER,'(' expression ')'
+leftHandExpression'++',leftHandExpression'--',functionCall
+'++'leftHandExpression', '--'leftHandExpression,'+','-','!','~'
+**
+* / \\ %
++ -
+<< >> 
+<= >= < >
+== !=
+&
+^    
+| 
+&&
+|| 
+rightArray
+= += -= *= /= %= <<= >>= &= |= ^= <== ==> <-- --> === :?
+
+-- rust inspired grammar -----------------------------------------------
+
+DECNUMBER, HEXNUMBER, "(" exp ")"
+Unary - !
+**      
+* / \\ %
++ - 	
+<< >> 
+& 
+^ 
+| 
+== != < > <= >=
+&&
+||
+
+differences from jaz.jison are:
+  - does not put comparation ops between bit operators 
+    bit operators have always more priority
+  - removed pre/post inc/dec unary operators
+  - removed :?
+  - loops/conditionals must have { } (alla golang)
+  - dbg! function
+  - Proposals
+    - no default values like "var x;"
+    - explicit mutability: "const" or "mut";
+    - remove "var" => "usize", "fs", "qeq" and "bool"
+    - expressions cannot fail in code generation phase but some of them must be
+      inevaluable in constrain generation phase, so prepend with a "@" the stamements
+      that are not going to be evaluated at signal generation phase
+
+
+

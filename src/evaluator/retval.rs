@@ -1,0 +1,60 @@
+use super::algebra;
+use super::algebra::FS;
+use super::error::*;
+use super::signal::*;
+
+use num_traits::cast::ToPrimitive;
+
+#[derive(Debug, Clone)]
+pub enum ReturnValue {
+    Bool(bool),
+    Algebra(algebra::Value),
+    Array(Vec<algebra::Value>),
+}
+
+impl ReturnValue {
+    pub fn from_signal(s: &str, signals : &Signals ) -> Result<ReturnValue> {
+        match signals.get(s) {
+            Some(Signal{value:Some(algebra::Value::FieldScalar(fs)), ..})
+                => Ok(ReturnValue::Algebra(algebra::Value::from(fs))),
+            Some(Signal{value:Some(_),full_name,..}) | Some(Signal{value:None,full_name,..})
+                => Ok(ReturnValue::Algebra(algebra::Value::from_signal(full_name))),
+            None
+                => Err(Error::NotFound(format!("Signal {:?}",s)))
+        }
+    }
+    pub fn into_algebra(self) -> Result<algebra::Value> {
+        match self {
+            ReturnValue::Algebra(a) => Ok(a),
+            _ => Err(Error::InvalidType(format!("Cannot convert to algebraic value {:?}",self)))
+        }
+    }
+    pub fn to_signal(&self) -> Result<String> {
+        if let ReturnValue::Algebra(a) = self {
+            if let Some(signal) = a.try_to_signal() {
+                return Ok(signal)
+            }
+        }
+        Err(Error::InvalidType(format!("Cannot convert to signal {:?}",self)))
+    }
+    pub fn into_bool(self) -> Result<bool> {
+        match self {
+            ReturnValue::Bool(b) => Ok(b),
+            _ => Err(Error::InvalidType(format!("Cannot convert to boolean value {:?}",self)))
+        }
+    }
+    pub fn into_fs(self) -> Result<FS> {
+        match self {
+            ReturnValue::Algebra(algebra::Value::FieldScalar(fs)) => Ok(fs),
+            _ => Err(Error::InvalidType(format!("Cannot convert to scalar value {:?}",self)))
+        }
+    }
+    pub fn into_u64(self) -> Result<u64> {
+        let fs = self.into_fs()?;
+        if let Some(n) = fs.0.to_u64() {
+            Ok(n)
+        } else {
+            Err(Error::CannotConvertToU64(fs))
+        }
+    }
+}
