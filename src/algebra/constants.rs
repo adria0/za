@@ -1,6 +1,7 @@
 use num_bigint::{BigInt,BigUint};
+use super::types::SignalId;
 
-pub const SIGNAL_ONE: &str = "one";
+pub const SIGNAL_ONE: SignalId = 0;
 
 lazy_static! {
     pub static ref FIELD_UINT: BigUint = BigUint::parse_bytes(

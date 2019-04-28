@@ -1,5 +1,5 @@
 use super::algebra;
-use super::algebra::FS;
+use super::algebra::{FS,SignalId};
 use super::error::*;
 use super::signal::*;
 
@@ -13,15 +13,18 @@ pub enum ReturnValue {
 }
 
 impl ReturnValue {
-    pub fn from_signal(s: &str, signals : &Signals ) -> Result<ReturnValue> {
-        match signals.get(s) {
+    pub fn from_signal_name(full_name: &str, signals : &Signals ) -> Result<ReturnValue> {
+        match signals.get_by_name(full_name) {
             Some(Signal{value:Some(algebra::Value::FieldScalar(fs)), ..})
                 => Ok(ReturnValue::Algebra(algebra::Value::from(fs))),
-            Some(Signal{value:Some(_),full_name,..}) | Some(Signal{value:None,full_name,..})
-                => Ok(ReturnValue::Algebra(algebra::Value::from_signal(full_name))),
+            Some(Signal{value:Some(_),id,..}) | Some(Signal{value:None,id,..})
+                => Ok(ReturnValue::Algebra(algebra::Value::from_signal(*id))),
             None
-                => Err(Error::NotFound(format!("Signal {:?}",s)))
+                => Err(Error::NotFound(format!("Signal {:?}",full_name)))
         }
+    }
+    pub fn from_signal_id(id: SignalId) -> Result<ReturnValue> {
+        Ok(ReturnValue::Algebra(algebra::Value::from_signal(id)))
     }
     pub fn into_algebra(self) -> Result<algebra::Value> {
         match self {
@@ -29,7 +32,7 @@ impl ReturnValue {
             _ => Err(Error::InvalidType(format!("Cannot convert to algebraic value {:?}",self)))
         }
     }
-    pub fn to_signal(&self) -> Result<String> {
+    pub fn to_signal(&self) -> Result<SignalId> {
         if let ReturnValue::Algebra(a) = self {
             if let Some(signal) = a.try_to_signal() {
                 return Ok(signal)

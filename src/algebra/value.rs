@@ -15,7 +15,7 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn from_signal(signal : &str) -> Self {
+    pub fn from_signal(signal : SignalId) -> Self {
         Value::LinearCombination(LC::from_signal(signal,FS::one()))
     }
     pub fn into_qeq(self) -> QEQ {
@@ -26,10 +26,10 @@ impl Value {
             QuadraticEquation(a) => a,
         }
     }
-    pub fn try_to_signal(&self) -> Option<String> {
+    pub fn try_to_signal(&self) -> Option<SignalId> {
         if let Value::LinearCombination(lc) = self {
             if lc.0.len() == 1 && lc.0[0].1.is_one() {
-                return Some(lc.0[0].0.clone());
+                return Some(lc.0[0].0)
             }
         }
         None

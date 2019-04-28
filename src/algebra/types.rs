@@ -1,10 +1,12 @@
 use num_bigint::BigUint;
 
+pub type SignalId = usize; 
+
 #[derive(Clone)]
 pub struct FS(pub BigUint);
 
 #[derive(Clone)]
-pub struct LC(pub Vec<(String, FS)>);
+pub struct LC(pub Vec<(SignalId, FS)>);
 
 #[derive(Clone)]
 pub struct QEQ {

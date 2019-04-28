@@ -11,22 +11,20 @@ use blake2_rfc::blake2b::{Blake2b};
 use hex;
 
 use super::algebra;
-use super::algebra::QEQ;
+use super::algebra::{SignalId,QEQ};
 use super::error::*;
 use super::signal::*;
 use super::retval::*;
 use super::scope::*;
 
 pub struct Component {
-    component_name : String,
-    signal_names : Vec<String>,
+    signal_ids : Vec<SignalId>,
 }
 
 impl Component {
-    pub fn new(component_name : String) -> Self {
+    pub fn new() -> Self {
         Self {
-            component_name,
-            signal_names : Vec::new(),
+            signal_ids : Vec::new(),
         }
     }
 }
@@ -99,7 +97,7 @@ impl Evaluator {
 
     // evaluators -----------------------------------------------------------------------------------
 
-    fn debug_trace(&mut self, meta: &Meta) {
+    fn debug_trace(&mut self, _meta: &Meta) {
         if self.debug_iterations == 0 {
             self.debug_iterations = 1;
             //println!("debug: {}:{} {:?}",self.current_file,self.current_component,self.current_function);
@@ -297,7 +295,7 @@ impl Evaluator {
                             let mut new_current_file = template_path.to_string();
 
                             if let Some(component) = self.components.get_mut(&new_current_component) {
-                                *component = Some(Component::new(new_current_component.clone()));
+                                *component = Some(Component::new());
 
                                 std::mem::swap(&mut new_current_file, &mut self.current_file);
                                 std::mem::swap(&mut new_current_component, &mut self.current_component);
@@ -354,8 +352,12 @@ impl Evaluator {
                 
                 None => {
                     let name = self.expand_selectors(scope,var)?;
-                    if let Some(signal) = self.signals.get(&self.expand_full_name(&name)) {
-                        ReturnValue::from_signal(&signal.full_name, &self.signals)
+                    if let Some(signal) = self.signals.get_by_name(&self.expand_full_name(&name)) {
+                        if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
+                            Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(value.clone())))
+                        } else {
+                            ReturnValue::from_signal_id(signal.id)
+                        }
                     } else {
                         Err(Error::InvalidType(format!("Variable '{}' not found",&name)))
                     }
@@ -682,12 +684,13 @@ impl Evaluator {
                     // TODO *ugly* too much signal name clones!
                     for signal_name in self.generate_selectors(scope, &name)? {
 
+                        let signal_id = self.signals.insert(self.expand_full_name(&signal_name),xtype);
+
                         if let Some(Some(component)) = self.components.get_mut(&self.current_component) {
-                            component.signal_names.push(signal_name.clone());
+                            component.signal_ids.push(signal_id);
                         } else {
                             panic!(format!("'{}' not initialized",&self.current_component));
                         }
-                        self.signals.insert(Signal::new(xtype,self.expand_full_name(&signal_name)));
                     }
                     Ok(())
                 }
@@ -820,26 +823,22 @@ impl Evaluator {
             }
 
             let signal_sel = self.expand_selectors(scope, signal)?;
-            let mut signal_full = self.expand_full_name(&signal_sel);
-
-            {
-                let equivalent =  self.signals.equivalent(&signal_full).to_string();
-                if equivalent != signal_full {
-                    signal_full = equivalent.clone()
+            let signal_full = self.expand_full_name(&signal_sel);
+            if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| self.signals.equivalent(s.id)) {
+                if let Ok(v) = self.eval_expression_p(scope, expr) {
+                    if let Some(signal) = self.signals.get_by_id_mut(signal_id) {
+                        if let ReturnValue::Algebra(a) = v {
+                            signal.value = Some(a);
+                        } else if let Ok(s1) = v.to_signal() {
+                            signal.equivalence = Some(s1);
+                        } else {
+                            return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
+                        } 
+                    }
                 }
-            }
-            
-            if let Ok(v) = self.eval_expression_p(scope, expr) {
-                if let Some(signal) = self.signals.get_mut(&signal_full) {
-                    if let ReturnValue::Algebra(a) = v {
-                        signal.value = Some(a);
-                    } else if let Ok(s1) = v.to_signal() {
-                        signal.equivalence = Some(s1);
-                    } else {
-                        return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
-                    } 
-                }
-            }
+            } else {
+                return Err(Error::NotFound(format!("Signal {}",signal_full)));
+            }  
             Ok(())
         };
 
@@ -926,7 +925,7 @@ impl Evaluator {
     
                 match circom2_parser::parse(&code) {
                     Ok(elements) => self.eval_body_elements_p(&Meta::new(0,0), scope, &elements)?,
-                    Err(circom2_parser::Error::ParseError(err,meta)) => {
+                    Err(circom2_parser::Error::ParseError(err,_)) => {
                         return Err(Error::Parse(err));                         
                     }
                 }
@@ -1063,5 +1062,4 @@ impl Evaluator {
             format!("{}.{}",self.current_component,s)
         }
     }
-
 }
