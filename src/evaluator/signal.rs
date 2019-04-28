@@ -40,7 +40,6 @@ pub struct Signal {
     pub id : SignalId,
     pub xtype : SignalType,
     pub full_name : SignalName,
-    pub equivalence : Option<SignalId>,
     pub value : Option<algebra::Value>,         
 }
 
@@ -92,7 +91,6 @@ impl Signals {
             id : id,
             xtype : xtype,
             full_name : full_name_rc.clone(),
-            equivalence : None,
             value : None,
         };
 
@@ -101,24 +99,9 @@ impl Signals {
 
         id
     }
-    pub fn equivalent<'a> (&'a self, id : SignalId) -> SignalId {
-        let mut id = id;
-        while let Some(signal) = self.ids.get(id) {
-            if let Some(equivalence) = &signal.equivalence {
-                id = *equivalence;
-            } else {
-                break;
-            }
-        }
-        id
-    }
     pub fn to_string(&self, id : SignalId) -> String {
         let s = &self.ids[id as usize];
-        if let Some(eq) = s.equivalence {
-            format!("{:?}:{:?}:{:?}:Some({})",s.full_name,s.xtype,s.value,eq)
-        } else {
-            format!("{:?}:{:?}:{:?}:None",s.full_name,s.xtype,s.value)
-        }
+        format!("{:?}:{:?}:{:?}",s.full_name,s.xtype,s.value)
     }
 }
 

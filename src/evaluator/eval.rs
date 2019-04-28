@@ -824,14 +824,12 @@ impl Evaluator {
 
             let signal_sel = self.expand_selectors(scope, signal)?;
             let signal_full = self.expand_full_name(&signal_sel);
-            if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| self.signals.equivalent(s.id)) {
+            if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
                 if let Ok(v) = self.eval_expression_p(scope, expr) {
                     if let Some(signal) = self.signals.get_by_id_mut(signal_id) {
                         if let ReturnValue::Algebra(a) = v {
                             signal.value = Some(a);
-                        } else if let Ok(s1) = v.to_signal() {
-                            signal.equivalence = Some(s1);
-                        } else {
+                        }  else {
                             return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
                         } 
                     }

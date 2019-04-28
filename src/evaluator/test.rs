@@ -152,10 +152,10 @@ mod test {
         let mut eval = Evaluator::new();
 
         eval.eval_inline("template t() { signal a; signal input b; signal private input c; signal output d; }\ncomponent main=t();")?; 
-        signal_eq(&eval,"main.a","main.a:Internal:None:None");
-        signal_eq(&eval,"main.b","main.b:PublicInput:None:None");
-        signal_eq(&eval,"main.c","main.c:PrivateInput:None:None");
-        signal_eq(&eval,"main.d","main.d:Output:None:None");
+        signal_eq(&eval,"main.a","main.a:Internal:None");
+        signal_eq(&eval,"main.b","main.b:PublicInput:None");
+        signal_eq(&eval,"main.c","main.c:PrivateInput:None");
+        signal_eq(&eval,"main.d","main.d:Output:None");
         signal_eq(&eval,"main.e","None");
         Ok(())
     }
@@ -176,7 +176,7 @@ mod test {
         eval.eval_inline("template t() { signal in; signal const; const <-- 2;  2 === 1 + in * const ;}\ncomponent main=t();")?; 
         println!("{:?}",eval.signals);
 
-        signal_eq(&eval,"main.const","main.const:Internal:Some(2):None");
+        signal_eq(&eval,"main.const","main.const:Internal:Some(2)");
         constrain_eq(&eval,0,"[ ]*[ ]+[2main.in-1one]");
 
         Ok(())
@@ -208,10 +208,10 @@ mod test {
         let mut eval = Evaluator::new();
         eval.eval_inline("template t() { signal in[2][2]; for (var i=0;i<2;i+=1) { in[i][0] <-- i+2 ; in[i][1] <--i+3 ; }}\ncomponent main=t();")?; 
          
-        signal_eq(&eval,"main.in[0][0]","main.in[0][0]:Internal:Some(2):None");
-        signal_eq(&eval,"main.in[0][1]","main.in[0][1]:Internal:Some(3):None");
-        signal_eq(&eval,"main.in[1][0]","main.in[1][0]:Internal:Some(3):None");
-        signal_eq(&eval,"main.in[1][1]","main.in[1][1]:Internal:Some(4):None");
+        signal_eq(&eval,"main.in[0][0]","main.in[0][0]:Internal:Some(2)");
+        signal_eq(&eval,"main.in[0][1]","main.in[0][1]:Internal:Some(3)");
+        signal_eq(&eval,"main.in[1][0]","main.in[1][0]:Internal:Some(3)");
+        signal_eq(&eval,"main.in[1][1]","main.in[1][1]:Internal:Some(4)");
         Ok(())
     }
 
