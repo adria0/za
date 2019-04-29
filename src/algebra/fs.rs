@@ -16,10 +16,10 @@ use super::constants::{FIELD_INT, FIELD_UINT, FIELD_UINT_NEG, ONE};
 
 impl FS {
     fn field() -> &'static BigUint {
-        return &FIELD_UINT as &BigUint;
+        &FIELD_UINT as &BigUint
     }
     fn field_int() -> &'static BigInt {
-        return &FIELD_INT as &BigInt;
+        &FIELD_INT as &BigInt
     }
 
     pub fn one() -> Self {
@@ -47,7 +47,7 @@ impl FS {
                 return Ok(FS(v ))
             }  
         }
-        Err(Error::InvalidOperation(format!("Only can shl on 64 bit values")))
+        Err(Error::InvalidOperation("Only can shl on 64 bit values".to_string()))
     }
     pub fn shr(&self, rhs: &FS) -> Result<FS> {
         if let Some(self_u64) = self.0.to_u64() {
@@ -56,7 +56,7 @@ impl FS {
                 return Ok(FS(v))
             }  
         }
-        Err(Error::InvalidOperation(format!("Only can shr on 64 bit values")))
+        Err(Error::InvalidOperation("Only can shr on 64 bit values".to_string()))
     }
     pub fn pow(&self, rhs: &FS) -> FS {
         FS::from(self.0.modpow(&rhs.0, FS::field()))
@@ -159,6 +159,8 @@ impl<'a> Mul<&'a FS> for &'a FS {
 // &FS / &FS -> FS
 impl<'a> Div<&'a FS> for &'a FS {
     type Output = Result<FS>;
+    
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: &'a FS) -> Result<FS> {
         let GcdResult { gcd, c1: c, .. } = extended_gcd(
             BigInt::from_biguint(num_bigint::Sign::Plus,rhs.0.clone()), 
@@ -201,7 +203,7 @@ impl<'a> Shl<&'a FS> for &'a FS {
         if let Some(rhs_usize) = rhs.0.to_usize() {
             return Ok(FS::from(&self.0 << rhs_usize))
         } else {
-            Err(Error::InvalidOperation(format!("Only can shl on 64 bit values")))
+            Err(Error::InvalidOperation("Only can shl on 64 bit values".to_string()))
         }
     }
 }
@@ -213,7 +215,7 @@ impl<'a> Shr<&'a FS> for &'a FS {
         if let Some(rhs_usize) = rhs.0.to_usize() {
             return Ok(FS::from(&self.0 >> rhs_usize))
         } else {
-            Err(Error::InvalidOperation(format!("Only can shr on 64 bit values")))
+            Err(Error::InvalidOperation("Only can shr on 64 bit values".to_string()))
         }
     }
 }
@@ -253,6 +255,7 @@ pub struct GcdResult {
 
 /// Taken from unknown source, re-check
 /// Calculate greatest common divisor and the corresponding coefficients.
+#[allow(clippy::many_single_char_names)]
 pub fn extended_gcd(a: BigInt, b: BigInt) -> GcdResult {
 
     // Euclid's extended algorithm

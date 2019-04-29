@@ -21,8 +21,8 @@ pub struct Component {
     signal_ids : Vec<SignalId>,
 }
 
-impl Component {
-    pub fn new() -> Self {
+impl Default for Component {
+    fn default() -> Self {
         Self {
             signal_ids : Vec::new(),
         }
@@ -54,16 +54,13 @@ pub struct Evaluator {
 
 }
 
-impl Evaluator {
-
-    // public interface ---------------------------------------------------------------------------
-
-    pub fn new() -> Self {
+impl Default for Evaluator {
+    fn default() -> Self {
         Self {
             current_file : "".to_string(),
             current_component : "".to_string(),
             current_function : None,
-            signals : Signals::new(),
+            signals : Signals::default(),
             constrains : Vec::new(),
             components : HashMap::new(),
             debug_iterations : 0,
@@ -75,6 +72,11 @@ impl Evaluator {
             error_function : None
         }
     }
+}
+
+impl Evaluator {
+
+    // public interface ---------------------------------------------------------------------------
 
     pub fn eval_inline(&mut self, code : &str) -> Result<Scope> {
         let mut scope = Scope::new(true, None, "root".to_string());
@@ -109,7 +111,7 @@ impl Evaluator {
     fn register_error<T>(&mut self,  meta: &Meta, scope: &Scope, res: Result<T>) -> Result<T> {        
         if res.is_err() && self.error_scope.is_empty() {
             self.error_scope = format!("{:?}",scope);
-            self.error_meta = meta.clone();
+            self.error_meta = *meta;
             self.error_file = self.current_file.clone();
             self.error_component = self.current_component.clone();
             self.error_function = self.current_function.clone();
@@ -193,11 +195,11 @@ impl Evaluator {
         let mut internal = || {        
             if name == "dbg" {
                 print!("DBG ");            
-                for n in 0..params.len() {                
-                    let value = self.eval_expression_p(scope, &*params[n])?;
+                for param in params {                
+                    let value = self.eval_expression_p(scope, param)?;
                     print!("{:?}",value);
                 }
-                println!("");
+                println!();
                 return Ok(());
             }
             Err(Error::NotFound(format!("internal funcion {}!",name)))
@@ -295,7 +297,7 @@ impl Evaluator {
                             let mut new_current_file = template_path.to_string();
 
                             if let Some(component) = self.components.get_mut(&new_current_component) {
-                                *component = Some(Component::new());
+                                *component = Some(Component::default());
 
                                 std::mem::swap(&mut new_current_file, &mut self.current_file);
                                 std::mem::swap(&mut new_current_component, &mut self.current_component);
@@ -340,7 +342,7 @@ impl Evaluator {
                     1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
                             let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
                             if pos  < a.len() {
-                                Ok(ReturnValue::Algebra(a.get(pos).unwrap().clone()))
+                                Ok(ReturnValue::Algebra(a[pos].clone()))
                             } else {
                                 Err(Error::InvalidSelector("index overflow".to_string()))
                             }
@@ -750,15 +752,13 @@ impl Evaluator {
 
             if var.sels.is_empty() {
                 scope.update(&var.name,ScopeValue::Algebra(value))?;
-            } else {
-                if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                    let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                    scope.get_mut(&var.name, |v| {
-                        if let Some(ScopeValue::Array(a)) = v {
-                            a[pos] = value;
-                        }
-                    });
-                }
+            } else if let SelectorP::Index{pos,..} = &*var.sels[0] {
+                let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
+                scope.get_mut(&var.name, |v| {
+                    if let Some(ScopeValue::Array(a)) = v {
+                        a[pos] = value;
+                    }
+                });
             }
             Ok(())
         };

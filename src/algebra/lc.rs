@@ -33,7 +33,7 @@ impl LC {
     pub fn rm(&mut self, signal: SignalId) {
         self.0.retain(|(s, _)| *s != signal);
     }
-    pub fn format<'a,F>(&self, func : F) -> String
+    pub fn format<F>(&self, func : F) -> String
     where 
         F : Fn(SignalId)-> String {
 
@@ -106,7 +106,7 @@ impl<'a> Neg for &'a LC {
     type Output = LC;
 
     fn neg(self) -> LC {
-        LC(self.0.iter().map(|(s, v)| (s.clone(), -v)).collect())
+        LC(self.0.iter().map(|(s, v)| (*s, -v)).collect())
     }
 }
 
@@ -132,7 +132,7 @@ impl<'a> Mul<&'a FS> for &'a LC {
     type Output = LC;
 
     fn mul(self, rhs: &'a FS) -> LC {
-        LC(self.0.iter().map(|(s, e)| (s.clone(), e * rhs)).collect())
+        LC(self.0.iter().map(|(s, e)| (*s, e * rhs)).collect())
     }
 }
 
@@ -146,7 +146,7 @@ impl<'a> Add<&'a LC> for &'a LC {
             if let Some(i) = v.iter().position(|(s, _)| s == signal) {
                 v[i].1 += e;
             } else {
-                v.push((signal.clone(), e.clone()));
+                v.push((*signal, e.clone()));
             }
         }
         LC(v)

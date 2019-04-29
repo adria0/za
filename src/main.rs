@@ -18,7 +18,7 @@ use codespan_reporting::{emit, Diagnostic, Label, Severity};
 fn main() -> evaluator::Result<()> {
     let args : Vec<String> = env::args().collect();
     if args.len() == 2 {
-        let mut eval = evaluator::Evaluator::new();
+        let mut eval = evaluator::Evaluator::default();
         if let Err(err) = eval.eval_file(&args[1]) {
 
             let span : ByteSpan= Span::from_offset(

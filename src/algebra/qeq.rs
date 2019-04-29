@@ -6,12 +6,12 @@ use super::traits::AlgZero;
 use super::lc::Substitute;
 
 impl QEQ {
-    pub fn format<'a,F>(&self, func : F) -> String
+    pub fn format<F>(&self, func : F) -> String
     where 
         F : Fn(SignalId)-> String {
 
-        let f = |v:&LC| if v.0.len() > 0 {
-            format!("{}",v.format(&func))
+        let f = |v:&LC| if !v.0.is_empty() {
+            v.format(&func)
         } else {
              " ".to_string()
         };

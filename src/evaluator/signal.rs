@@ -48,15 +48,17 @@ pub struct Signals {
     ids   : Vec<Signal>,
 }
 
-impl Signals {
-    pub fn new() -> Self {
+impl Default for Signals {
+    fn default() -> Self {
         let ids = Vec::new();
         let names = HashMap::new();
         let mut signals = Self { names, ids };
         signals.insert("one".to_string(), SignalType::PublicInput);
         signals
     }
+}
 
+impl Signals {
     pub fn len(&self) -> usize {
         self.ids.len()
     }
@@ -80,7 +82,7 @@ impl Signals {
             .map(|id| &self.ids[*id as usize])
     }
     pub fn get_by_name_mut(&mut self, full_name : &str) -> Option<&mut Signal> {
-        let id = self.names.get(full_name).map(|id| *id);
+        let id = self.names.get(full_name).cloned();
         id.map(move |id| &mut (self.ids[id as usize]))
     }
     pub fn insert(&mut self, full_name: String, xtype: SignalType) -> SignalId {
@@ -88,8 +90,8 @@ impl Signals {
         let full_name_rc = SignalName(Rc::new(full_name));
 
         let signal = Signal {
-            id : id,
-            xtype : xtype,
+            id,
+            xtype,
             full_name : full_name_rc.clone(),
             value : None,
         };
