@@ -41,10 +41,10 @@ template BabyAdd() {
     delta <== (-a*x1+y1)*(x2 + y2);
     tau <== beta * gamma;
 
-    $ xout <-- (beta + gamma) / (1+ d*tau);
+    #[w] xout <-- (beta + gamma) / (1+ d*tau);
     (1+ d*tau) * xout === (beta + gamma);
 
-    $ yout <-- (delta + a*beta - gamma) / (1-d*tau);
+    #[w] yout <-- (delta + a*beta - gamma) / (1-d*tau);
     (1-d*tau)*yout === (delta + a*beta - gamma);
 }
 
@@ -56,14 +56,12 @@ template BabyDbl() {
 
     component adder = BabyAdd();
     adder.x1 <== x;
-    adder.y1 <== y;
     adder.x2 <== x;
     adder.y2 <== y;
 
     adder.xout ==> xout;
     adder.yout ==> yout;
 }
-
 
 template BabyCheck() {
     signal input x;
@@ -103,4 +101,44 @@ template BabyPbk() {
     }
     Ax  <== mulFix.out[0];
     Ay  <== mulFix.out[1];
+}
+
+#[test]
+template test_BabyAdd_01() {
+    signaltest t.x1 = 0;
+    signaltest t.y1 = 1;
+    signaltest t.x2 = 0;
+    signaltest t.y2 = 1;
+
+    component t = BabyAdd();
+
+    t.xout === 0;
+    t.yout === 1;
+}
+
+#[test]
+template test_BabyAdd_same() {
+    signaltest t.x1 = 17777552123799933955779906779655732241715742912184938656739573121738514868268;
+    signaltest t.y1 = 2626589144620713026669568689430873010625803728049924121243784502389097019475;
+    signaltest t.x2 = 17777552123799933955779906779655732241715742912184938656739573121738514868268;
+    signaltest t.y2 = 2626589144620713026669568689430873010625803728049924121243784502389097019475;
+
+    component t = BabyAdd();
+
+    t.xout === 6890855772600357754907169075114257697580319025794532037257385534741338397365;
+    t.yout === 4338620300185947561074059802482547481416142213883829469920100239455078257889;
+}
+
+
+#[test]
+template test_BabyAdd_different() {
+    signaltest t.x1 = 17777552123799933955779906779655732241715742912184938656739573121738514868268;
+    signaltest t.y1 = 2626589144620713026669568689430873010625803728049924121243784502389097019475;
+    signaltest t.x2 = 16540640123574156134436876038791482806971768689494387082833631921987005038935;
+    signaltest t.y2 = 20819045374670962167435360035096875258406992893633759881276124905556507972311;
+
+    component t = BabyAdd();
+
+    t.xout === 7916061937171219682591368294088513039687205273691143098332585753343424131937;
+    t.yout === 14035240266687799601661095864649209771790948434046947201833777492504781204499;
 }

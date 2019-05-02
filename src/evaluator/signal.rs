@@ -34,6 +34,12 @@ impl Debug for SignalName {
     }
 }
 
+impl std::string::ToString for SignalName {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
 
 #[derive(Clone)]
 pub struct Signal {
@@ -53,7 +59,7 @@ impl Default for Signals {
         let ids = Vec::new();
         let names = HashMap::new();
         let mut signals = Self { names, ids };
-        signals.insert("one".to_string(), SignalType::PublicInput);
+        signals.insert("one".to_string(), SignalType::PublicInput,None);
         signals
     }
 }
@@ -85,7 +91,7 @@ impl Signals {
         let id = self.names.get(full_name).cloned();
         id.map(move |id| &mut (self.ids[id as usize]))
     }
-    pub fn insert(&mut self, full_name: String, xtype: SignalType) -> SignalId {
+    pub fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> SignalId {
         let id = self.ids.len() as SignalId;
         let full_name_rc = SignalName(Rc::new(full_name));
 
@@ -93,7 +99,7 @@ impl Signals {
             id,
             xtype,
             full_name : full_name_rc.clone(),
-            value : None,
+            value : value,
         };
 
         self.ids.push(signal);
@@ -110,8 +116,8 @@ impl Signals {
 impl Debug for Signals {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
         writeln!(fmt, "signals --------------------------------------------")?;
-        for (name,id) in &self.names {
-            writeln!(fmt, "  {:?}: {}",name,self.to_string(*id))?;
+        for (_,id) in &self.names {
+            writeln!(fmt, "{}",self.to_string(*id))?;
         }
         Ok(())
     }

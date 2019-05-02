@@ -91,7 +91,7 @@ template Bits2Point_Strict() {
 
     out[1] <== b2nY.out;
 
-    ${
+    #[w] {
         var a = 168700;
         var d = 168696;
 

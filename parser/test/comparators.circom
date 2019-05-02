@@ -26,7 +26,7 @@ template IsZero() {
 
     signal inv;
     
-    $if (in!=0) {
+    #[w] if (in!=0) {
         inv <-- 1/in;   
     } else {
         inv <-- 0;

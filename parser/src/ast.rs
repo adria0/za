@@ -1,17 +1,37 @@
 use num_bigint::BigInt;
 
-#[derive(Clone, Copy, Debug)]
+
+#[derive(Clone, Debug)]
+pub struct Attributes(Vec<String>);
+
+impl Attributes {
+    pub fn has_tag(&self, t : &str) -> bool {
+        self.0.iter().any(|e| e==t)
+    }
+    pub fn has_tag_w(&self) -> bool {
+        self.has_tag("w")
+    }
+    pub fn has_tag_test(&self) -> bool {
+        self.has_tag("test")        
+    }
+}
+
+
+#[derive(Clone, Debug)]
 pub struct Meta {
     pub start   : usize,
     pub end     : usize,
 
-    // if only makes sense in witness generation
-    pub witness : bool, 
+    pub attrs   : Attributes,
 }
 
 impl Meta {
-    pub fn new(start : usize, end : usize) -> Self {
-        Self { start, end, witness : false }
+    pub fn new(start : usize, end : usize, attrs : Option<Vec<String>>) -> Self {
+        if let Some(attrs) = attrs {
+            Self { start, end, attrs : Attributes(attrs) }
+        } else {
+            Self { start, end, attrs : Attributes(Vec::new()) }
+        }
     }
 }
 
@@ -131,34 +151,6 @@ pub enum StatementP {
     },
 }
 
-pub fn mark_witness(stmt : Box<StatementP>) -> Box<StatementP> {
-    use StatementP::*;
-    Box::new(match *stmt {
-        IfThenElse{meta,xif,xthen,xelse}
-            => IfThenElse{meta:Meta{witness:true,..meta},xif,xthen,xelse},   
-        For{meta,init,cond,step,stmt}
-            => For{meta:Meta{witness:true,..meta},init,cond,step,stmt},
-        While{meta,cond,stmt}
-            => While{meta:Meta{witness:true,..meta},cond,stmt},
-        Return{meta,value}
-            => Return{meta:Meta{witness:true,..meta},value},
-        Declaration {meta,xtype,name,init}
-            => Declaration {meta:Meta{witness:true,..meta},xtype,name,init},
-        Substitution {meta,name,op,value}
-            => Substitution {meta:Meta{witness:true,..meta},name,op,value},
-        Block{meta,stmts}
-            => Block{meta:Meta{witness:true,..meta},stmts},
-        SignalLeft{meta,name,op,value}
-            => SignalLeft{meta:Meta{witness:true,..meta},name,op,value},
-        SignalRight{meta,value,op,name}
-            => SignalRight{meta:Meta{witness:true,..meta},value,op,name},
-        SignalEq{meta,lhe,op,rhe}
-            => SignalEq{meta:Meta{witness:true,..meta},lhe,op,rhe},
-        InternalCall{meta,name,args}
-            => InternalCall{meta:Meta{witness:true,..meta},name,args},
-    })
-}
-
 #[derive(Clone)]
 pub enum BodyElementP {
     Include {
@@ -183,12 +175,13 @@ pub enum BodyElementP {
     },
 }
 
-#[derive(Debug,Copy, Clone)]
+#[derive(Debug,Copy, Clone, PartialEq)]
 pub enum SignalType {
     Internal,
     PublicInput,
     PrivateInput,
     Output,
+    Test,
 }
 
 #[derive(Copy, Clone)]

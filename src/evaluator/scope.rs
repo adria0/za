@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::cell::{RefCell};
 
-use circom2_parser::ast::StatementP;
+use circom2_parser::ast::{Attributes,StatementP};
 
 use super::error::*;
 use super::algebra;
@@ -16,7 +16,7 @@ pub enum ScopeValue {
     Bool(bool),
     Algebra(algebra::Value),
     Function(Vec<String>, Box<StatementP>, String),
-    Template(Vec<String>, Box<StatementP>, String),
+    Template(Attributes, Vec<String>, Box<StatementP>, String),
     Array(Vec<algebra::Value>),
 }
 
@@ -41,8 +41,8 @@ pub struct Scope<'a> {
     prev: Option<&'a Self>,
     pos  : String,
 
-    return_value: RefCell<Option<ReturnValue>>,
-    vars: RefCell<HashMap<String, ScopeValue>>,
+    pub return_value: RefCell<Option<ReturnValue>>,
+    pub vars: RefCell<HashMap<String, ScopeValue>>,
 }
 
 impl<'a> Scope<'a> {

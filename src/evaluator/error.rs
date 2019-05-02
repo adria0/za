@@ -13,8 +13,9 @@ pub enum Error {
     NotYetImplemented(String),
     Algebra(algebra::Error),
     CannotGenerateConstrain(String),
+    CannotTestConstrain(String),
     CannotConvertToU64(algebra::FS),
-    Io(std::io::Error),
+    Io(String,std::io::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

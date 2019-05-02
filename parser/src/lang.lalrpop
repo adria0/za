@@ -1,8 +1,7 @@
 use num_bigint::BigInt;
-//use lexer;
 use crate::ast::{
     ExpressionP,VariableP,StatementP,BodyElementP,SelectorP,
-    Opcode,VariableType,SignalType, Meta, mark_witness
+    Opcode,VariableType,SignalType, Meta
 };
 
 grammar;
@@ -18,31 +17,42 @@ pub Body : Vec<BodyElementP> = {
 pub BodyElement : BodyElementP = {
     <s:@L> "include" <path:STRING> ";" <e:@L>
     => BodyElementP::Include {
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         path
     },
     
-    <s:@L> "function" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
+    <s:@L> <attrs:Attrs?> "function" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
     => BodyElementP::FunctionDef {
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         name,args,stmt
     },
 
-    <s:@L> "template" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
+    <s:@L> <attrs:Attrs?> "template" <name:IDENTIFIER> "(" <args:ParameterListDef> ")" <stmt:StatementBlock> <e:@L>
     => BodyElementP::TemplateDef {
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         name,args,stmt
     },
     
-    <s:@L> <decl:Declaration> ";" <e:@L>
+    <s:@L> <attrs:Attrs?> <decl:Declaration> ";" <e:@L>
     => BodyElementP::Declaration {
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         decl
     }
 }
 
 ParameterListDef : Vec<String> = {
     <v:(<IDENTIFIER> ",")*> <e:IDENTIFIER?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+}
+
+Attrs : Vec<String> = {
+    "#[" <v:(<IDENTIFIER> ",")*> <e:IDENTIFIER?> "]" => match e {
         None => v,
         Some(e) => {
             let mut v = v;
@@ -59,100 +69,123 @@ ParameterListDef : Vec<String> = {
 
 pub Statement : Box<StatementP> = {
 
-    "if" <IfThenElse>
-    => <>,
-    
-    <s:@L> "for" "(" <init:Substitution> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
+    <attrs:Attrs?> "if" <ite:IfThenElse>
+    => match *ite {
+        StatementP::IfThenElse{meta,xif,xthen,xelse}
+        => Box::new(StatementP::IfThenElse{
+            meta: Meta::new(meta.start,meta.end,attrs),
+            xif, xthen, xelse
+        }),
+        _ => unreachable!()      
+    },
+
+    <s:@L> <attrs:Attrs?>  "for" "(" <init:Substitution> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
     => Box::new(StatementP::For{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         init, cond, step, stmt
     }),
 
-    <s:@L> "for" "(" <init:Declaration> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
+    <s:@L> <attrs:Attrs?>  "for" "(" <init:Declaration> ";" <cond:Expression> ";" <step:Substitution> ")" <stmt:StatementBlock> <e:@L>
     => Box::new(StatementP::For{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         init, cond, step, stmt
     }),
 
-    <s:@L> "while" "(" <cond:Expression> ")" <stmt:StatementBlock> <e:@L>
+    <s:@L> <attrs:Attrs?>  "while" "(" <cond:Expression> ")" <stmt:StatementBlock> <e:@L>
     => Box::new(StatementP::While{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         cond, stmt
     }),
     
-    <s:@L> "return" <value:Expression> ";" <e:@L>
+    <s:@L> <attrs:Attrs?>  "return" <value:Expression> ";" <e:@L>
     => Box::new(StatementP::Return{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         value
     }),
 
-    <Declaration> ";"
-      => <>,
+    <attrs:Attrs?> <decl:Declaration> ";"
+    => match *decl {
+        StatementP::Declaration{meta,xtype,name,init}
+        => Box::new(StatementP::Declaration{
+            meta: Meta::new(meta.start,meta.end,attrs),
+            xtype, name, init
+        }),
+        _ => unreachable!()      
+    },
 
-    <Substitution> ";"
-     => <>,
+    <attrs:Attrs?> <subst:Substitution> ";"
+    => match *subst {
+        StatementP::Substitution{meta,name,op,value}
+        => Box::new(StatementP::Substitution{
+            meta: Meta::new(meta.start,meta.end,attrs),
+            name, op, value
+        }),
+        _ => unreachable!()      
+    },
 
-    <s:@L> <name:Variable> <op:OpSignalLeftClass> <value:Expression> ";" <e:@L>
+    <s:@L> <attrs:Attrs?> <name:Variable> <op:OpSignalLeftClass> <value:Expression> ";" <e:@L>
     => Box::new(StatementP::SignalLeft{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         name,op,value
     }),
      
-    <s:@L> <value:Expression> <op:OpSignalRightClass> <name:Variable> ";" <e:@L>
+    <s:@L> <attrs:Attrs?>  <value:Expression> <op:OpSignalRightClass> <name:Variable> ";" <e:@L>
     => Box::new(StatementP::SignalRight{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         value,op,name
     }),
     
-    <s:@L> <lhe:Expression> <op:OpSignalEq> <rhe:Expression> ";" <e:@L>
+    <s:@L> <attrs:Attrs?>  <lhe:Expression> <op:OpSignalEq> <rhe:Expression> ";" <e:@L>
     => Box::new(StatementP::SignalEq{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         lhe,op,rhe
     }),
 
-    <s:@L> <name:IDENTIFIER> "!" "(" <args:ExpressionList> ")" ";"<e:@L>
+    <s:@L> <attrs:Attrs?>  <name:IDENTIFIER> "!" "(" <args:ExpressionList> ")" ";"<e:@L>
     =>  Box::new(StatementP::InternalCall{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,attrs),
         name, args
     }),    
 
-    <StatementBlock>
-    => <>,
+    <attrs:Attrs?> <blk:StatementBlock>
+    => match *blk {
+        StatementP::Block{meta,stmts}
+        => Box::new(StatementP::Block{
+            meta: Meta::new(meta.start,meta.end,attrs),
+            stmts
+        }),
+        _ => unreachable!()      
+    },
 
 }
 
 StatementBlock : Box<StatementP> = {
-    <s:@L> "{" <stmts:WitnessStatement*> "}" <e:@L>
+    <s:@L> "{" <stmts:Statement*> "}" <e:@L>
     => Box::new(StatementP::Block{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         stmts
     }),
-}
-
-pub WitnessStatement : Box<StatementP> = {
-    "$" <Statement> => mark_witness(<>),
-    <Statement> => <>
 }
 
 
 IfThenElse : Box<StatementP> = {
     <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> <e:@L>
     => Box::new(StatementP::IfThenElse{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xif, xthen,
         xelse: None
     }),
 
     <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> "else" <xelse:StatementBlock> <e:@L>
     => Box::new(StatementP::IfThenElse{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xif, xthen,
         xelse: Some(xelse)
     }),
 
     <s:@L> "(" <xif:Expression> ")" <xthen:StatementBlock> "else" "if" <xelse:IfThenElse> <e:@L>
     => Box::new(StatementP::IfThenElse{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xif, xthen,
         xelse: Some(xelse)
     }),
@@ -165,7 +198,7 @@ IfThenElse : Box<StatementP> = {
 Declaration : Box<StatementP> = {
     <s:@L> "var" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Var,
         name,
         init: None
@@ -173,7 +206,7 @@ Declaration : Box<StatementP> = {
     
     <s:@L> "var" <name:SimpleVariableDecl> "=" <value:Expression> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Var,
         name,
         init: Some((Opcode::Assig,value))
@@ -181,7 +214,7 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "component" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Component,
         name,
         init: None
@@ -189,7 +222,7 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "component" <name:SimpleVariableDecl> "=" <value:Expression> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Component,
         name,
         init: Some((Opcode::Assig,value))
@@ -197,7 +230,7 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "signal" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Signal(SignalType::Internal),
         name,
         init: None
@@ -205,7 +238,7 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "signal" "input" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Signal(SignalType::PublicInput),
         name,
         init: None
@@ -213,7 +246,7 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "signal" "private" "input" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Signal(SignalType::PrivateInput),
         name,
         init: None
@@ -221,10 +254,18 @@ Declaration : Box<StatementP> = {
 
     <s:@L> "signal" "output" <name:IndexVariableDecl> <e:@L>
     => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         xtype: VariableType::Signal(SignalType::Output),
         name,
         init: None
+    }),
+
+    <s:@L> "signaltest" <name:Variable> "=" <value:Expression> <e:@L>
+    => Box::new(StatementP::Declaration{
+        meta: Meta::new(s,e,None),
+        xtype: VariableType::Signal(SignalType::Test),
+        name,
+        init: Some((Opcode::Assig,value))
     }),
 
 }
@@ -232,7 +273,7 @@ Declaration : Box<StatementP> = {
 Substitution : Box<StatementP> = { 
     <s:@L> <name:Variable> <op:OpAssigClass> <value:Expression> <e:@L>
     => Box::new(StatementP::Substitution{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name,op,value
     })
 }
@@ -244,13 +285,13 @@ Substitution : Box<StatementP> = {
 PinOrIndexSelector: Box<SelectorP> = {
     <s:@L> "." <name:IDENTIFIER>  <e:@L>
     => Box::new(SelectorP::Pin{
-        meta : Meta::new(s,e),
+        meta : Meta::new(s,e,None),
         name
     }),    
     
     <s:@L> "[" <pos:Expression> "]" <e:@L>
     =>  Box::new(SelectorP::Index{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         pos
     }),    
 }
@@ -258,7 +299,7 @@ PinOrIndexSelector: Box<SelectorP> = {
 IndexSelector: Box<SelectorP> = {
     <s:@L> "[" <pos:Expression> "]" <e:@L>
     => Box::new(SelectorP::Index{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         pos
     }),    
 }
@@ -266,7 +307,7 @@ IndexSelector: Box<SelectorP> = {
 Variable : Box<VariableP> = {
     <s:@L> <name:IDENTIFIER> <sels:PinOrIndexSelector*> <e:@L>
     => Box::new(VariableP{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name: String::from(name),
         sels
     }),
@@ -275,7 +316,7 @@ Variable : Box<VariableP> = {
 SimpleVariableDecl : Box<VariableP> = {
     <s:@L> <name:IDENTIFIER> <e:@L>
     => Box::new(VariableP{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name: String::from(name),
         sels: Vec::new()
     }),
@@ -284,7 +325,7 @@ SimpleVariableDecl : Box<VariableP> = {
 IndexVariableDecl : Box<VariableP> = {
     <s:@L> <name:IDENTIFIER> <sels:IndexSelector*> <e:@L>
     => Box::new(VariableP{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name: String::from(name),
         sels
     }),
@@ -298,7 +339,7 @@ InfixOpTier<Op,NextTier> : Box<ExpressionP> = {
     
     <s:@L> <lhe:InfixOpTier<Op,NextTier>> <op:Op> <rhe:NextTier> <e:@L>
     => Box::new(ExpressionP::InfixOp{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         lhe, op, rhe
     }),
     
@@ -308,7 +349,7 @@ InfixOpTier<Op,NextTier> : Box<ExpressionP> = {
 PrefixOpTier<Op,NextTier >: Box<ExpressionP> = {
     <s:@L> <op:Op> <rhe:NextTier> <e:@L>
     => Box::new(ExpressionP::PrefixOp{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         op, rhe
     }),
     
@@ -367,13 +408,13 @@ Expression2 = PrefixOpTier<OpNegateClass,Expression1>;
 Expression1: Box<ExpressionP> = {
     <s:@L>  <name:IDENTIFIER> "(" <args:ExpressionList> ")" <e:@L>
     =>  Box::new(ExpressionP::FunctionCall{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name, args
     }),
 
     <s:@L>  "[" <values:ExpressionList> "]" <e:@L>
     =>  Box::new(ExpressionP::Array{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         values
     }),
     
@@ -384,19 +425,19 @@ Expression1: Box<ExpressionP> = {
 Expression0: Box<ExpressionP> = {
     <s:@L> <name:Variable> <e:@L> 
     => Box::new(ExpressionP::Variable{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         name
     }),
     
     <s:@L> <value:DECNUMBER> <e:@L>
     => Box::new(ExpressionP::Number{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         value
     }),
     
     <s:@L> <value:HEXNUMBER> <e:@L>
     => Box::new(ExpressionP::Number{
-        meta: Meta::new(s,e),
+        meta: Meta::new(s,e,None),
         value
     }),
     

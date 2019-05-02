@@ -47,7 +47,7 @@ fn preprocess(expr: &str) -> Result<String> {
                 None =>
                     return Err(
                         Error::ParseError("unterminated /* */".to_string(),
-                        Meta::new(block_comment_start,block_comment_start))
+                        Meta::new(block_comment_start,block_comment_start,None))
                     ),
             }},
             _ => { 
@@ -65,13 +65,13 @@ pub fn parse(expr: &str) -> Result<Vec<ast::BodyElementP>> {
         .parse(&preprocess(expr)?)
         .map_err(|err| match err { 
             InvalidToken{location}
-                => Error::ParseError(format!("{:?}", err), Meta::new(location,location)),
+                => Error::ParseError(format!("{:?}", err), Meta::new(location,location,None)),
             UnrecognizedToken{token:Some((left,_,right)),..}
-                => Error::ParseError(format!("{:?}", err), Meta::new(left,right)),
+                => Error::ParseError(format!("{:?}", err), Meta::new(left,right,None)),
             ExtraToken{token:(left,_,right)}
-                => Error::ParseError(format!("{:?}", err), Meta::new(left,right)),
+                => Error::ParseError(format!("{:?}", err), Meta::new(left,right,None)),
             _ 
-                => Error::ParseError(format!("{:?}", err), Meta::new(0,0))
+                => Error::ParseError(format!("{:?}", err), Meta::new(0,0,None))
          })   
 }
 
@@ -115,7 +115,7 @@ mod test {
         for path in paths {
             let path = path.unwrap().path();
             if path.is_file() {
-                println!("Testing {}", path.display());
+                println!("+++ testing {} +++", path.display());
                 let mut file = File::open(path).expect("Unable to open the file");
                 let mut contents = String::new();
                 file.read_to_string(&mut contents)

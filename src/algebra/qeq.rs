@@ -3,7 +3,6 @@ use std::ops::{Add, Mul, Neg};
 
 use super::types::*;
 use super::traits::AlgZero;
-use super::lc::Substitute;
 
 impl QEQ {
     pub fn format<F>(&self, func : F) -> String
@@ -38,15 +37,6 @@ impl fmt::Debug for QEQ {
     }
 }
 
-impl Substitute for QEQ {
-    fn substitute(&self, signal: SignalId, equivalenc: &LC) -> Self {
-        QEQ {
-            a: self.a.substitute(signal, equivalenc),
-            b: self.b.substitute(signal, equivalenc),
-            c: self.c.substitute(signal, equivalenc),
-        }
-    }
-}
 
 // &QEQ + &FS -> QEQ
 impl<'a> Add<&'a FS> for &'a QEQ {
@@ -123,11 +113,6 @@ impl<'a> From<&'a LC> for QEQ {
 #[cfg(test)]
 mod test {
     use super::*;
-    use num_bigint::ToBigUint;
-
-    fn u32_to_fs(n: u32) -> FS {
-        FS::from(n.to_biguint().unwrap())
-    }
 
     #[test]
     fn test_qeq_fs_add_mul() {
@@ -136,36 +121,21 @@ mod test {
         let s1 = 1 as SignalId;
         let s2 = 2 as SignalId;
 
-        let lc1s1 = &LC::from_signal(s1, FS::one());
-        let lc1s2 = &LC::from_signal(s2, FS::one());
-        let lc1s1lc1s2one = &(lc1s1 * lc1s2) + one;
-        assert_eq!("[1s1]*[1s2]+[1s0]", format!("{:?}", lc1s1lc1s2one));
-        assert_eq!("[2s1]*[1s2]+[2s0]", format!("{:?}", &lc1s1lc1s2one * two));
+        let lc_1s1 = &LC::from_signal(s1, FS::one());
+        let lc_1s2 = &LC::from_signal(s2, FS::one());
+        let lc_1s1_1s2_one = &(lc_1s1 * lc_1s2) + one;
+        
+        assert_eq!("[1s1]*[1s2]+[1s0]", format!("{:?}", lc_1s1_1s2_one));
+        assert_eq!("[2s1]*[1s2]+[2s0]", format!("{:?}", &lc_1s1_1s2_one * two));
     }
 
     #[test]
     fn test_qeq_neg() {
         let s1 = 1 as SignalId;
-        let lc1s1 = &LC::from_signal(s1, FS::one());
-        let qeq = &(&(&(lc1s1 + lc1s1) * lc1s1) + lc1s1);
+        let lc_1s1 = &LC::from_signal(s1, FS::one());
+        let qeq = &(&(&(lc_1s1 + lc_1s1) * lc_1s1) + lc_1s1);
         let neq_qeq = &-qeq;
         assert_eq!("[2s1]*[1s1]+[1s1]", format!("{:?}", -neq_qeq));
-    }
-
-
-    #[test]
-    fn test_qeq_substitute() {
-        let s2 = 2 as SignalId;
-        let s3 = 3 as SignalId;
-
-        let lc2s2 = LC::from_signal(s2, u32_to_fs(2));
-        let lc2s3 = LC::from_signal(s2, u32_to_fs(3));
-        let lc2s4 = LC::from_signal(s2, u32_to_fs(4));
-        let qeq = &(&lc2s2 * &lc2s3) + &lc2s4;
-        let lc3s3 = LC::from_signal(s3, u32_to_fs(3));
-        let qeq_subst = qeq.substitute(s2, &lc3s3);
-
-        assert_eq!("[6s3]*[9s3]+[12s3]", format!("{:?}", qeq_subst));
     }
 
 }

@@ -5,13 +5,14 @@ use std::io::prelude::*;
 use num_bigint::BigInt;
 use circom2_parser;
 use circom2_parser::ast::{
-    BodyElementP, ExpressionP, Opcode, StatementP, SelectorP, VariableP, VariableType, Meta
+    SignalType, BodyElementP, ExpressionP, Opcode, StatementP, SelectorP, VariableP, VariableType, Meta
 };
+
 use blake2_rfc::blake2b::{Blake2b};
 use hex;
 
 use super::algebra;
-use super::algebra::{SignalId,QEQ};
+use super::algebra::{SignalId,QEQ,AlgZero};
 use super::error::*;
 use super::signal::*;
 use super::retval::*;
@@ -26,6 +27,31 @@ impl Default for Component {
         Self {
             signal_ids : Vec::new(),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct ErrorContext {
+    pub scope : String,
+    pub meta : Meta,
+    pub file : String,
+    pub component : String,
+    pub function : Option<String>  
+}
+
+#[derive(PartialEq,Debug)]
+pub enum Mode {
+    Collect,        // collect declarations
+    GenConstraints, // generate R1CS
+    Test,           // run tests
+}
+
+impl Mode {
+    pub fn must_process_eval(&self, meta: &Meta) -> bool {
+        !(self == &Mode::GenConstraints && meta.attrs.has_tag_w()) 
+    }
+    pub fn must_process_root_decrl(&self) -> bool {
+        self != &Mode::Collect 
     }
 }
 
@@ -45,17 +71,17 @@ pub struct Evaluator {
     // processed includes
     pub processed_files : Vec<String>,
 
-    // error got
-    pub error_scope : String,
-    pub error_meta : Meta,
-    pub error_file : String,
-    pub error_component : String,
-    pub error_function : Option<String>  
+    // last got error
+    pub last_error : Option<ErrorContext>,
+
+    // evaluation mode
+    pub mode : Mode,
 
 }
 
-impl Default for Evaluator {
-    fn default() -> Self {
+impl Evaluator {
+
+    pub fn new(mode : Mode) -> Self {
         Self {
             current_file : "".to_string(),
             current_component : "".to_string(),
@@ -65,36 +91,37 @@ impl Default for Evaluator {
             components : HashMap::new(),
             debug_iterations : 0,
             processed_files : Vec::new(),
-            error_scope : "".to_string(),
-            error_meta : Meta::new(0,0),
-            error_file : "".to_string(),
-            error_component : "".to_string(),
-            error_function : None
+            last_error : None,
+            mode
         }
     }
-}
-
-impl Evaluator {
 
     // public interface ---------------------------------------------------------------------------
 
-    pub fn eval_inline(&mut self, code : &str) -> Result<Scope> {
-        let mut scope = Scope::new(true, None, "root".to_string());
+    pub fn eval_inline(&mut self, scope: &mut Scope, code : &str) -> Result<()> {
         match circom2_parser::parse(&code) {
             Ok(elements) =>
-                self.eval_body_elements_p(&Meta::new(0,0), &mut scope, &elements)?,
+                self.eval_body_elements_p(&Meta::new(0,0,None), scope, &elements)?,
 
             Err(circom2_parser::Error::ParseError(err,meta)) =>
                 return self.register_error(&meta,&scope,Err(Error::Parse(err)))                       
         }
-        
-        Ok(scope)
+        Ok(())        
     }
 
     pub fn eval_file(&mut self, path : &str) -> Result<Scope> {
         let mut scope = Scope::new(true, None,  path.to_string());
-        self.eval_include(&Meta::new(0,0), &mut scope, path)?;
+        self.eval_include(&Meta::new(0,0,None), &mut scope, path)?;
         Ok(scope)
+    }
+
+    pub fn format_algebra(&self, a : algebra::Value ) -> String {
+        let sname = |id| self.signals.get_by_id(id).map_or("unknown".to_string(),|s| s.full_name.to_string());
+        match a {
+            algebra::Value::FieldScalar(fe) => format!("{:?}",fe),
+            algebra::Value::LinearCombination(lc) => lc.format(sname),
+            algebra::Value::QuadraticEquation(qeq) => qeq.format(sname),
+        }
     }
 
     // evaluators -----------------------------------------------------------------------------------
@@ -109,12 +136,14 @@ impl Evaluator {
     }
 
     fn register_error<T>(&mut self,  meta: &Meta, scope: &Scope, res: Result<T>) -> Result<T> {        
-        if res.is_err() && self.error_scope.is_empty() {
-            self.error_scope = format!("{:?}",scope);
-            self.error_meta = *meta;
-            self.error_file = self.current_file.clone();
-            self.error_component = self.current_component.clone();
-            self.error_function = self.current_function.clone();
+        if res.is_err() && self.last_error.is_none() {
+            self.last_error = Some(ErrorContext {
+                scope : format!("{:?}",scope),
+                meta : meta.clone(),
+                file : self.current_file.clone(),
+                component : self.current_component.clone(),
+                function : self.current_function.clone()
+            });
         }
         res
     } 
@@ -279,9 +308,9 @@ impl Evaluator {
         let mut internal = || {
             if let ExpressionP::FunctionCall{name: template_name, args: params,..} = init {
                 scope.root().get(template_name, |v| match v {
-                    Some(ScopeValue::Template(args, stmt, template_path)) => {
+                    Some(ScopeValue::Template(_, args, stmt, template_path)) => {
                         if args.len() != params.len() {
-                            Err(Error::InvalidParameter(component_name.to_string()))
+                            Err(Error::InvalidParameter(format!("Invalid parameter count when instantiating {}",template_name)))
                         } else  {
                             let mut template_scope = Scope::new(
                                 true, Some(scope),
@@ -491,7 +520,7 @@ impl Evaluator {
         xelse: &Option<Box<StatementP>>,
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
@@ -518,7 +547,7 @@ impl Evaluator {
         stmt: &StatementP,
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
@@ -559,7 +588,7 @@ impl Evaluator {
     ) -> Result<()> {
 
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
         
@@ -598,7 +627,7 @@ impl Evaluator {
     ) -> Result<()> {
 
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
@@ -616,35 +645,40 @@ impl Evaluator {
         meta: &Meta,
         scope: &mut Scope,
         xtype: VariableType,
-        name: &VariableP,
+        var: &VariableP,
         init: &Option<(Opcode, Box<ExpressionP>)>,
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
+
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
+        if self.current_component.is_empty() && !self.mode.must_process_root_decrl() {
+            return Ok(());
+        }
+
         let mut internal = || {
-            if scope.contains_key(&name.name) {
-                return Err(Error::AlreadyExists(name.name.clone()));
+            if scope.contains_key(&var.name) {
+                return Err(Error::AlreadyExists(var.name.clone()));
             }
 
             match (xtype, init) {
                 
                 (VariableType::Var, None) => {
-                    match name.sels.len() {
+                    match var.sels.len() {
                         0 => {
-                            scope.insert(name.name.clone(),ScopeValue::Undefined);
+                            scope.insert(var.name.clone(),ScopeValue::Undefined);
                             Ok(())
                         }
-                        1 => if let SelectorP::Index{pos,..} = &*name.sels[0] {
-                            let size = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                            let mut array = Vec::new();
-                            (0..size).for_each(|_| array.push(algebra::Value::default()));
-                            scope.insert(name.name.clone(),ScopeValue::Array(array));
-                            Ok(())
+                        1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
+                                let size = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
+                                let mut array = Vec::new();
+                                (0..size).for_each(|_| array.push(algebra::Value::default()));
+                                scope.insert(var.name.clone(),ScopeValue::Array(array));
+                                Ok(())
                             } else {
-                            Err(Error::InvalidSelector("needs [size]".to_string()))
+                                Err(Error::InvalidSelector("needs [size]".to_string()))
                             },
                         _ => Err(Error::InvalidSelector("array needs only one index".to_string()))
                     }
@@ -654,39 +688,54 @@ impl Evaluator {
                     let value = self.eval_expression_p(&scope, &*init.1)?;
                     match (init.0, value) {
                         (Opcode::Assig, ReturnValue::Algebra(n)) => {
-                            scope.insert(name.name.clone(),ScopeValue::Algebra(n));
+                            scope.insert(var.name.clone(),ScopeValue::Algebra(n));
                             Ok(())
                         }
                         (Opcode::Assig, ReturnValue::Bool(b)) => {
-                            scope.insert(name.name.clone(),ScopeValue::Bool(b));
+                            scope.insert(var.name.clone(),ScopeValue::Bool(b));
                             Ok(())
                         }
                         (Opcode::Assig, ReturnValue::Array(a)) => {
-                            scope.insert(name.name.clone(),ScopeValue::Array(a));
+                            scope.insert(var.name.clone(),ScopeValue::Array(a));
                             Ok(())
                         }
-                        _ => Err(Error::InvalidType(format!("Unsupported type for var '{}' declaration",&name.name))),
+                        _ => Err(Error::InvalidType(format!("Unsupported type for var '{}' declaration",&var.name))),
                     }
                 }
 
                 (VariableType::Component, Some(init)) => {
-                    self.eval_component_decl(meta, &scope, &name)?;
-                    let var_w_selectors = self.expand_selectors(scope,name)?;
+                    self.eval_component_decl(meta, &scope, &var)?;
+                    let var_w_selectors = self.expand_selectors(scope,var)?;
                     self.eval_component_instantiation(meta, &scope, &var_w_selectors, &*init.1)?;
                     Ok(())
                 }
 
                 (VariableType::Component, None) => {
-                    self.eval_component_decl(meta, &scope, &name)?;
+                    self.eval_component_decl(meta, &scope, &var)?;
+                    Ok(())
+                }
+
+                (VariableType::Signal(SignalType::Test), Some((_,expr))) => {
+                    let value = self.eval_expression_p(scope, expr)?.into_fs()?;
+                    self.signals.insert(format!("test.{:?}",var), SignalType::Test,Some(algebra::Value::from(value)));
                     Ok(())
                 }
 
                 (VariableType::Signal(xtype), None) => {
 
-                    // TODO *ugly* too much signal name clones!
-                    for signal_name in self.generate_selectors(scope, &name)? {
+                    for signal_name in self.generate_selectors(scope, &var)? {
 
-                        let signal_id = self.signals.insert(self.expand_full_name(&signal_name),xtype);
+                        let full_name = self.expand_full_name(&signal_name);
+
+                        if let Some(s) = self.signals.get_by_name(&full_name) {
+                            if s.xtype == SignalType::Test {
+                                continue;
+                            } else {
+                                return Err(Error::AlreadyExists(format!("signal {}",full_name)));
+                            }     
+                        }    
+
+                        let signal_id = self.signals.insert(full_name,xtype,None);
 
                         if let Some(Some(component)) = self.components.get_mut(&self.current_component) {
                             component.signal_ids.push(signal_id);
@@ -713,7 +762,7 @@ impl Evaluator {
         expr: &ExpressionP,
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
@@ -775,7 +824,7 @@ impl Evaluator {
         stmts: &[Box<StatementP>]
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
+        if !self.mode.must_process_eval(&meta) {
             return Ok(())
         }
 
@@ -807,21 +856,36 @@ impl Evaluator {
         expr: &ExpressionP,
     ) -> Result<()> {
         self.debug_trace(meta);
+        
+        // inv : op == Opcode::SignalContrainLeft || op == Opcode::SignalWireLeft 
 
         let mut internal = || {
 
-            // inv : op == Opcode::SignalContrainLeft || op == Opcode::SignalWireLeft 
-            if op == Opcode::SignalContrainLeft {
-                if meta.witness {
-                    return Err(Error::InvalidTag("witness".to_string()));
+            // We have different evaluation tactics depending if we are generating
+            //   constrains or if we are running the tests.
+            //
+            //    S <== 1
+            //
+            // When generating constrains, first we generate the constrain, and then
+            //  the variable is assigned
+            //
+            //    S === 1   // constrain generation
+            //    S <-- 1
+            //
+            // When running tests, first we assign the value, and then run the constrain
+            //  verification 
+            //
+            //    S <-- 1
+            //    S === 1  // constrain verification
+            //    
+
+            if self.mode == Mode::GenConstraints {     
+                if op == Opcode::SignalContrainLeft {
+                    self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
                 }
-                self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:*meta, name:Box::new(signal.clone())},expr)?;
             }
 
-            if meta.witness {
-                return Ok(())
-            }
-
+            // both for <-- and <==, eval content
             let signal_sel = self.expand_selectors(scope, signal)?;
             let signal_full = self.expand_full_name(&signal_sel);
             if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
@@ -836,7 +900,14 @@ impl Evaluator {
                 }
             } else {
                 return Err(Error::NotFound(format!("Signal {}",signal_full)));
-            }  
+            }
+
+            if self.mode == Mode::Test {     
+                if op == Opcode::SignalContrainLeft {
+                    self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
+                }
+            }
+              
             Ok(())
         };
 
@@ -865,7 +936,8 @@ impl Evaluator {
         let res = internal();
         self.register_error(meta,scope,res)
     }
-
+    // when generating constrains eval_signal_eq adds a new constrain to the system
+    // when verifying  cirtcuits  eval_signal_eq checks that the resulting QEQ is zero
     fn eval_signal_eq(
         &mut self,
         meta: &Meta,
@@ -874,20 +946,33 @@ impl Evaluator {
         rhe: &ExpressionP,
     ) -> Result<()> {
         self.debug_trace(meta);
-        if meta.witness {
-            return Err(Error::InvalidTag("witness".to_string()));
-        }
+
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?.into_algebra()?;
             let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
             let constrain = self.alg_eval_infix(meta,scope,&left, Opcode::Sub, &right)?;
 
-            let qeq = match constrain {
-                algebra::Value::FieldScalar(_) => return Err(Error::CannotGenerateConstrain(format!("{:?}",constrain))),
-                _ => constrain.into_qeq()
-            };
+            if self.mode == Mode::Test {
 
-            self.constrains.push(qeq);
+                match constrain {
+                    algebra::Value::FieldScalar(ref fs) if fs.is_zero() => { },
+                    _ => return Err(Error::CannotTestConstrain(self.format_algebra(constrain)))
+                }
+
+            } else {
+
+                let qeq = match constrain {
+                    algebra::Value::FieldScalar(_) => return Err(Error::CannotGenerateConstrain(
+                            format!("{}==={}",
+                            self.format_algebra(left),
+                            self.format_algebra(right))
+                        )),
+                    _ => constrain.into_qeq()
+                };
+                self.constrains.push(qeq);
+
+            }
+
             Ok(())
         };
         let res = internal();
@@ -906,7 +991,7 @@ impl Evaluator {
         
             let mut code = String::new();
             if let Err(ioerr) = File::open(path).and_then(|ref mut file| file.read_to_string(&mut code)) {
-                return Err(Error::Io(ioerr));        
+                return Err(Error::Io(path.to_string(),ioerr));        
             }
 
             let mut hasher = Blake2b::new(64);
@@ -922,9 +1007,10 @@ impl Evaluator {
                 std::mem::swap(&mut new_current_file, &mut self.current_file);
     
                 match circom2_parser::parse(&code) {
-                    Ok(elements) => self.eval_body_elements_p(&Meta::new(0,0), scope, &elements)?,
-                    Err(circom2_parser::Error::ParseError(err,_)) => {
-                        return Err(Error::Parse(err));                         
+                    Ok(elements) => self.eval_body_elements_p(&Meta::new(0,0,None), scope, &elements)?,
+                    Err(circom2_parser::Error::ParseError(err,meta)) => {
+                        let err : Result<()> = Err(Error::Parse(err));
+                        return self.register_error(&meta,scope,err);
                     }
                 }
 
@@ -977,6 +1063,7 @@ impl Evaluator {
             scope.insert(
                 name.to_string(),
                 ScopeValue::Template(
+                    meta.attrs.clone(),
                     args.to_vec(),
                     Box::new(stmt.clone()),
                     self.current_file.clone()

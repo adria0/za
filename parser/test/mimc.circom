@@ -156,3 +156,4 @@ template MultiMiMC7(nInputs, nRounds) {
 
     out <== mims[nInputs-1].out;
 }
+

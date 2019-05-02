@@ -1,12 +1,8 @@
-include "claimsrootupdate.circom";
+// include "claimsrootupdate.circom";
+// component main = ClaimRootUpdate(2,2);
 
-template CI(n) {
-    component roots[n];
-    for (var i=0;i<n;i+=1) {
-        dbg!(i);
-        roots[i] = ClaimRootUpdate(140,140);
-    }
-}
+include "mimc.circom";
+include "constants.circom";
+include "babyjub.circom";
 
-component main = CI(100);
-
+component main = MiMC7(12);

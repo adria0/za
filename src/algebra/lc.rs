@@ -62,33 +62,6 @@ impl AlgZero for LC {
     }
 }
 
-pub trait Substitute {
-    fn substitute(&self, signal: SignalId, equivalenc: &LC) -> Self;
-}
-
-impl Substitute for LC {
-    fn substitute(&self, signal: SignalId, equivalenc: &LC) -> Self {
-        let mut res = self.clone();
-        if let Some(coef) = self.get(signal) {
-            for (eq_signal, eq_value) in &equivalenc.0 {
-                if signal != *eq_signal {
-                    let mut v = coef * eq_value;
-                    if let Some(res_value) = res.get(*eq_signal) {
-                        v = &v * res_value;
-                    }
-                    if v.is_zero() {
-                        res.rm(*eq_signal);
-                    } else {
-                        res.set(*eq_signal, |_| v);
-                    }
-                }
-            }
-            res.rm(signal);
-        }
-        res
-    }
-}
-
 impl<'a> From<&'a FS> for LC {
     fn from(fs: &'a FS) -> Self {
         LC(vec![(SIGNAL_ONE, fs.clone())])
@@ -122,7 +95,7 @@ impl<'a> Add<&'a FS> for &'a LC {
         } else {
             v.push((SIGNAL_ONE, rhs.clone()))
         }
-
+        v.retain(|v| !v.1.is_zero());
         LC(v)
     }
 }
@@ -132,7 +105,11 @@ impl<'a> Mul<&'a FS> for &'a LC {
     type Output = LC;
 
     fn mul(self, rhs: &'a FS) -> LC {
-        LC(self.0.iter().map(|(s, e)| (*s, e * rhs)).collect())
+        if rhs.is_zero() {
+            LC::zero()    
+        } else {
+            LC(self.0.iter().map(|(s, e)| (*s, e * rhs)).collect())
+        }
     }
 }
 
@@ -149,6 +126,7 @@ impl<'a> Add<&'a LC> for &'a LC {
                 v.push((*signal, e.clone()));
             }
         }
+        v.retain(|v| !v.1.is_zero());
         LC(v)
     }
 }
@@ -209,52 +187,42 @@ mod test {
         let two = &(one + one);
         let s1 = 1 as SignalId;
 
-        let lc1s1 = &LC::from_signal(s1, FS::one());
-        assert_eq!("1s1+2s0", format!("{:?}", &(lc1s1 + one) + one));
+        let lc_1s1 = &LC::from_signal(s1, FS::one());
+        assert_eq!("1s1+2s0", format!("{:?}", &(lc_1s1 + one) + one));
 
-        let v1s12one = &(lc1s1 + two);
-        assert_eq!("2s1+4s0", format!("{:?}", v1s12one * two));
+        let lc_1s1_4one = &(lc_1s1 + two);
+        assert_eq!("2s1+4s0", format!("{:?}", lc_1s1_4one * two));
     }
 
     #[test]
     fn test_lc_neg() {
         let s1 = 1 as SignalId;
         let s2 = 2 as SignalId;
-        let lc1s1 = &LC::from_signal(s1, FS::one());
-        let lc1s2 = &LC::from_signal(s2, FS::one());
+        let lc_1s1 = &LC::from_signal(s1, FS::one());
+        let lc_1s2 = &LC::from_signal(s2, FS::one());
 
-        let nlc1s1lc1s2 = &(&(-lc1s1) + lc1s2);
-        assert_eq!("-1s1+1s2", format!("{:?}", nlc1s1lc1s2));
-        let neg_nlc1s1lc1s2 = &-nlc1s1lc1s2;
-        assert_eq!("1s1-1s2", format!("{:?}", neg_nlc1s1lc1s2));
+        let lc_n1s1_1s2 = &(&(-lc_1s1) + lc_1s2);
+        assert_eq!("-1s1+1s2", format!("{:?}", lc_n1s1_1s2));
+        let lc_1s1_n1s2 = &-lc_n1s1_1s2;
+        assert_eq!("1s1-1s2", format!("{:?}", lc_1s1_n1s2));
+
+        let lc_zero =  lc_n1s1_1s2 + lc_1s1_n1s2;
+        assert_eq!("0", format!("{:?}", lc_zero));
     }
 
     #[test]
     fn test_lc_lc_add_mul() {
         let s1 = 1 as SignalId;
         let s2 = 2 as SignalId;
-        let lc1s1 = &LC::from_signal(s1, FS::one());
-        let lc1s2 = &LC::from_signal(s2, FS::one());
+        let lc_1s1 = &LC::from_signal(s1, FS::one());
+        let lc_1s2 = &LC::from_signal(s2, FS::one());
 
-        assert_eq!("1s1", format!("{:?}", lc1s1));
-        assert_eq!("2s1", format!("{:?}", lc1s1 + lc1s1));
-        let lc2s1lc1s2 = &(lc1s1 + lc1s1) + lc1s2;
+        assert_eq!("1s1", format!("{:?}", lc_1s1));
+        assert_eq!("2s1", format!("{:?}", lc_1s1 + lc_1s1));
+        let lc_2s1_1s2 = &(lc_1s1 + lc_1s1) + lc_1s2;
 
-        assert_eq!("2s1+1s2", format!("{:?}", &lc2s1lc1s2));
-        assert_eq!("[2s1+1s2]*[1s2]+[ ]", format!("{:?}", &lc2s1lc1s2 * lc1s2));
+        assert_eq!("2s1+1s2", format!("{:?}", &lc_2s1_1s2));
+        assert_eq!("[2s1+1s2]*[1s2]+[ ]", format!("{:?}", &lc_2s1_1s2 * lc_1s2));
     }
-
-    #[test]
-    fn test_le_substitute() {
-        let s1 = 1 as SignalId;
-        let s2 = 2 as SignalId;
-        let s3 = 3 as SignalId;
-
-        let lc1s1lc2s2 = &LC::from_signal(s1, u32_to_fs(1)) + &LC::from_signal(s2, u32_to_fs(2));
-        let lc3s3 = LC::from_signal(s3, u32_to_fs(3));
-        let lc1s1lc6s3 = lc1s1lc2s2.substitute(s2, &lc3s3);
-        assert_eq!("1s1+6s3", format!("{:?}", lc1s1lc6s3));
-    }
-
 
 }
