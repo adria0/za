@@ -28,7 +28,6 @@ template Sha256_2() {
     component bits2num = Bits2Num(216);
     component num2bits[2];
 
-
     num2bits[0] = Num2Bits(216);
     num2bits[1] = Num2Bits(216);
 
@@ -66,4 +65,12 @@ template Sha256_2() {
 
     out <== bits2num.out;
     
+}
+
+#[test]
+template test_sha256_2() {
+    component t = Sha256_2();
+    t.a <== 1;
+    t.b <== 2;
+    t.out === 0x29a8ad88fb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
 }

@@ -34,12 +34,14 @@ template SigmaPlus() {
     for (var k=0; k<32; k+=1) {
         sigma1.in[k] <== in2[k];
         sigma0.in[k] <== in15[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         sum.in[0][k] <== sigma1.out[k];
         sum.in[1][k] <== in7[k];
         sum.in[2][k] <== sigma0.out[k];
         sum.in[3][k] <== in16[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         out[k] <== sum.out[k];
     }
 }

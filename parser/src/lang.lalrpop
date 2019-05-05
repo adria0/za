@@ -260,14 +260,6 @@ Declaration : Box<StatementP> = {
         init: None
     }),
 
-    <s:@L> "signaltest" <name:Variable> "=" <value:Expression> <e:@L>
-    => Box::new(StatementP::Declaration{
-        meta: Meta::new(s,e,None),
-        xtype: VariableType::Signal(SignalType::Test),
-        name,
-        init: Some((Opcode::Assig,value))
-    }),
-
 }
 
 Substitution : Box<StatementP> = { 

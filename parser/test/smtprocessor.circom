@@ -258,3 +258,123 @@ template SMTProcessor(nLevels) {
 
     keysOk.out === 0;
 }
+
+#[test] 
+template test_smt_insert_blank() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 1;
+    t.fnc[1] <== 0;
+    t.oldRoot <== 0;
+    t.siblings[0] <== 0;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 0;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 0;
+    t.oldValue <== 0;
+    t.isOld0 <== 1;
+    t.newKey <== 111;
+    t.newValue <== 222;
+    t.newRoot === 0x247244ce4eb53753feb22877839b59c7665ac3702db1e9ea39b23fe927d42ade;
+}
+
+#[test] 
+template test_smt_add_another_element() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 1;
+    t.fnc[1] <== 0;
+    t.oldRoot <== 0x247244ce4eb53753feb22877839b59c7665ac3702db1e9ea39b23fe927d42ade;
+    t.siblings[0] <== 0;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 0;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 111;
+    t.oldValue <== 222;
+    t.isOld0 <== 0;
+    t.newKey <== 333;
+    t.newValue <== 444;
+    t.newRoot === 0x14e91e8670e2e4c83fac62ce49daddbc584bbc2f494bb099124db16c9869ca84;
+}
+
+#[test] 
+template test_smt_remove_element() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 1;
+    t.fnc[1] <== 1;
+    t.oldRoot <== 0x14e91e8670e2e4c83fac62ce49daddbc584bbc2f494bb099124db16c9869ca84;
+    t.siblings[0] <== 0;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 0;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 333;
+    t.oldValue <== 444;
+    t.isOld0 <== 0;
+    t.newKey <== 111;
+    t.newValue <== 222;
+    t.newRoot === 0x2d97772416a8cea7f9161c59f08076113ef638885ad0441570355f7b74a368dc;
+}
+
+#[test] 
+template test_smt_remove_another_element() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 1;
+    t.fnc[1] <== 1;
+    t.oldRoot <== 0x2d97772416a8cea7f9161c59f08076113ef638885ad0441570355f7b74a368dc;
+    t.siblings[0] <== 0;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 0;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 0;
+    t.oldValue <== 0;
+    t.isOld0 <== 1;
+    t.newKey <== 333;
+    t.newValue <== 444;
+    t.newRoot === 0x0;
+}
+
+#[test] 
+template test_smt_update() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 0;
+    t.fnc[1] <== 1;
+    t.oldRoot <== 7144490948648913323643490225720764606754398422608274858868522414539653898462;
+    t.siblings[0] <== 5308339863289897018477020694643060162563592147764909710270574730002055605778;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 12633975236947324549554904811138904210334136753206440087462433895022867255191;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 32;
+    t.oldValue <== 3232;
+    t.isOld0 <== 0;
+    t.newKey <== 32;
+    t.newValue <== 323232;
+    t.newRoot === 0x13fc6f9c4bcf2a4f8191d7693996bf155a098243fd8825308d436acb796dda18;
+}

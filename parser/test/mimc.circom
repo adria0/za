@@ -157,3 +157,11 @@ template MultiMiMC7(nInputs, nRounds) {
     out <== mims[nInputs-1].out;
 }
 
+#[test]
+template test_mimc7() {
+    component t = MiMC7(91);
+
+    t.x_in <== 1;
+    t.k <== 2;
+    t.out === 10594780656576967754230020536574539122676596303354946869887184401991294982664;
+}

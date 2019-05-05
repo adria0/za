@@ -12,11 +12,13 @@ use super::retval::*;
 
 #[derive(Debug, Clone)]
 pub enum ScopeValue {
-    Undefined,
+    UndefVar,
+    UndefComponent,
     Bool(bool),
     Algebra(algebra::Value),
     Function(Vec<String>, Box<StatementP>, String),
     Template(Attributes, Vec<String>, Box<StatementP>, String),
+    Component(String,String,Vec<ReturnValue>,Vec<algebra::SignalId>), 
     Array(Vec<algebra::Value>),
 }
 
@@ -66,7 +68,7 @@ impl<'a> Scope<'a> {
 
     pub fn insert(&self, k: String, v: ScopeValue) {
         if self.vars.borrow().contains_key(&k) {
-            panic!("cannot insert into scope a duplicated key");
+            panic!("cannot insert into scope a duplicated key '{}'",k);
         }
         self.vars.borrow_mut().insert(k, v);
     }

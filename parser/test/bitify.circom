@@ -105,3 +105,12 @@ template Num2BitsNeg(n) {
 
     lc1 + isZero.out * 2**n === 2**n - in;
 }
+
+#[test]
+template test_num2bits() {
+    component t = Num2Bits(2);
+
+    t.in <== 2;
+    t.out[0] === 0;
+    t.out[1] === 1;
+}
