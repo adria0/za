@@ -7,4 +7,5 @@ include "eddsamimc.circom";
 include "smtprocessor.circom";
 include "smtverifier.circom";
 include "pedersen.circom";
-
+include "sha256_2.circom";
+include "sha256compression.circom";

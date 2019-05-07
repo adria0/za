@@ -114,3 +114,11 @@ template test_num2bits() {
     t.out[0] === 0;
     t.out[1] === 1;
 }
+
+#[test]
+template test_bits2num() {
+    component t = Bits2Num(2);
+    t.in[0] <== 0;
+    t.in[1] <== 1;
+    t.out === 2;
+}

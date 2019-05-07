@@ -33,12 +33,11 @@ template Sha256_2() {
 
     num2bits[0].in <== a;
     num2bits[1].in <== b;
+
     component sha256compression = Sha256compression() ;
 
     var i;
-
     for (i=0; i<216; i+=1) {
-
         sha256compression.inp[i] <== num2bits[0].out[215-i];
         sha256compression.inp[i+216] <== num2bits[1].out[215-i];
     }
@@ -64,13 +63,15 @@ template Sha256_2() {
     }
 
     out <== bits2num.out;
-    
 }
+
 
 #[test]
 template test_sha256_2() {
     component t = Sha256_2();
     t.a <== 1;
     t.b <== 2;
-    t.out === 0x29a8ad88fb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
+    t.out === 0xb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
 }
+
+
