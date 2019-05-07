@@ -9,6 +9,7 @@ use circom2_parser::ast::{Attributes,StatementP};
 use super::error::*;
 use super::algebra;
 use super::retval::*;
+use super::types::*;
 
 #[derive(Debug, Clone)]
 pub enum ScopeValue {
@@ -19,7 +20,7 @@ pub enum ScopeValue {
     Function(Vec<String>, Box<StatementP>, String),
     Template(Attributes, Vec<String>, Box<StatementP>, String),
     Component(String,String,Vec<ReturnValue>,Vec<algebra::SignalId>), 
-    Array(Vec<algebra::Value>),
+    List(List),
 }
 
 impl From<ReturnValue> for ScopeValue {
@@ -27,7 +28,7 @@ impl From<ReturnValue> for ScopeValue {
         match v {
             ReturnValue::Bool(v) => ScopeValue::Bool(v),
             ReturnValue::Algebra(v) => ScopeValue::Algebra(v),
-            ReturnValue::Array(v) => ScopeValue::Array(v),
+            ReturnValue::List(v) => ScopeValue::List(v),
         }
     }
 }

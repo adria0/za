@@ -1,15 +1,16 @@
+use num_traits::cast::ToPrimitive;
+
 use super::algebra;
 use super::algebra::{FS,SignalId};
 use super::error::*;
 use super::signal::*;
-
-use num_traits::cast::ToPrimitive;
+use super::types::*;
 
 #[derive(Debug, Clone)]
 pub enum ReturnValue {
     Bool(bool),
     Algebra(algebra::Value),
-    Array(Vec<algebra::Value>),
+    List(List),
 }
 
 impl ReturnValue {

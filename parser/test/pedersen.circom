@@ -127,6 +127,9 @@ template Segment(nWindows) {
     component adders[nWindows-1];
     for (i=0; i<nWindows; i+=1) {
         windows[i] = Window4();
+        for (j=0; j<4; j+=1) {
+            windows[i].in[j] <== in[4*i+j];
+        }
         if (i==0) {
             windows[i].base[0] <== e2m.out[0];
             windows[i].base[1] <== e2m.out[1];
@@ -151,9 +154,6 @@ template Segment(nWindows) {
             }
             adders[i-1].in2[0] <== windows[i].out[0];
             adders[i-1].in2[1] <== windows[i].out[1];
-        }
-        for (j=0; j<4; j+=1) {
-            windows[i].in[j] <== in[4*i+j];
         }
     }
 
@@ -198,7 +198,7 @@ template Pedersen(n) {
 
     for (i=0; i<nSegments; i+=1) {
         if (i == (nSegments-1)) {
-            nbits = n - (nSegments-1)*200;
+            nBits = n - (nSegments-1)*200;
         } else {
             nBits = 200;
         }

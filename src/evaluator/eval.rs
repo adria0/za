@@ -16,6 +16,7 @@ use super::error::*;
 use super::signal::*;
 use super::retval::*;
 use super::scope::*;
+use super::types::*;
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -452,19 +453,20 @@ impl Evaluator {
 
                 Some(ScopeValue::Bool(a)) => Ok(ReturnValue::Bool(*a)),
                 
-                Some(ScopeValue::Array(a)) => match var.sels.len() {
-                    0 => Ok(ReturnValue::Array(a.clone())),
-                    1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                            let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                            if pos  < a.len() {
-                                Ok(ReturnValue::Algebra(a[pos].clone()))
-                            } else {
-                                Err(Error::InvalidSelector("index overflow".to_string()))
-                            }
-                        } else {
-                            Err(Error::InvalidSelector("needs index".to_string()))
-                        },
-                    _ => Err(Error::InvalidSelector("array needs only one index".to_string()))
+                Some(ScopeValue::List(l)) => {
+                    let mut indexes = Vec::new();
+                    for sel in &var.sels {
+                        match &**sel {
+                            SelectorP::Index{pos,..} => {
+                                indexes.push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                            },
+                            _ => return Err(Error::InvalidSelector(format!("Invalid selector {:?}",sel)))
+                        }
+                    }
+                    match l.get(&indexes)? {
+                        List::Algebra(a) => Ok(ReturnValue::Algebra(a.clone())),
+                        List::List(l) => Ok(ReturnValue::List(List::List(l.clone())))
+                    }
                 },
                 _ => {
                     Err(Error::InvalidType(format!("cannot eval {}={:?} cannot be used",name_sel,&v)))
@@ -577,11 +579,15 @@ impl Evaluator {
         self.debug_trace("eval_array",meta);
 
         let mut internal = || {
-            let mut out : Vec<algebra::Value> = Vec::new();
+            let mut out : Vec<List> = Vec::new();
             for expr in exprs.iter() {
-                out.push(self.eval_expression_p(scope, expr)?.into_algebra()?);
+                match self.eval_expression_p(scope, expr)? {
+                    ReturnValue::Algebra(a) => out.push(List::Algebra(a)),
+                    ReturnValue::List(l) => out.push(l),
+                    _ => unreachable!()
+                }
             }
-            Ok(ReturnValue::Array(out))
+            Ok(ReturnValue::List(List::List(out)))
         };
         let res = internal();
         self.register_error(meta,scope,res)
@@ -739,7 +745,6 @@ impl Evaluator {
         Ok(signals)
     }
 
-
     fn eval_declaration(
         &mut self,
         meta: &Meta,
@@ -768,19 +773,15 @@ impl Evaluator {
                 (VariableType::Var, None) => {
                     match var.sels.len() {
                         0 => {
+                            // var a;
                             scope.insert(var.name.clone(),ScopeValue::UndefVar);
                             Ok(())
                         }
-                        1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                                let size = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                                let mut array = Vec::new();
-                                (0..size).for_each(|_| array.push(algebra::Value::default()));
-                                scope.insert(var.name.clone(),ScopeValue::Array(array));
-                                Ok(())
-                            } else {
-                                Err(Error::InvalidSelector("needs [size]".to_string()))
-                            },
-                        _ => Err(Error::InvalidSelector("array needs only one index".to_string()))
+                        _ => {
+                            let sizes = self.expand_indexes(scope,&var.sels)?;
+                            scope.insert(var.name.clone(),ScopeValue::List(List::new(&sizes)));
+                            Ok(())
+                        }
                     }
                 }
                 
@@ -795,8 +796,8 @@ impl Evaluator {
                             scope.insert(var.name.clone(),ScopeValue::Bool(b));
                             Ok(())
                         }
-                        (Opcode::Assig, ReturnValue::Array(a)) => {
-                            scope.insert(var.name.clone(),ScopeValue::Array(a));
+                        (Opcode::Assig, ReturnValue::List(a)) => {
+                            scope.insert(var.name.clone(),ScopeValue::List(a));
                             Ok(())
                         }
                         _ => Err(Error::InvalidType(format!("Unsupported type for var '{}' declaration",&var.name))),
@@ -886,12 +887,14 @@ impl Evaluator {
             if var.sels.is_empty() {
                 scope.update(&var.name,ScopeValue::Algebra(value))?;
             } else if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
+                let indexes = self.expand_indexes(scope, &var.sels)?;
                 scope.get_mut(&var.name, |v| {
-                    if let Some(ScopeValue::Array(a)) = v {
-                        a[pos] = value;
+                    if let Some(ScopeValue::List(l)) = v {
+                        l.set(&value,&indexes)
+                    } else {
+                        Ok(())
                     }
-                });
+                })?;
             }
             Ok(())
         };
@@ -1267,6 +1270,19 @@ impl Evaluator {
             }
         }
         Ok(v_sel)
+    }
+
+    fn expand_indexes(&mut self, scope: &Scope, sels : &Vec<Box<SelectorP>>) -> Result<Vec<usize>>{
+        let mut indexes = Vec::new();
+        for sel in sels {
+            match &**sel {
+                SelectorP::Index{pos,..} => {
+                    indexes.push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                },
+                _ => return Err(Error::InvalidSelector(format!("Invalid selector {:?}",sel)))
+            }
+        }
+        Ok(indexes)
     }
 
     fn signal_component(&mut self, scope: &Scope, signal: &VariableP) -> Result<Option<String>> {

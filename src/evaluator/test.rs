@@ -243,6 +243,36 @@ mod test {
     }
 
     #[test]
+    fn test_matrix_get() -> Result<()> {
+        let (_,scope) = eval_constraint("
+            function test(){
+                var M = [[1,2,3],[4,5,6],[7,8,9]];
+                return M[1][1];
+            }
+            var out=test();
+        ")?; 
+
+        scope_eq(&scope,"out","Some(Algebra(5))");
+        Ok(())
+    }
+
+    #[test]
+    fn test_matrix_set() -> Result<()> {
+        let (_,scope) = eval_constraint("
+            function test(){
+                var M[5][5];
+                M[3][1] = 5;
+                M[1][2] = 7;
+                return M[3][1] + M[1][2];
+            }
+            var out=test();
+        ")?; 
+
+        scope_eq(&scope,"out","Some(Algebra(12))");
+        Ok(())
+    }
+
+    #[test]
     fn test_template_signal_base() -> Result<()> {
         let (eval,_) = eval_constraint("
             template t() {
