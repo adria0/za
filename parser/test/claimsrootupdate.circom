@@ -17,6 +17,7 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
+
 include "smtverifier.circom";
 include "smtprocessor.circom";
 include "eddsamimc.circom";
@@ -115,7 +116,7 @@ template BuildAuthorizeKeyClaims() {
 
 template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
     signal input oldRelayerRoot;
-    signal output newRelayerRoot;
+    signal input newRelayerRoot;
 
     signal input oldUserRoot;
     signal input idIdentity;
@@ -146,12 +147,9 @@ template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
     signal input relayerInsert_oldValue;
     signal input relayerInsert_isOld0;
 
-
     // The Version 0 can be introduced freely by the operator;
     component verIsZero = IsZero();
     verIsZero.in <== newUserRootVersion;
-
-
 
     // Build User Root Claims (new and old)
     component buildUserRootClaims = BuildUserRootClaims();
@@ -203,12 +201,12 @@ template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
     for (var i=0; i<nLevelsUser; i+=1) {
         smtSignKeyExclusion.siblings[i] <==  signingKeyExclusion_siblings[i];
     }
+
     smtSignKeyExclusion.oldKey <== signingKeyExclusion_oldKey;
     smtSignKeyExclusion.oldValue <== signingKeyExclusion_oldValue;
     smtSignKeyExclusion.isOld0 <== signingKeyExclusion_isOld0;
     smtSignKeyExclusion.key <== buildAuthorizeKeyClaims.exc_hi;
     smtSignKeyExclusion.value <== 0;
-
 
     // Verify that the old root is on the relayer tree
     component smtOldRootInclusion = SMTVerifier(nLevelsRelayer);
@@ -224,13 +222,11 @@ template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
     smtOldRootInclusion.key <== buildUserRootClaims.old_hi;
     smtOldRootInclusion.value <== buildUserRootClaims.old_hv;
 
-
     // Process the insert
     component smtRelayerInsert = SMTProcessor(nLevelsRelayer);
     smtRelayerInsert.fnc[0] <==  1;
     smtRelayerInsert.fnc[1] <==  0;
     smtRelayerInsert.oldRoot <== oldRelayerRoot;
-    smtRelayerInsert.newRoot <== newRelayerRoot;
     for (var i=0; i<nLevelsRelayer; i+=1) {
         smtRelayerInsert.siblings[i] <==  relayerInsert_siblings[i];
     }
@@ -239,5 +235,71 @@ template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
     smtRelayerInsert.isOld0 <== relayerInsert_isOld0;
     smtRelayerInsert.newKey <== buildUserRootClaims.new_hi;
     smtRelayerInsert.newValue <== buildUserRootClaims.new_hv;
+
+    smtRelayerInsert.newRoot === newRelayerRoot;
+
+}
+
+#[test]
+template test_BuildUserRootClaims() {
+    component t = BuildUserRootClaims();
+
+    t.version <== 0;
+    t.idIdentity <== 1234;
+    t.era <== 0;
+    t.newRroot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
+    t.oldRroot <== 0;
+
+    t.old_hi === 0x182ee393cfcbf975e25af01296a1a3bb70f66049e7fff0c797f268d064e5b550;
+    t.old_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
+    t.new_hi === 0x89fd2edc0a6dd763b006c0a1903b09fcb3b51aabfff7a54ffb51ce940b8933f;
+    t.new_hv === 0x24ae9775f16de9b0cdca722df4d6678c08a817bd40ed4575ef46a375a07daf79;
+}
+
+#[test]
+template test_BuildAuthorizeKeyClaims() {
+    component t = BuildAuthorizeKeyClaims();
+    
+    t.Ax <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
+    t.Ay <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
+    t.inc_hi === 0x1a75f5ec4fbc824c07a75d08848b45c7dff0f264f48fddbd5fed4fb8495cb381;
+    t.inc_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
+    t.exc_hi === 0x2d8b2bb67bec2fce9e6be5bf251869dd5430439f4f21a934726bfad2bd884ad9;
+}
+
+#[test]
+template test_claimrootupdate() {
+    component t = ClaimRootUpdate(10, 10);
+    t.oldRelayerRoot <== 0;
+    t.newRelayerRoot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
+    t.oldUserRoot <== 0;
+    t.idIdentity <== 1234;
+    t.era <== 0;
+    t.newUserRoot <== 9164435831827345487378393454304824441756195871900421654673163382659437536500;
+    t.newUserRootVersion <== 0;
+    t.sigKeyX <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
+    t.sigKeyY <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
+    t.sigS <== 1043684292397350507108850650525684376439518174906421843791686494893141984604;
+    t.sigR8x <== 15395507177505103995870174907385016443674539549000225563955344755542040525521;
+    t.sigR8y <== 8315800102674792436694752406326424429944804229252094505145784491665416975932;
+    
+    t.signingKeyExclusion_oldKey <== 0;
+    t.signingKeyExclusion_oldValue <== 0;
+    t.signingKeyExclusion_isOld0 <== 0;
+    t.relayerInsert_oldKey <== 0;
+    t.relayerInsert_oldValue <== 0;
+    t.relayerInsert_isOld0 <== 1;    
+
+    var signingKeyInclussion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    var signingKeyExclusion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    var oldRootInclusion_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    var relayerInsert_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+
+    for (var i=0;i<10;i+=1) {
+        t.signingKeyInclussion_siblings[i] <== signingKeyInclussion_siblings[i];
+        t.signingKeyExclusion_siblings[i] <== signingKeyExclusion_siblings[i];
+        t.oldRootInclusion_siblings[i] <== oldRootInclusion_siblings[i];
+        t.relayerInsert_siblings[i] <== relayerInsert_siblings[i];
+    }
 }
 

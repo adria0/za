@@ -1052,8 +1052,7 @@ impl Evaluator {
         let res = internal();
         self.register_error(meta,scope,res)
     }
-    // when generating constrains eval_signal_eq adds a new constrain to the system
-    // when verifying  cirtcuits  eval_signal_eq checks that the resulting QEQ is zero
+
     fn eval_signal_eq(
         &mut self,
         meta: &Meta,

@@ -1,133 +1,3 @@
-/*
-    Copyright 2018 0KIMS association.
-
-    This file is part of circom (Zero Knowledge Circuit Compiler).
-
-    circom is a free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    circom is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-    or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
-    License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with circom. If not, see <https://www.gnu.org/licenses/>.
-*/
-
-/***************************************************************************************************
-
-SMTProcessor: Sparse Merkle Tree processor is a component to verify an insert/update/delete elements
-into the Sparse Merkle tree.
-
-
-Insert to an empty leaf
-=======================
-
-  STATE                 OLD STATE                                       NEW STATE
-  =====                 =========                                       =========
-
-                         oldRoot                                          newRoot
-                            ▲                                               ▲
-                            │                                               │
-          ┌───────┐     ┏━━━┻━━━┓                         ┌───────┐     ┏━━━┻━━━┓
-   top    │Sibling├────▶┃ Hash  ┃◀─┐                      │Sibling├────▶┃ Hash  ┃◀─┐
-          └───────┘     ┗━━━━━━━┛  │                      └───────┘     ┗━━━━━━━┛  │
-                                   │                                               │
-                                   │                                               │
-                               ┏━━━┻━━━┓   ┌───────┐                           ┏━━━┻━━━┓   ┌───────┐
-   top                  ┌─────▶┃ Hash  ┃◀──┤Sibling│                    ┌─────▶┃ Hash  ┃◀──┤Sibling│
-                        │      ┗━━━━━━━┛   └───────┘                    │      ┗━━━━━━━┛   └───────┘
-                        │                                               │
-                        │                                               │
-        ┌───────┐   ┏━━━┻━━━┓                           ┌───────┐   ┏━━━┻━━━┓
-   top  │Sibling├──▶┃ Hash  ┃◀─────┐                    │Sibling├──▶┃ Hash  ┃◀─────┐
-        └───────┘   ┗━━━━━━━┛      │                    └───────┘   ┗━━━━━━━┛      │
-                                   │                                               │
-                                   │                                               │
-                              ┌────┴────┐                                     ┌────┴────┐
-  old0                        │    0    │                                     │New1Leaf │
-                              └─────────┘                                     └─────────┘
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-
-Insert to a used leaf.
-=====================
-
-  STATE                 OLD STATE                                       NEW STATE
-  =====                 =========                                       =========
-
-
-                         oldRoot                                          newRoot
-                            ▲                                               ▲
-                            │                                               │
-          ┌───────┐     ┏━━━┻━━━┓                         ┌───────┐     ┏━━━┻━━━┓
-   top    │Sibling├────▶┃ Hash  ┃◀─┐                      │Sibling├────▶┃ Hash  ┃◀─┐
-          └───────┘     ┗━━━━━━━┛  │                      └───────┘     ┗━━━━━━━┛  │
-                                   │                                               │
-                                   │                                               │
-                               ┏━━━┻━━━┓   ┌───────┐                           ┏━━━┻━━━┓   ┌───────┐
-   top                  ┌─────▶┃ Hash  ┃◀──┤Sibling│                    ┌─────▶┃ Hash  ┃◀──┤Sibling│
-                        │      ┗━━━━━━━┛   └───────┘                    │      ┗━━━━━━━┛   └───────┘
-                        │                                               │
-                        │                                               │
-        ┌───────┐   ┏━━━┻━━━┓                           ┌───────┐   ┏━━━┻━━━┓
-   top  │Sibling├──▶┃ Hash  ┃◀─────┐                    │Sibling├──▶┃ Hash  ┃◀─────┐
-        └───────┘   ┗━━━━━━━┛      │                    └───────┘   ┗━━━━━━━┛      │
-                                   │                                               │
-                                   │                                               │
-                              ┌────┴────┐                                      ┏━━━┻━━━┓   ┌───────┐
-   bot                        │Old1Leaf │                               ┌─────▶┃ Hash  ┃◀──┼─  0   │
-                              └─────────┘                               │      ┗━━━━━━━┛   └───────┘
-                                                                        │
-                                                                        │
-                     ┏━━━━━━━┓                          ┌───────┐   ┏━━━┻━━━┓
-   bot               ┃ Hash  ┃                          │   0  ─┼──▶┃ Hash  ┃◀─────┐
-                     ┗━━━━━━━┛                          └───────┘   ┗━━━━━━━┛      │
-                                                                                   │
-                                                                                   │
-                     ┏━━━━━━━┓                                                 ┏━━━┻━━━┓   ┌───────┐
-   bot               ┃ Hash  ┃                                          ┌─────▶┃ Hash  ┃◀──│   0   │
-                     ┗━━━━━━━┛                                          │      ┗━━━━━━━┛   └───────┘
-                                                                        │
-                                                                        │
-                     ┏━━━━━━━┓                        ┌─────────┐   ┏━━━┻━━━┓   ┌─────────┐
-  new1               ┃ Hash  ┃                        │Old1Leaf ├──▶┃ Hash  ┃◀──│New1Leaf │
-                     ┗━━━━━━━┛                        └─────────┘   ┗━━━━━━━┛   └─────────┘
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-Fnction
-fnc[0]  fnc[1]
-0       0             NOP
-0       1             UPDATE
-1       0             INSERT
-1       1             DELETE
-
-
-***************************************************************************************************/
-
 include "gates.circom";
 include "bitify.circom";
 include "comparators.circom";
@@ -377,4 +247,28 @@ template test_smt_update() {
     t.newKey <== 32;
     t.newValue <== 323232;
     t.newRoot === 0x13fc6f9c4bcf2a4f8191d7693996bf155a098243fd8825308d436acb796dda18;
+}
+
+#[test] 
+template test_smt_insert_claim() {
+    component t = SMTProcessor(10);
+    t.fnc[0] <== 1;
+    t.fnc[1] <== 0;
+    t.oldRoot <== 0;
+    t.siblings[0] <== 0;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 0;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 0;
+    t.oldValue <== 0;
+    t.isOld0 <== 1;
+    t.newKey <== 0x89fd2edc0a6dd763b006c0a1903b09fcb3b51aabfff7a54ffb51ce940b8933f;
+    t.newValue <== 0x24ae9775f16de9b0cdca722df4d6678c08a817bd40ed4575ef46a375a07daf79;
+    t.newRoot === 0x2e190f638990104298cc690fa9040e805c3f1fbcf9a219d89e8f7c68fa8fbdec;
 }
