@@ -9,15 +9,18 @@ use circom2_parser::ast::{Attributes,StatementP};
 use super::error::*;
 use super::algebra;
 use super::retval::*;
+use super::types::*;
 
 #[derive(Debug, Clone)]
 pub enum ScopeValue {
-    Undefined,
+    UndefVar,
+    UndefComponent,
     Bool(bool),
     Algebra(algebra::Value),
     Function(Vec<String>, Box<StatementP>, String),
     Template(Attributes, Vec<String>, Box<StatementP>, String),
-    Array(Vec<algebra::Value>),
+    Component(String,String,Vec<ReturnValue>,Vec<algebra::SignalId>), 
+    List(List),
 }
 
 impl From<ReturnValue> for ScopeValue {
@@ -25,7 +28,7 @@ impl From<ReturnValue> for ScopeValue {
         match v {
             ReturnValue::Bool(v) => ScopeValue::Bool(v),
             ReturnValue::Algebra(v) => ScopeValue::Algebra(v),
-            ReturnValue::Array(v) => ScopeValue::Array(v),
+            ReturnValue::List(v) => ScopeValue::List(v),
         }
     }
 }
@@ -66,7 +69,7 @@ impl<'a> Scope<'a> {
 
     pub fn insert(&self, k: String, v: ScopeValue) {
         if self.vars.borrow().contains_key(&k) {
-            panic!("cannot insert into scope a duplicated key");
+            panic!("cannot insert into scope a duplicated key '{}'",k);
         }
         self.vars.borrow_mut().insert(k, v);
     }

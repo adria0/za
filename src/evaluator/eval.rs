@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -17,18 +16,7 @@ use super::error::*;
 use super::signal::*;
 use super::retval::*;
 use super::scope::*;
-
-pub struct Component {
-    signal_ids : Vec<SignalId>,
-}
-
-impl Default for Component {
-    fn default() -> Self {
-        Self {
-            signal_ids : Vec::new(),
-        }
-    }
-}
+use super::types::*;
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -43,12 +31,12 @@ pub struct ErrorContext {
 pub enum Mode {
     Collect,        // collect declarations
     GenConstraints, // generate R1CS
-    Test,           // run tests
+    GenWitness,     // run tests
 }
 
 impl Mode {
-    pub fn must_process_eval(&self, meta: &Meta) -> bool {
-        !(self == &Mode::GenConstraints && meta.attrs.has_tag_w()) 
+    pub fn skip_eval(&self, meta: &Meta) -> bool {
+        self == &Mode::GenConstraints && meta.attrs.has_tag_w() 
     }
     pub fn must_process_root_decrl(&self) -> bool {
         self != &Mode::Collect 
@@ -66,7 +54,6 @@ pub struct Evaluator {
     // collected signals, constrains and components
     pub signals    : Signals,
     pub constrains : Vec<QEQ>,
-    pub components : HashMap<String,Option<Component>>,
 
     // processed includes
     pub processed_files : Vec<String>,
@@ -88,7 +75,6 @@ impl Evaluator {
             current_function : None,
             signals : Signals::default(),
             constrains : Vec::new(),
-            components : HashMap::new(),
             debug_iterations : 0,
             processed_files : Vec::new(),
             last_error : None,
@@ -126,10 +112,10 @@ impl Evaluator {
 
     // evaluators -----------------------------------------------------------------------------------
 
-    fn debug_trace(&mut self, _meta: &Meta) {
+    fn debug_trace(&mut self, intfunc: &str, _meta: &Meta) {
         if self.debug_iterations == 0 {
-            self.debug_iterations = 1;
-            //println!("debug: {}:{} {:?}",self.current_file,self.current_component,self.current_function);
+            self.debug_iterations = 100000;
+            // println!("debug: {} {}:{} {:?}",intfunc, self.current_file,self.current_component,self.current_function);
         } else {
             self.debug_iterations -= 1;
         }
@@ -219,14 +205,20 @@ impl Evaluator {
         name: &str,
         params: &[Box<ExpressionP>],
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_internal_call",meta);
 
         let mut internal = || {        
             if name == "dbg" {
                 print!("DBG ");            
                 for param in params {                
                     let value = self.eval_expression_p(scope, param)?;
-                    print!("{:?}",value);
+                    print!("{:?} ⇨ ",param);
+                    match value {
+                        ReturnValue::Algebra(value)
+                            => print!("{} ",self.format_algebra(value)),
+                        _ 
+                            => print!("{:?} ",value)
+                    }
                 }
                 println!();
                 return Ok(());
@@ -244,7 +236,7 @@ impl Evaluator {
         name: &str,
         params: &[Box<ExpressionP>],
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_function_call",meta);
         
         let mut internal = || {        
             scope.root().get(name, |v| match v {
@@ -289,29 +281,34 @@ impl Evaluator {
         scope: &Scope,
         name: &VariableP,
      ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_component_decl",meta);
         for selector_name in self.generate_selectors(scope, &name)? {
-            self.components.insert(self.expand_full_name(&selector_name), None);
+            scope.insert(selector_name, ScopeValue::UndefComponent);
         }
         Ok(())
     }
 
-    fn eval_component_instantiation(
+    fn eval_component_inst(
         &mut self,
         meta: &Meta,
         scope: &Scope,
         component_name: &str,
         init: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_component_inst",meta);
 
         let mut internal = || {
-            if let ExpressionP::FunctionCall{name: template_name, args: params,..} = init {
+            let (updated, pending_signals_count) = if let ExpressionP::FunctionCall{name: template_name, args: params,..} = init {
                 scope.root().get(template_name, |v| match v {
                     Some(ScopeValue::Template(_, args, stmt, template_path)) => {
                         if args.len() != params.len() {
                             Err(Error::InvalidParameter(format!("Invalid parameter count when instantiating {}",template_name)))
-                        } else  {
+                        } else {
+
+                            let mut evalargs = Vec::new();
+                            let mut all_pending_input_signals : Vec<SignalId> = Vec::new();
+
+                            // create a new scope, and put into arguments 
                             let mut template_scope = Scope::new(
                                 true, Some(scope),
                                 format!("{}:{}",self.current_file,meta.start)
@@ -319,37 +316,115 @@ impl Evaluator {
                         
                             for n in 0..args.len() {
                                 let value = self.eval_expression_p(scope, &*params[n])?;
+                                evalargs.push(value.clone());
                                 template_scope.insert(args[n].clone(), ScopeValue::from(value));
                             }
 
                             let mut new_current_component = self.expand_full_name(component_name);
                             let mut new_current_file = template_path.to_string();
 
-                            if let Some(component) = self.components.get_mut(&new_current_component) {
-                                *component = Some(Component::default());
+                            std::mem::swap(&mut new_current_file, &mut self.current_file);
+                            std::mem::swap(&mut new_current_component, &mut self.current_component);
 
-                                std::mem::swap(&mut new_current_file, &mut self.current_file);
-                                std::mem::swap(&mut new_current_component, &mut self.current_component);
-
-                                self.eval_statement_p(&mut template_scope, stmt)?;
-
-                                std::mem::swap(&mut self.current_file, &mut new_current_file);
-                                std::mem::swap(&mut self.current_component, &mut new_current_component);
-
-                                Ok(())
+                            if let StatementP::Block{stmts,..} = &**stmt {
+                                for stmt in stmts {
+                                    match &**stmt { 
+                                        StatementP::Declaration{meta,name,xtype:VariableType::Signal(xtype),..}
+                                        =>  if *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput {                                           
+                                            let mut signals = self.eval_declaration_signals(meta, &mut template_scope,*xtype, name)?;
+                                            if self.mode == Mode::GenWitness {
+                                                all_pending_input_signals.append(&mut signals);
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
                             } else {
-                                Err(Error::NotFound(format!("component {}",&new_current_component)))
+                                unreachable!();
                             }
+
+                            std::mem::swap(&mut self.current_file, &mut new_current_file);
+                            std::mem::swap(&mut self.current_component, &mut new_current_component);
+
+                            let all_pending_input_signals_count = all_pending_input_signals.len();
+
+                            Ok((
+                                ScopeValue::Component(template_name.to_string(),template_path.to_string(),evalargs,all_pending_input_signals),
+                                all_pending_input_signals_count
+                            ))
                         }
                     }
                     _ => Err(Error::NotFound(format!("template {}",template_name))),
                 })
             } else {
                 Err(Error::InvalidType(format!("component {} only can be initialized with template",&component_name)))
+            }?;
+            
+            // update component
+            scope.get_mut(component_name, |v| {
+                if let Some(v) = v {
+                    *v = updated;
+                    Ok(())
+                } else  {
+                    Err(Error::NotFound(component_name.to_string()))
+                }
+            })?;
+
+            if pending_signals_count == 0 {
+                self.eval_component_expand(meta,scope,component_name)?;
             }
+
+            Ok(())
+
         };
         let res = internal();
         self.register_error(meta,scope,res)
+    }
+
+    fn eval_component_expand(
+        &mut self,
+        meta: &Meta,
+        scope: &Scope,
+        component_name: &str,
+    ) -> Result<()> {
+        self.debug_trace(&format!("eval_component_expand {}",component_name),meta);
+
+        scope.get(component_name, |c| match c {
+            Some(ScopeValue::Component(template_name, path, values, _)) => {
+
+                scope.root().get(template_name, |t| match t {
+                    Some(ScopeValue::Template(_, args, stmt, template_path)) => {
+
+                        // put arguments in scope
+                        let mut template_scope = Scope::new(
+                            true, Some(scope),
+                            format!("{}:{}",self.current_file,meta.start)
+                        );
+                        for n in 0..args.len() {
+                            template_scope.insert(args[n].clone(), ScopeValue::from(values[n].clone()));
+                        }
+                        
+                        // set new component & file scope
+                        let mut new_current_component = self.expand_full_name(component_name);
+                        let mut new_current_file = template_path.to_string();
+
+                        std::mem::swap(&mut new_current_file, &mut self.current_file);
+                        std::mem::swap(&mut new_current_component, &mut self.current_component);
+
+                        // execute the template
+                        self.eval_statement_p(&mut template_scope, stmt)?;
+
+                        // revert previous state
+                        std::mem::swap(&mut self.current_file, &mut new_current_file);
+                        std::mem::swap(&mut self.current_component, &mut new_current_component);
+
+                        Ok(())
+                    }
+                    _ => unreachable!()
+                })
+            },
+            _ => unreachable!()
+        })     
     }
 
     fn eval_variable(
@@ -358,44 +433,47 @@ impl Evaluator {
         scope: &Scope,
         var: &VariableP
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_variable",meta);
 
         let mut internal = || {
+
+            // check if is a signal
+            let name_sel = self.expand_selectors(scope,var,None)?;
+            if let Some(signal) = self.signals.get_by_name(&self.expand_full_name(&name_sel)) {
+                if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
+                    return Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(value.clone())))
+                } else {
+                    return ReturnValue::from_signal_id(signal.id)
+                }
+            }
+
+            // check if is a variable
             scope.get(&var.name, |v| match v {
                 Some(ScopeValue::Algebra(a)) => Ok(ReturnValue::Algebra(a.clone())),
 
                 Some(ScopeValue::Bool(a)) => Ok(ReturnValue::Bool(*a)),
                 
-                Some(ScopeValue::Array(a)) => match var.sels.len() {
-                    0 => Ok(ReturnValue::Array(a.clone())),
-                    1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                            let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                            if pos  < a.len() {
-                                Ok(ReturnValue::Algebra(a[pos].clone()))
-                            } else {
-                                Err(Error::InvalidSelector("index overflow".to_string()))
-                            }
-                        } else {
-                            Err(Error::InvalidSelector("needs index".to_string()))
-                        },
-                    _ => Err(Error::InvalidSelector("array needs only one index".to_string()))
-                },
-                
-                None => {
-                    let name = self.expand_selectors(scope,var)?;
-                    if let Some(signal) = self.signals.get_by_name(&self.expand_full_name(&name)) {
-                        if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
-                            Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(value.clone())))
-                        } else {
-                            ReturnValue::from_signal_id(signal.id)
+                Some(ScopeValue::List(l)) => {
+                    let mut indexes = Vec::new();
+                    for sel in &var.sels {
+                        match &**sel {
+                            SelectorP::Index{pos,..} => {
+                                indexes.push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                            },
+                            _ => return Err(Error::InvalidSelector(format!("Invalid selector {:?}",sel)))
                         }
-                    } else {
-                        Err(Error::InvalidType(format!("Variable '{}' not found",&name)))
                     }
+                    match l.get(&indexes)? {
+                        List::Algebra(a) => Ok(ReturnValue::Algebra(a.clone())),
+                        List::List(l) => Ok(ReturnValue::List(List::List(l.clone())))
+                    }
+                },
+                _ => {
+                    Err(Error::InvalidType(format!("cannot eval {}={:?} cannot be used",name_sel,&v)))
                 }
-                _ => Err(Error::InvalidType(format!("Variable '{:?}' cannot be used",&var.name)))
             })
         };
+
         let res = internal();
         self.register_error(meta,scope,res)
     }
@@ -406,7 +484,7 @@ impl Evaluator {
         scope: &Scope,
         n: &BigInt
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_number",meta);
 
         let internal = || {
             Ok(ReturnValue::Algebra(algebra::Value::from(n)))
@@ -422,7 +500,7 @@ impl Evaluator {
         op: Opcode,
         rhe: &ExpressionP
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_prefix_op",meta);
 
         let mut internal = || {
             let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
@@ -440,7 +518,7 @@ impl Evaluator {
         op: Opcode, 
         rhe: &ExpressionP,
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_infix_op",meta);
 
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?;
@@ -498,14 +576,18 @@ impl Evaluator {
         scope: &Scope,
         exprs: &[Box<ExpressionP>]
     ) -> Result<ReturnValue> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_array",meta);
 
         let mut internal = || {
-            let mut out : Vec<algebra::Value> = Vec::new();
+            let mut out : Vec<List> = Vec::new();
             for expr in exprs.iter() {
-                out.push(self.eval_expression_p(scope, expr)?.into_algebra()?);
+                match self.eval_expression_p(scope, expr)? {
+                    ReturnValue::Algebra(a) => out.push(List::Algebra(a)),
+                    ReturnValue::List(l) => out.push(l),
+                    _ => unreachable!()
+                }
             }
-            Ok(ReturnValue::Array(out))
+            Ok(ReturnValue::List(List::List(out)))
         };
         let res = internal();
         self.register_error(meta,scope,res)
@@ -519,8 +601,8 @@ impl Evaluator {
         xthen: &StatementP,
         xelse: &Option<Box<StatementP>>,
     ) -> Result<()> {
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace("eval_if_then_else",meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
@@ -546,8 +628,8 @@ impl Evaluator {
         step: &StatementP,
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace("eval_for",meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
@@ -587,8 +669,8 @@ impl Evaluator {
         stmt: &StatementP
     ) -> Result<()> {
 
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace("eval_while",meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
         
@@ -626,8 +708,8 @@ impl Evaluator {
         expr: &ExpressionP
     ) -> Result<()> {
 
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace("eval_return",meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
@@ -640,6 +722,29 @@ impl Evaluator {
         self.register_error(meta,scope,res)
     }
 
+    fn eval_declaration_signals(
+        &mut self,
+        meta: &Meta,
+        scope: &mut Scope,
+        xtype: SignalType,
+        var: &VariableP,
+    ) -> Result<Vec<SignalId>> {
+        self.debug_trace("eval_declaration_signals",meta);
+
+        let mut signals = Vec::new();
+        for signal_name in self.generate_selectors(scope, &var)? {
+            let full_name = self.expand_full_name(&signal_name);
+            if self.signals.get_by_name(&full_name).is_some() {
+                return Err(Error::AlreadyExists(format!("signal {}",full_name)));
+            }    
+
+            let signal_id = self.signals.insert(full_name,xtype,None);
+            signals.push(signal_id);
+        }
+
+        Ok(signals)
+    }
+
     fn eval_declaration(
         &mut self,
         meta: &Meta,
@@ -648,9 +753,9 @@ impl Evaluator {
         var: &VariableP,
         init: &Option<(Opcode, Box<ExpressionP>)>,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_declaration",meta);
 
-        if !self.mode.must_process_eval(&meta) {
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
@@ -668,19 +773,15 @@ impl Evaluator {
                 (VariableType::Var, None) => {
                     match var.sels.len() {
                         0 => {
-                            scope.insert(var.name.clone(),ScopeValue::Undefined);
+                            // var a;
+                            scope.insert(var.name.clone(),ScopeValue::UndefVar);
                             Ok(())
                         }
-                        1 => if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                                let size = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
-                                let mut array = Vec::new();
-                                (0..size).for_each(|_| array.push(algebra::Value::default()));
-                                scope.insert(var.name.clone(),ScopeValue::Array(array));
-                                Ok(())
-                            } else {
-                                Err(Error::InvalidSelector("needs [size]".to_string()))
-                            },
-                        _ => Err(Error::InvalidSelector("array needs only one index".to_string()))
+                        _ => {
+                            let sizes = self.expand_indexes(scope,&var.sels)?;
+                            scope.insert(var.name.clone(),ScopeValue::List(List::new(&sizes)));
+                            Ok(())
+                        }
                     }
                 }
                 
@@ -695,8 +796,8 @@ impl Evaluator {
                             scope.insert(var.name.clone(),ScopeValue::Bool(b));
                             Ok(())
                         }
-                        (Opcode::Assig, ReturnValue::Array(a)) => {
-                            scope.insert(var.name.clone(),ScopeValue::Array(a));
+                        (Opcode::Assig, ReturnValue::List(a)) => {
+                            scope.insert(var.name.clone(),ScopeValue::List(a));
                             Ok(())
                         }
                         _ => Err(Error::InvalidType(format!("Unsupported type for var '{}' declaration",&var.name))),
@@ -705,8 +806,8 @@ impl Evaluator {
 
                 (VariableType::Component, Some(init)) => {
                     self.eval_component_decl(meta, &scope, &var)?;
-                    let var_w_selectors = self.expand_selectors(scope,var)?;
-                    self.eval_component_instantiation(meta, &scope, &var_w_selectors, &*init.1)?;
+                    let var_w_selectors = self.expand_selectors(scope,var,None)?;
+                    self.eval_component_inst(meta, &scope, &var_w_selectors, &*init.1)?;
                     Ok(())
                 }
 
@@ -715,37 +816,13 @@ impl Evaluator {
                     Ok(())
                 }
 
-                (VariableType::Signal(SignalType::Test), Some((_,expr))) => {
-                    let value = self.eval_expression_p(scope, expr)?.into_fs()?;
-                    self.signals.insert(format!("test.{:?}",var), SignalType::Test,Some(algebra::Value::from(value)));
-                    Ok(())
-                }
-
                 (VariableType::Signal(xtype), None) => {
-
-                    for signal_name in self.generate_selectors(scope, &var)? {
-
-                        let full_name = self.expand_full_name(&signal_name);
-
-                        if let Some(s) = self.signals.get_by_name(&full_name) {
-                            if s.xtype == SignalType::Test {
-                                continue;
-                            } else {
-                                return Err(Error::AlreadyExists(format!("signal {}",full_name)));
-                            }     
-                        }    
-
-                        let signal_id = self.signals.insert(full_name,xtype,None);
-
-                        if let Some(Some(component)) = self.components.get_mut(&self.current_component) {
-                            component.signal_ids.push(signal_id);
-                        } else {
-                            panic!(format!("'{}' not initialized",&self.current_component));
-                        }
-                    }
+                    if xtype != SignalType::PublicInput && xtype != SignalType::PrivateInput {
+                        self.eval_declaration_signals(meta, scope,xtype,var)?; 
+                    }  
                     Ok(())
                 }
-                _ =>  Err(Error::NotYetImplemented("eval_declaration_b".to_string())),
+                _ =>  Err(Error::NotYetImplemented(format!("eval_declaration {:?}",var))),
             }
         };
 
@@ -761,19 +838,27 @@ impl Evaluator {
         op: Opcode,
         expr: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace(&format!("eval_substitution {:?}={:?}",var,expr),meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
         let mut internal = || {
 
-            // check if is a component
-            let var_sel = self.expand_selectors(scope,var)?;
-            let var_full = self.expand_full_name(&var_sel);
-            if self.components.contains_key(&var_full) {
-                self.eval_component_instantiation(meta, scope,&var_sel,expr)?;
-                return Ok(())
+            // check if we are instatianting a UndefComponent
+            let var_sel = self.expand_selectors(scope,var, None)?;
+
+            let is_undef_component = scope.get(&var_sel, |v| {
+                if let Some(ScopeValue::UndefComponent) = v {
+                    true
+                } else {
+                    false
+                }
+            });
+
+            if is_undef_component {
+                self.eval_component_inst(meta, &scope, &var_sel, expr)?;
+                return Ok(());
             }
 
             // check for variables
@@ -802,12 +887,14 @@ impl Evaluator {
             if var.sels.is_empty() {
                 scope.update(&var.name,ScopeValue::Algebra(value))?;
             } else if let SelectorP::Index{pos,..} = &*var.sels[0] {
-                let pos = self.eval_expression_p(scope, &pos)?.into_u64()? as usize;
+                let indexes = self.expand_indexes(scope, &var.sels)?;
                 scope.get_mut(&var.name, |v| {
-                    if let Some(ScopeValue::Array(a)) = v {
-                        a[pos] = value;
+                    if let Some(ScopeValue::List(l)) = v {
+                        l.set(&value,&indexes)
+                    } else {
+                        Ok(())
                     }
-                });
+                })?;
             }
             Ok(())
         };
@@ -823,8 +910,8 @@ impl Evaluator {
         scope: &mut Scope,
         stmts: &[Box<StatementP>]
     ) -> Result<()> {
-        self.debug_trace(meta);
-        if !self.mode.must_process_eval(&meta) {
+        self.debug_trace("eval_block",meta);
+        if self.mode.skip_eval(&meta) {
             return Ok(())
         }
 
@@ -855,7 +942,7 @@ impl Evaluator {
         op: Opcode, 
         expr: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_signal_left",meta);
         
         // inv : op == Opcode::SignalContrainLeft || op == Opcode::SignalWireLeft 
 
@@ -879,30 +966,59 @@ impl Evaluator {
             //    S === 1  // constrain verification
             //    
 
+            // eval == iff in GenContraints
             if self.mode == Mode::GenConstraints {     
                 if op == Opcode::SignalContrainLeft {
                     self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
                 }
             }
 
-            // both for <-- and <==, eval content
-            let signal_sel = self.expand_selectors(scope, signal)?;
-            let signal_full = self.expand_full_name(&signal_sel);
-            if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
-                if let Ok(v) = self.eval_expression_p(scope, expr) {
-                    if let Some(signal) = self.signals.get_by_id_mut(signal_id) {
-                        if let ReturnValue::Algebra(a) = v {
-                            signal.value = Some(a);
-                        }  else {
-                            return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
-                        } 
+            // eval <-- 
+            if !self.mode.skip_eval(meta) {
+                
+                let signal_sel = self.expand_selectors(scope, signal,None)?;
+                let signal_full = self.expand_full_name(&signal_sel);
+                if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
+                    
+                    // set the signal value
+                    let v = self.eval_expression_p(scope, expr)?;
+                    let signal_element = self.signals.get_by_id_mut(signal_id).unwrap();
+                    if let ReturnValue::Algebra(a) = v {
+                        signal_element.value = Some(a);
+                    }  else {
+                        return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
                     }
+
+                    // check for lazy component execution
+                    if self.mode == Mode::GenWitness {
+                        
+                        if let Some(component_name) = self.signal_component(scope, signal)? {
+
+                            let pending_signals_len = scope.get_mut(&component_name, |var| {
+                                match var {
+                                    Some(ScopeValue::Component(_, _, _, pending_signals)) => {
+                                        pending_signals.retain(|s| *s!=signal_id);
+                                        pending_signals.len()
+                                    }
+                                    _ => {
+                                        panic!("signal not found '{}' in scope {:?}",signal.name,meta)
+                                    }
+                                } 
+                            });
+                            // if all input signals has been set, then expand the component 
+                            if pending_signals_len == 0 {
+                                self.eval_component_expand(meta, scope, &component_name)?;
+                            }
+                        }
+                    }
+
+                } else {
+                    return Err(Error::NotFound(format!("Signal {}",signal_full)));
                 }
-            } else {
-                return Err(Error::NotFound(format!("Signal {}",signal_full)));
             }
 
-            if self.mode == Mode::Test {     
+            // eval == iff when generating witness
+            if self.mode == Mode::GenWitness {     
                 if op == Opcode::SignalContrainLeft {
                     self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
                 }
@@ -923,7 +1039,7 @@ impl Evaluator {
         op: Opcode,
         signal: &VariableP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_signal_right",meta);
 
         let mut internal = || {
             use Opcode::*;
@@ -936,8 +1052,7 @@ impl Evaluator {
         let res = internal();
         self.register_error(meta,scope,res)
     }
-    // when generating constrains eval_signal_eq adds a new constrain to the system
-    // when verifying  cirtcuits  eval_signal_eq checks that the resulting QEQ is zero
+
     fn eval_signal_eq(
         &mut self,
         meta: &Meta,
@@ -945,22 +1060,31 @@ impl Evaluator {
         lhe: &ExpressionP,
         rhe: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_signal_eq",meta);
 
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?.into_algebra()?;
             let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
             let constrain = self.alg_eval_infix(meta,scope,&left, Opcode::Sub, &right)?;
 
-            if self.mode == Mode::Test {
-
+            if self.mode == Mode::GenWitness {
+                
+                // checks the constrainsTest
                 match constrain {
-                    algebra::Value::FieldScalar(ref fs) if fs.is_zero() => { },
-                    _ => return Err(Error::CannotTestConstrain(self.format_algebra(constrain)))
+                    algebra::Value::FieldScalar(ref fs) if fs.is_zero()
+                        => { },
+                    _
+                        => return Err(Error::CannotTestConstrain(
+                            format!("{:?}==={:?} => {}==={}",
+                            lhe,rhe,
+                            self.format_algebra(left),
+                            self.format_algebra(right)
+                        ))),
                 }
 
-            } else {
+            } else if self.mode == Mode::GenConstraints {
 
+                // generates constrains
                 let qeq = match constrain {
                     algebra::Value::FieldScalar(_) => return Err(Error::CannotGenerateConstrain(
                             format!("{}==={}",
@@ -985,7 +1109,7 @@ impl Evaluator {
         scope: &mut Scope,
         path: &str
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_include",meta);
 
         let mut internal = || {
         
@@ -1032,7 +1156,7 @@ impl Evaluator {
         args: &[String],
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_function_def",meta);
 
         let internal = || {
             scope.insert(
@@ -1057,9 +1181,10 @@ impl Evaluator {
         args: &[String],
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace(meta);
+        self.debug_trace("eval_template_def",meta);
 
         let internal = || {
+
             scope.insert(
                 name.to_string(),
                 ScopeValue::Template(
@@ -1081,6 +1206,7 @@ impl Evaluator {
         scope: &mut Scope,
         bes : &[BodyElementP]
     ) -> Result<()> {
+        self.debug_trace("eval_body_elements_p",meta);
         let mut internal = || {
             for be in bes {
                 self.eval_body_element_p(scope, &be)?;
@@ -1124,9 +1250,14 @@ impl Evaluator {
         Ok(out)
     }
 
-    fn expand_selectors(&mut self, scope: &Scope, v: &VariableP) -> Result<String> {
+    fn expand_selectors(&mut self, scope: &Scope, v: &VariableP, limit:Option<usize>) -> Result<String> {
         let mut v_sel = v.name.clone();
-        for selector in v.sels.iter() {
+        for (i,selector) in v.sels.iter().enumerate() {
+            if let Some(limit) = limit {
+                if i == limit {
+                    return Ok(v_sel);
+                }
+            }
             match &**selector {
                 SelectorP::Index{pos,..} => {
                     let index = self.eval_expression_p(scope, &*pos)?.into_u64()?;
@@ -1139,6 +1270,44 @@ impl Evaluator {
         }
         Ok(v_sel)
     }
+
+    fn expand_indexes(&mut self, scope: &Scope, sels : &Vec<Box<SelectorP>>) -> Result<Vec<usize>>{
+        let mut indexes = Vec::new();
+        for sel in sels {
+            match &**sel {
+                SelectorP::Index{pos,..} => {
+                    indexes.push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                },
+                _ => return Err(Error::InvalidSelector(format!("Invalid selector {:?}",sel)))
+            }
+        }
+        Ok(indexes)
+    }
+
+    fn signal_component(&mut self, scope: &Scope, signal: &VariableP) -> Result<Option<String>> {
+        // find the name of the component
+        // a.b => a
+        // a.b.c => a.b
+        // a[1].b => a[1]
+        // a[1].b[1].c => a[1].b[1]
+
+        let mut last_pin = signal.sels.len();
+        let mut found = false;
+        while !found && last_pin > 0 {
+            match &*signal.sels[last_pin-1] {
+                SelectorP::Index{..} => last_pin-=1,
+                SelectorP::Pin{..} => found = true 
+            }
+        }
+
+        if found {
+            // remove the signal from the list of the pending signals to process
+            Ok(Some(self.expand_selectors(scope, signal,Some(last_pin-1))?))
+        } else {
+            Ok(None)
+        }
+    }
+
 
     fn expand_full_name(&self, s : &str) -> String {
         if self.current_component.is_empty() {

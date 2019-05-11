@@ -1,8 +1,11 @@
 // include "claimsrootupdate.circom";
 // component main = ClaimRootUpdate(2,2);
 
-include "mimc.circom";
-include "constants.circom";
+include "bitify.circom";
 include "babyjub.circom";
-
-component main = MiMC7(12);
+include "eddsamimc.circom";
+include "smtprocessor.circom";
+include "smtverifier.circom";
+include "pedersen.circom";
+include "sha256_2.circom";
+include "sha256compression.circom";

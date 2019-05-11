@@ -181,10 +181,9 @@ pub enum SignalType {
     PublicInput,
     PrivateInput,
     Output,
-    Test,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum VariableType {
     Empty,
     Var,

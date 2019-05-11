@@ -145,6 +145,9 @@ template SegmentMulFix(nWindows) {
     component cadders[nWindows-1];
     for (i=0; i<nWindows; i+=1) {
         windows[i] = WindowMulFix();
+        for (j=0; j<3; j+=1) {
+            windows[i].in[j] <== e[3*i+j];
+        }
         if (i==0) {
             windows[i].base[0] <== e2m.out[0];
             windows[i].base[1] <== e2m.out[1];
@@ -169,9 +172,6 @@ template SegmentMulFix(nWindows) {
             adders[i-1].in2[1] <== windows[i].out[1];
             cadders[i-1].in2[0] <== windows[i-1].out8[0];
             cadders[i-1].in2[1] <== windows[i-1].out8[1];
-        }
-        for (j=0; j<3; j+=1) {
-            windows[i].in[j] <== e[3*i+j];
         }
     }
 

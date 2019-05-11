@@ -38,10 +38,12 @@ template T2() {
         maj.a[k] <== a[k];
         maj.b[k] <== b[k];
         maj.c[k] <== c[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         sum.in[0][k] <== bigsigma0.out[k];
         sum.in[1][k] <== maj.out[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         out[k] <== sum.out[k];
     }
 }

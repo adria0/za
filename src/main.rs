@@ -21,12 +21,16 @@ fn dump_error(eval : &evaluator::Evaluator, err : &evaluator::Error) {
 
     let msg = format!("{:?}",err);
 
+    println!("ERROR: {}",msg);
+
     if let Some(ctx) = &eval.last_error {
 
         let span : ByteSpan= Span::from_offset(
             (1+ctx.meta.start as u32).into(),
             (1+(ctx.meta.end - ctx.meta.start) as i64).into()
         );
+
+        //println!("{}",ctx.scope);
 
         if ctx.file != "" {    
             let mut code_map = CodeMap::new();
@@ -41,10 +45,8 @@ fn dump_error(eval : &evaluator::Evaluator, err : &evaluator::Error) {
             let writer = StandardStream::stderr(ColorChoice::Always);
             emit(&mut writer.lock(), &code_map, &error).unwrap();
         }  
-        println!("{}",ctx.scope);
     } 
 
-    println!("ERROR: {}",msg);
 }
 
 fn generate_constrains(filename : &str) {
@@ -66,7 +68,6 @@ fn generate_constrains(filename : &str) {
 }
 
 fn run_tests(filename : &str) {   
- 
     let mut eval = evaluator::Evaluator::new(Mode::Collect);
     let scan_scope = eval.eval_file(&filename);
     
@@ -93,16 +94,13 @@ fn run_tests(filename : &str) {
     let mut scan_scope = scan_scope.unwrap();
 
     for test_name in tests.iter() {
-        let code = format!("component test={}();",test_name);        
-        let mut eval = evaluator::Evaluator::new(Mode::Test);
-        if let Err(err) = eval.eval_inline(&mut scan_scope, &code) {
+        let code = format!("component test_{}={}();",test_name,test_name);        
+        let mut eval = evaluator::Evaluator::new(Mode::GenWitness);
+        if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
             println!("FAILED {}",&test_name);
+            //println!("{:?}",eval.signals);
             dump_error(&eval,&err);
-            println!("{:?}",eval.signals);
         } else {
-            for c in eval.constrains {
-                println!("{:?}",c);
-            }
             println!("SUCCESS {}",&test_name);
         }
     }    

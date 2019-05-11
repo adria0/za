@@ -135,3 +135,49 @@ template SMTVerifier(nLevels) {
     // levels[0].root === root;
 
 }
+
+#[test] 
+template test_smt_inclusion() {
+    component t = SMTVerifier(10);
+    t.enabled <== 1;
+    t.fnc <== 0;
+    t.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
+    t.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 32;
+    t.oldValue <== 3232;
+    t.isOld0 <== 0;
+    t.key <== 32;
+    t.value <== 3232;
+}
+
+#[test] 
+template test_smt_exclusion() {
+    component t = SMTVerifier(10);
+    t.enabled <== 1;
+    t.fnc <== 1;
+    t.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
+    t.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
+    t.siblings[1] <== 0;
+    t.siblings[2] <== 0;
+    t.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
+    t.siblings[4] <== 0;
+    t.siblings[5] <== 0;
+    t.siblings[6] <== 0;
+    t.siblings[7] <== 0;
+    t.siblings[8] <== 0;
+    t.siblings[9] <== 0;
+    t.oldKey <== 32;
+    t.oldValue <== 3232;
+    t.isOld0 <== 0;
+    t.key <== 64;
+    t.value <== 0;
+}

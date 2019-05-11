@@ -6,6 +6,7 @@ mod signal;
 mod scope;
 mod retval;
 mod eval;
+mod types;
 
 pub use self::error::*;
 pub use self::scope::{Scope,ScopeValue};
