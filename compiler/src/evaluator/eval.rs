@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::{Path,PathBuf};
+use std::ffi::OsStr;
 
 use num_bigint::BigInt;
 use circom2_parser;
@@ -64,6 +66,9 @@ pub struct Evaluator {
     // evaluation mode
     pub mode : Mode,
 
+    // default path
+    pub path : PathBuf,
+
 }
 
 impl Evaluator {
@@ -78,6 +83,7 @@ impl Evaluator {
             debug_iterations : 0,
             processed_files : Vec::new(),
             last_error : None,
+            path : PathBuf::from("."),
             mode
         }
     }
@@ -95,9 +101,10 @@ impl Evaluator {
         Ok(())        
     }
 
-    pub fn eval_file(&mut self, path : &str) -> Result<Scope> {
-        let mut scope = Scope::new(true, None,  path.to_string());
-        self.eval_include(&Meta::new(0,0,None), &mut scope, path)?;
+    pub fn eval_file(&mut self, path: &str, filename : &str) -> Result<Scope> {
+        self.path = PathBuf::from(path);
+        let mut scope = Scope::new(true, None,  filename.to_string());
+        self.eval_include(&Meta::new(0,0,None), &mut scope, filename)?;
         Ok(scope)
     }
 
@@ -1107,15 +1114,19 @@ impl Evaluator {
         &mut self,
         meta: &Meta,
         scope: &mut Scope,
-        path: &str
+        filename: &str
     ) -> Result<()> {
         self.debug_trace("eval_include",meta);
 
         let mut internal = || {
-        
+            
+            let mut full_path = PathBuf::new();
+            full_path.push(&self.path);
+            full_path.push(&filename);
+
             let mut code = String::new();
-            if let Err(ioerr) = File::open(path).and_then(|ref mut file| file.read_to_string(&mut code)) {
-                return Err(Error::Io(path.to_string(),ioerr));        
+            if let Err(ioerr) = File::open(&full_path).and_then(|ref mut file| file.read_to_string(&mut code)) {
+                return Err(Error::Io(format!("{:?}",full_path),ioerr.to_string()));        
             }
 
             let mut hasher = Blake2b::new(64);
@@ -1127,7 +1138,7 @@ impl Evaluator {
 
                 self.processed_files.push(hash_hex);
 
-                let mut new_current_file = path.to_string();
+                let mut new_current_file = full_path.to_str().unwrap().to_string();
                 std::mem::swap(&mut new_current_file, &mut self.current_file);
     
                 match circom2_parser::parse(&code) {

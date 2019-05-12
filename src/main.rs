@@ -1,18 +1,11 @@
 extern crate circom2_parser;
+extern crate circom2_compiler;
 extern crate codespan;
 extern crate codespan_reporting;
-#[macro_use]
-extern crate lazy_static;
-extern crate blake2_rfc;
-extern crate hex;
-
-pub mod evaluator;
-pub mod algebra;
-pub mod optimizer;
 
 use std::env;
 
-use evaluator::Mode;
+use circom2_compiler::{evaluator,tester};
 use codespan_reporting::termcolor::{StandardStream, ColorChoice};
 use codespan::{CodeMap, Span, ByteSpan};
 use codespan_reporting::{emit, Diagnostic, Label, Severity};
@@ -51,7 +44,7 @@ fn dump_error(eval : &evaluator::Evaluator, err : &evaluator::Error) {
 
 fn generate_constrains(filename : &str) {
     let mut eval = evaluator::Evaluator::new(evaluator::Mode::GenConstraints);
-    if let Err(err) = eval.eval_file(&filename) {
+    if let Err(err) = eval.eval_file(".",&filename) {
         dump_error(&eval, &err);
     } else {
         println!(
@@ -67,56 +60,19 @@ fn generate_constrains(filename : &str) {
     }
 }
 
-fn run_tests(filename : &str) {   
-    let mut eval = evaluator::Evaluator::new(Mode::Collect);
-    let scan_scope = eval.eval_file(&filename);
-    
-    let tests = match &scan_scope {
-        Ok(scope) => {
-            let vars = scope.vars.borrow();
-            let tests = vars.iter()
-                .filter_map( |(k,v)|
-                    match v  {
-                        evaluator::ScopeValue::Template(attrs,_,_,_) if attrs.has_tag_test() => Some(k),
-                         _  => None
-                    }
-                )
-                .map ( |f| f.to_string() )
-                .collect::<Vec<_>>();
-            tests
-        },
-        Err(err) => {
-            dump_error(&eval,err);
-            return;
-        }
-    };
-
-    let mut scan_scope = scan_scope.unwrap();
-
-    for test_name in tests.iter() {
-        let code = format!("component test_{}={}();",test_name,test_name);        
-        let mut eval = evaluator::Evaluator::new(Mode::GenWitness);
-        if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
-            println!("FAILED {}",&test_name);
-            //println!("{:?}",eval.signals);
-            dump_error(&eval,&err);
-        } else {
-            println!("SUCCESS {}",&test_name);
-        }
-    }    
-}
-
 fn main() {
     let args : Vec<String> = env::args().collect();
     if args.len() == 3 {
         if args[1] ==  "c" {
             generate_constrains(&args[2]);
         } else if args[1] == "t" {
-            run_tests(&args[2]);
+            if let Err((eval,err)) = tester::run_embeeded_test(".",&args[2]) {
+                dump_error(&eval,&err);
+            }
         } else {
             panic!("Invald parameter");
         }
     } else {
-        println!("Usage: {} <file>",args[0]);
+        println!("Usage: {} [c|t] <file>",args[0]);
     }
 }
