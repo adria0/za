@@ -1,15 +1,21 @@
 use crate::evaluator::{Evaluator,Mode,ScopeValue,Error,Signals};
+use crate::evaluator::Constraints;
 use crate::storage::StorageFactory;
 
-pub fn run_embeeded_tests<F,S>(
+pub fn run_embeeded_tests<F,S,C>(
     path: &str,
     filename : &str,
     factory: F,
-) -> Result<(),(Evaluator<S>,String)>
+) -> Result<(),(Evaluator<S,C>,String)>
 where S : Signals,
-      F : StorageFactory<S>
+      C : Constraints,
+      F : StorageFactory<S,C>
 {   
-    let mut eval = Evaluator::new(Mode::Collect,factory.new_signals());
+    let mut eval = Evaluator::new(
+        Mode::Collect,
+        factory.new_signals(),
+        factory.new_constraints()
+    );
     let scan_scope = eval.eval_file(&path, &filename);
     
     let tests = match &scan_scope {
@@ -36,7 +42,11 @@ where S : Signals,
     for test_name in tests.iter() {        
         println!("Generating witness for {}",test_name);
         let code = format!("component test_{}={}();",test_name,test_name);        
-        let mut eval = Evaluator::new(Mode::GenWitness,factory.new_signals());
+        let mut eval = Evaluator::new(
+            Mode::GenWitness,
+            factory.new_signals(),
+            factory.new_constraints()
+        );
         if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
             return Err((eval,format!("{:?}",err)));
         }

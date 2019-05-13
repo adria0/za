@@ -18,6 +18,7 @@ use super::signal::*;
 use super::retval::*;
 use super::scope::*;
 use super::types::*;
+use super::Constraints;
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -44,9 +45,10 @@ impl Mode {
     }
 }
 
-pub struct Evaluator<S>
+pub struct Evaluator<S,C>
 where
-  S : Signals  {
+  S : Signals,
+  C : Constraints {
 
     // the current file, component and function being processed
     pub current_file : String,
@@ -54,9 +56,9 @@ where
     pub current_function  : Option<String>,
     pub debug_iterations  : usize,
 
-    // collected signals, constrains and components
-    pub signals    : S,
-    pub constrains : Vec<QEQ>,
+    // collected signals, constraints and components
+    pub signals     : S,
+    pub constraints : C,
 
     // processed includes
     pub processed_files : Vec<String>,
@@ -72,22 +74,23 @@ where
 
 }
 
-impl<S> Evaluator<S>
+impl<S,C> Evaluator<S,C>
 where
-  S : Signals {
+  S : Signals,
+  C : Constraints {
       
-    pub fn new(mode : Mode, signals : S) -> Self {
+    pub fn new(mode : Mode, signals : S, constraints: C) -> Self {
         Self {
+            signals,
+            constraints,
+            mode,
             current_file : "".to_string(),
             current_component : "".to_string(),
             current_function : None,
-            signals : signals,
-            constrains : Vec::new(),
             debug_iterations : 0,
             processed_files : Vec::new(),
             last_error : None,
-            path : PathBuf::from("."),
-            mode
+            path : PathBuf::from(".")
         }
     }
 
@@ -959,11 +962,11 @@ where
         let mut internal = || {
 
             // We have different evaluation tactics depending if we are generating
-            //   constrains or if we are running the tests.
+            //   constraints or if we are running the tests.
             //
             //    S <== 1
             //
-            // When generating constrains, first we generate the constrain, and then
+            // When generating constraints, first we generate the constrain, and then
             //  the variable is assigned
             //
             //    S === 1   // constrain generation
@@ -1079,7 +1082,7 @@ where
 
             if self.mode == Mode::GenWitness {
                 
-                // checks the constrainsTest
+                // checks the constraintsTest
                 match constrain {
                     algebra::Value::FieldScalar(ref fs) if fs.is_zero()
                         => { },
@@ -1094,7 +1097,7 @@ where
 
             } else if self.mode == Mode::GenConstraints {
 
-                // generates constrains
+                // generates constraints
                 let qeq = match constrain {
                     algebra::Value::FieldScalar(_) => return Err(Error::CannotGenerateConstrain(
                             format!("{}==={}",
@@ -1103,7 +1106,7 @@ where
                         )),
                     _ => constrain.into_qeq()
                 };
-                self.constrains.push(qeq);
+                self.constraints.push(qeq);
 
             }
 

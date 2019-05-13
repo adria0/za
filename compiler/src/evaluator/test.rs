@@ -1,17 +1,19 @@
 #[cfg(test)]
 mod test {
     use crate::evaluator::eval::{Mode,Evaluator};
-    use crate::evaluator::signal::{Signals,RamSignals};
+    use crate::storage::{RamSignals, RamConstraints, Ram,StorageFactory};
+    use crate::evaluator::constraint::Constraints;
+    use crate::evaluator::signal::Signals;
     use super::super::scope::Scope;
     use super::super::error::Result;
 
-    fn constrain_eq<'a,S:Signals>(eval: &Evaluator<S>, index: usize, value : &str) {
-        let formatted = eval.constrains[index].format(
+    fn constrain_eq<'a,S:Signals,C:Constraints>(eval: &Evaluator<S,C>, index: usize, value : &str) {
+        let formatted = eval.constraints.get(index).format(
             |id| format!("{:?}",eval.signals.get_by_id(id).unwrap().full_name)
         );
         assert_eq!(formatted,value);
     }
-    fn signal_eq<'a,S:Signals>(eval: &Evaluator<S>, name: &str, value: &str) {
+    fn signal_eq<'a,S:Signals,C:Constraints>(eval: &Evaluator<S,C>, name: &str, value: &str) {
         if let Some(signal) = eval.signals.get_by_name(name) {
             assert_eq!(eval.signals.to_string(signal.id),value);
         } else {
@@ -22,22 +24,24 @@ mod test {
         assert_eq!(scope.get(name, |v| format!("{:?}",v)),value);
     }
 
-    fn eval_generic<S:Signals>(mode: Mode, s : &str, mut signals: S) -> Result<(Evaluator<S>,Scope)> {
-        let mut evaluator = Evaluator::new(mode, signals);
+    fn eval_generic<F,S,C>(mode: Mode, s : &str, factory: F) -> Result<(Evaluator<S,C>,Scope)>
+    where F : StorageFactory<S,C>,
+          S : Signals,
+          C : Constraints
+    {
+        let mut evaluator = Evaluator::new(mode, factory.new_signals(),factory.new_constraints());
         let mut scope = Scope::new(true, None, "root".to_string());
         evaluator.eval_inline(&mut scope, s)?;
         Ok((evaluator,scope))
     }
 
-    fn eval_constraint(s : &str) -> Result<(Evaluator<RamSignals>,Scope)> {
-        let mut signals = RamSignals::default();
-        let (eval,scope) = eval_generic(Mode::GenConstraints,s,signals)?;
+    fn eval_constraint(s : &str) -> Result<(Evaluator<RamSignals,RamConstraints>,Scope)> {
+        let (eval,scope) = eval_generic(Mode::GenConstraints,s,Ram::default())?;
         Ok((eval,scope))
     }
 
-    fn eval_witness(s : &str) -> Result<(Evaluator<RamSignals>,Scope)> {
-        let mut signals = RamSignals::default();
-        let (eval,scope) = eval_generic(Mode::GenWitness,s,signals)?;
+    fn eval_witness(s : &str) -> Result<(Evaluator<RamSignals,RamConstraints>,Scope)> {
+        let (eval,scope) = eval_generic(Mode::GenWitness,s, Ram::default())?;
         Ok((eval,scope))
     }
 

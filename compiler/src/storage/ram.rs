@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use circom2_parser::ast::SignalType;
-
 use crate::algebra;
-use crate::algebra::SignalId;
+use crate::algebra::{QEQ,SignalId};
 use crate::evaluator::{SignalName,Signal,Signals};
-
+use crate::evaluator::Constraints;
 use super::StorageFactory;
 
 pub struct Ram {}
@@ -15,9 +14,12 @@ impl Default for Ram {
     }
 }
 
-impl StorageFactory<RamSignals> for Ram {
+impl StorageFactory<RamSignals,RamConstraints> for Ram {
     fn new_signals(&self) -> RamSignals {
         RamSignals::default()
+    }
+    fn new_constraints(&self) -> RamConstraints {
+        RamConstraints::default()
     }
 }
 
@@ -93,4 +95,23 @@ impl Debug for RamSignals {
         }
         Ok(())
     }
+}
+
+pub struct RamConstraints(Vec<QEQ>);
+impl Default for RamConstraints {
+    fn default() -> Self {
+        RamConstraints(Vec::new())
+    } 
+}
+impl Constraints for RamConstraints {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn get(&self, i : usize) -> QEQ {
+        self.0[i].clone()
+    }
+    fn push(&mut self, qeq : QEQ) -> usize {
+        self.0.push(qeq);
+        self.0.len() - 1
+    }   
 }

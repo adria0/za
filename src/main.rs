@@ -10,10 +10,10 @@ use codespan_reporting::termcolor::{StandardStream, ColorChoice};
 use codespan::{CodeMap, Span, ByteSpan};
 use codespan_reporting::{emit, Diagnostic, Label, Severity};
 
-use circom2_compiler::evaluator::{Signals};
+use circom2_compiler::evaluator::{Signals,Constraints};
 use circom2_compiler::storage::{Ram,StorageFactory};
 
-fn dump_error<S:Signals>(eval : &evaluator::Evaluator<S>, err : &str) {
+fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : &str) {
 
     let msg = format!("{:?}",err);
 
@@ -46,18 +46,19 @@ fn dump_error<S:Signals>(eval : &evaluator::Evaluator<S>, err : &str) {
 }
 
 fn generate_constrains(filename : &str) {
-    let ram = Ram::default();
+    let storage = Ram::default();
 
     let mut eval = evaluator::Evaluator::new(
         evaluator::Mode::GenConstraints,
-        ram.new_signals()
+        storage.new_signals(),
+        storage.new_constraints()
     );
     if let Err(err) = eval.eval_file(".",&filename) {
         dump_error(&eval, &format!("{:?}",err));
     } else {
         println!(
             "{} signals, {} constraints",
-            eval.signals.len(),eval.constrains.len()
+            eval.signals.len(),eval.constraints.len()
         );     
         // print constraints
         //println!("{:?}",eval.signals);
