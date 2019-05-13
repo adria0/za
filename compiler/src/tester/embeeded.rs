@@ -1,4 +1,4 @@
-use crate::evaluator::{Evaluator,Mode,ScopeValue,Error,Signals};
+use crate::evaluator::{Evaluator,Mode,ScopeValue,Signals};
 use crate::evaluator::Constraints;
 use crate::storage::StorageFactory;
 

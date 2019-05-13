@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path,PathBuf};
+use std::path::PathBuf;
 
 use num_bigint::BigInt;
 use circom2_parser;
@@ -12,7 +12,7 @@ use blake2_rfc::blake2b::{Blake2b};
 use hex;
 
 use super::algebra;
-use super::algebra::{SignalId,QEQ,AlgZero};
+use super::algebra::{SignalId,AlgZero};
 use super::error::*;
 use super::signal::*;
 use super::retval::*;

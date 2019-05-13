@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use circom2_parser::ast::SignalType;
+
 use crate::algebra;
 use crate::algebra::{QEQ,SignalId};
 use crate::evaluator::{SignalName,Signal,Signals};
@@ -103,6 +104,7 @@ impl Default for RamConstraints {
         RamConstraints(Vec::new())
     } 
 }
+
 impl Constraints for RamConstraints {
     fn len(&self) -> usize {
         self.0.len()
