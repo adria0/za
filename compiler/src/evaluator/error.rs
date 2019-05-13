@@ -1,6 +1,6 @@
 use super::algebra;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Error {
     NotFound(String),
     AlreadyExists(String),
@@ -15,7 +15,7 @@ pub enum Error {
     CannotGenerateConstrain(String),
     CannotTestConstrain(String),
     CannotConvertToU64(algebra::FS),
-    Io(String,std::io::Error),
+    Io(String,String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

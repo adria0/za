@@ -108,22 +108,4 @@ mod test {
             "helo         foo"
         );
     }
-
-    #[test]
-    fn parse_circomlib() {
-        let paths = read_dir("./test").unwrap();
-        for path in paths {
-            let path = path.unwrap().path();
-            if path.is_file() {
-                println!("+++ testing {} +++", path.display());
-                let mut file = File::open(path).expect("Unable to open the file");
-                let mut contents = String::new();
-                file.read_to_string(&mut contents)
-                    .expect("Unable to read the file");
-                if let Err(err) = super::parse(&contents) {
-                    panic!("{:?}", err);
-                }
-            }
-        }
-    }
 }
