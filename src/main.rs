@@ -10,7 +10,10 @@ use codespan_reporting::termcolor::{StandardStream, ColorChoice};
 use codespan::{CodeMap, Span, ByteSpan};
 use codespan_reporting::{emit, Diagnostic, Label, Severity};
 
-fn dump_error(eval : &evaluator::Evaluator, err : &evaluator::Error) {
+use circom2_compiler::evaluator::{Signals};
+use circom2_compiler::storage::{Ram,StorageFactory};
+
+fn dump_error<S:Signals>(eval : &evaluator::Evaluator<S>, err : &str) {
 
     let msg = format!("{:?}",err);
 
@@ -43,9 +46,14 @@ fn dump_error(eval : &evaluator::Evaluator, err : &evaluator::Error) {
 }
 
 fn generate_constrains(filename : &str) {
-    let mut eval = evaluator::Evaluator::new(evaluator::Mode::GenConstraints);
+    let ram = Ram::default();
+
+    let mut eval = evaluator::Evaluator::new(
+        evaluator::Mode::GenConstraints,
+        ram.new_signals()
+    );
     if let Err(err) = eval.eval_file(".",&filename) {
-        dump_error(&eval, &err);
+        dump_error(&eval, &format!("{:?}",err));
     } else {
         println!(
             "{} signals, {} constraints",
@@ -66,7 +74,8 @@ fn main() {
         if args[1] ==  "c" {
             generate_constrains(&args[2]);
         } else if args[1] == "t" {
-            if let Err((eval,err)) = tester::run_embeeded_test(".",&args[2]) {
+            let ram = Ram::default();
+            if let Err((eval,err)) = tester::run_embeeded_tests(".",&args[2],ram) {
                 dump_error(&eval,&err);
             }
         } else {

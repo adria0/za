@@ -1,7 +1,15 @@
-use crate::evaluator::{Evaluator,Mode,ScopeValue,Error};
+use crate::evaluator::{Evaluator,Mode,ScopeValue,Error,Signals};
+use crate::storage::StorageFactory;
 
-pub fn run_embeeded_test(path: &str, filename : &str) -> Result<(),(Evaluator,Error)> {   
-    let mut eval = Evaluator::new(Mode::Collect);
+pub fn run_embeeded_tests<F,S>(
+    path: &str,
+    filename : &str,
+    factory: F,
+) -> Result<(),(Evaluator<S>,String)>
+where S : Signals,
+      F : StorageFactory<S>
+{   
+    let mut eval = Evaluator::new(Mode::Collect,factory.new_signals());
     let scan_scope = eval.eval_file(&path, &filename);
     
     let tests = match &scan_scope {
@@ -19,19 +27,22 @@ pub fn run_embeeded_test(path: &str, filename : &str) -> Result<(),(Evaluator,Er
             tests
         },
         Err(err) => {
-            return Err((eval,err.clone()));
+            return Err((eval,format!("{:?}",err)));
         }
     };
 
     let mut scan_scope = scan_scope.unwrap();
 
-    for test_name in tests.iter() {
-        println!("Testing {}",test_name);
+    for test_name in tests.iter() {        
+        println!("Generating witness for {}",test_name);
         let code = format!("component test_{}={}();",test_name,test_name);        
-        let mut eval = Evaluator::new(Mode::GenWitness);
+        let mut eval = Evaluator::new(Mode::GenWitness,factory.new_signals());
         if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
-            return Err((eval,err.clone()));
+            return Err((eval,format!("{:?}",err)));
         }
+
+        println!("Testing witness for {}",test_name);
     }
-    Ok(())    
+    
+    Ok(())
 }

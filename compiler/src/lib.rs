@@ -9,4 +9,5 @@ extern crate hex;
 pub mod evaluator;
 pub mod algebra;
 pub mod optimizer;
+pub mod storage;
 pub mod tester;

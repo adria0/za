@@ -4,6 +4,7 @@ mod test {
     use std::io::prelude::*;
     use circom2_parser::parse;
     use circom2_compiler::tester;
+    use circom2_compiler::storage::Ram;
 
     #[test]
     fn circomlib_parse() {
@@ -25,8 +26,7 @@ mod test {
 
     #[test]
     fn circomlib_tests() {
-
-        if let Err((eval,err)) = tester::run_embeeded_test("./circomlib","all_tests.circom") {
+        if let Err((_,err)) = tester::run_embeeded_tests("./circomlib","all_tests.circom",Ram::default()) {
             println!("{:?}",err);
             assert!(false);
         }

@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path,PathBuf};
-use std::ffi::OsStr;
 
 use num_bigint::BigInt;
 use circom2_parser;
@@ -45,7 +44,9 @@ impl Mode {
     }
 }
 
-pub struct Evaluator {
+pub struct Evaluator<S>
+where
+  S : Signals  {
 
     // the current file, component and function being processed
     pub current_file : String,
@@ -54,7 +55,7 @@ pub struct Evaluator {
     pub debug_iterations  : usize,
 
     // collected signals, constrains and components
-    pub signals    : Signals,
+    pub signals    : S,
     pub constrains : Vec<QEQ>,
 
     // processed includes
@@ -71,14 +72,16 @@ pub struct Evaluator {
 
 }
 
-impl Evaluator {
-
-    pub fn new(mode : Mode) -> Self {
+impl<S> Evaluator<S>
+where
+  S : Signals {
+      
+    pub fn new(mode : Mode, signals : S) -> Self {
         Self {
             current_file : "".to_string(),
             current_component : "".to_string(),
             current_function : None,
-            signals : Signals::default(),
+            signals : signals,
             constrains : Vec::new(),
             debug_iterations : 0,
             processed_files : Vec::new(),

@@ -1,67 +1,24 @@
-#![allow(dead_code)]
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::fmt::{Debug, Formatter};
 use circom2_parser::ast::SignalType;
 
-use super::algebra;
-use super::algebra::SignalId;
+use crate::algebra;
+use crate::algebra::SignalId;
+use crate::evaluator::{SignalName,Signal,Signals};
 
-#[derive(Clone)]
-pub struct SignalName(Rc<String>); // see E0210
+use super::StorageFactory;
 
-impl SignalName {
-    pub fn new(s: String) -> Self {
-        SignalName(Rc::new(s))
+pub struct Ram {}
+impl Default for Ram {
+    fn default() -> Self {
+        Ram{}
     }
 }
 
-impl std::borrow::Borrow<str> for SignalName {
-   fn borrow(&self) -> &str {
-       &self.0
-   }
-}
-impl std::cmp::PartialEq for SignalName {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }    
-}
-impl std::cmp::Eq for SignalName {}
-
-impl std::hash::Hash for SignalName {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+impl StorageFactory<RamSignals> for Ram {
+    fn new_signals(&self) -> RamSignals {
+        RamSignals::default()
     }
-}
-
-impl Debug for SignalName {
-    fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(fmt, "{}",self.0)
-    }
-}
-
-impl std::string::ToString for SignalName {
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
-}
-
-#[derive(Clone)]
-pub struct Signal {
-    pub id : SignalId,
-    pub xtype : SignalType,
-    pub full_name : SignalName,
-    pub value : Option<algebra::Value>,         
-}
-
-pub trait Signals {
-    fn len(&self) -> usize;
-    fn get_by_id(&self, id : SignalId) -> Option<&Signal>;
-    fn get_by_id_mut(&mut self, id : SignalId) -> Option<&mut Signal>;
-    fn get_by_name(&self, full_name : &str) -> Option<&Signal>;
-    fn get_by_name_mut(&mut self, full_name : &str) -> Option<&mut Signal>;
-    fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> SignalId;
-    fn to_string(&self, id : SignalId) -> String;
 }
 
 pub struct RamSignals {   
@@ -108,7 +65,7 @@ impl Signals for RamSignals {
     }
     fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> SignalId {
         let id = self.ids.len() as SignalId;
-        let full_name_rc = SignalName(Rc::new(full_name));
+        let full_name_rc = SignalName::new(full_name);
 
         let signal = Signal {
             id,
