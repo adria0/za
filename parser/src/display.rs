@@ -29,7 +29,6 @@ impl Debug for VariableType {
             Signal(PublicInput) => write!(fmt, "signal input"),
             Signal(PrivateInput) => write!(fmt, "signal private input"),
             Signal(Output) => write!(fmt, "signal output"),
-            Signal(Test) => write!(fmt, "signal test"),
             Component => write!(fmt, "component"),
         }
     }

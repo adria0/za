@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path,PathBuf};
+use std::path::PathBuf;
+use std::rc::Rc;
 
 use num_bigint::BigInt;
 use circom2_parser;
@@ -12,13 +13,12 @@ use blake2_rfc::blake2b::{Blake2b};
 use hex;
 
 use super::algebra;
-use super::algebra::{SignalId,QEQ,AlgZero};
+use super::algebra::{SignalId,AlgZero};
 use super::error::*;
-use super::signal::*;
+use super::types::*;
 use super::retval::*;
 use super::scope::*;
-use super::types::*;
-use super::Constraints;
+use crate::storage::{Signals,Signal,Constraints};
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -45,6 +45,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug)]
 pub struct Evaluator<S,C>
 where
   S : Signals,
@@ -115,7 +116,9 @@ where
     }
 
     pub fn format_algebra(&self, a : algebra::Value ) -> String {
-        let sname = |id| self.signals.get_by_id(id).map_or("unknown".to_string(),|s| s.full_name.to_string());
+        let qname = |s:Option<Rc<Signal>>| Ok(s.map_or("unknown".to_string(),|s| s.full_name.to_string()));        
+        let sname = |id| self.signals.get_by_id(id).and_then(qname).unwrap();
+
         match a {
             algebra::Value::FieldScalar(fe) => format!("{:?}",fe),
             algebra::Value::LinearCombination(lc) => lc.format(sname),
@@ -403,7 +406,7 @@ where
         self.debug_trace(&format!("eval_component_expand {}",component_name),meta);
 
         scope.get(component_name, |c| match c {
-            Some(ScopeValue::Component(template_name, path, values, _)) => {
+            Some(ScopeValue::Component(template_name, _, values, _)) => {
 
                 scope.root().get(template_name, |t| match t {
                     Some(ScopeValue::Template(_, args, stmt, template_path)) => {
@@ -452,7 +455,7 @@ where
 
             // check if is a signal
             let name_sel = self.expand_selectors(scope,var,None)?;
-            if let Some(signal) = self.signals.get_by_name(&self.expand_full_name(&name_sel)) {
+            if let Some(signal) = self.signals.get_by_name(&self.expand_full_name(&name_sel))? {
                 if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
                     return Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(value.clone())))
                 } else {
@@ -747,11 +750,11 @@ where
         let mut signals = Vec::new();
         for signal_name in self.generate_selectors(scope, &var)? {
             let full_name = self.expand_full_name(&signal_name);
-            if self.signals.get_by_name(&full_name).is_some() {
+            if self.signals.get_by_name(&full_name)?.is_some() {
                 return Err(Error::AlreadyExists(format!("signal {}",full_name)));
             }    
 
-            let signal_id = self.signals.insert(full_name,xtype,None);
+            let signal_id = self.signals.insert(full_name,xtype,None)?;
             signals.push(signal_id);
         }
 
@@ -899,7 +902,7 @@ where
 
             if var.sels.is_empty() {
                 scope.update(&var.name,ScopeValue::Algebra(value))?;
-            } else if let SelectorP::Index{pos,..} = &*var.sels[0] {
+            } else if let SelectorP::Index{..} = &*var.sels[0] {
                 let indexes = self.expand_indexes(scope, &var.sels)?;
                 scope.get_mut(&var.name, |v| {
                     if let Some(ScopeValue::List(l)) = v {
@@ -991,13 +994,12 @@ where
                 
                 let signal_sel = self.expand_selectors(scope, signal,None)?;
                 let signal_full = self.expand_full_name(&signal_sel);
-                if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
+                if let Some(signal_id) = self.signals.get_by_name(&signal_full)?.map(|s| s.id) {
                     
-                    // set the signal value
+                    // set the signal valuesignal_elementsignal_element
                     let v = self.eval_expression_p(scope, expr)?;
-                    let signal_element = self.signals.get_by_id_mut(signal_id).unwrap();
                     if let ReturnValue::Algebra(a) = v {
-                        signal_element.value = Some(a);
+                        self.signals.update(signal_id, a)?;
                     }  else {
                         return Err(Error::InvalidType(format!("Cannot assign {:?} to signal",v)));
                     }
@@ -1106,7 +1108,7 @@ where
                         )),
                     _ => constrain.into_qeq()
                 };
-                self.constraints.push(qeq);
+                self.constraints.push(qeq)?;
 
             }
 

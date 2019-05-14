@@ -7,7 +7,7 @@ use num_traits::identities::Zero;
 use super::types::*;
 use super::error::{Error,Result};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Value {
     FieldScalar(FS),
     LinearCombination(LC),

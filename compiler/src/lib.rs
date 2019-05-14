@@ -5,6 +5,12 @@ extern crate codespan_reporting;
 extern crate lazy_static;
 extern crate blake2_rfc;
 extern crate hex;
+extern crate rocksdb;
+extern crate serde;
+extern crate serde_cbor;
+#[macro_use]
+extern crate serde_derive;
+extern crate rand;
 
 pub mod evaluator;
 pub mod algebra;

@@ -1,6 +1,7 @@
-use super::algebra;
+use crate::algebra;
+use crate::storage;
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub enum Error {
     NotFound(String),
     AlreadyExists(String),
@@ -15,7 +16,15 @@ pub enum Error {
     CannotGenerateConstrain(String),
     CannotTestConstrain(String),
     CannotConvertToU64(algebra::FS),
+    Storage(storage::Error),
     Io(String,String),
 }
+
+impl From<storage::Error> for Error {
+    fn from(err: storage::Error) -> Self {
+        Error::Storage(err)
+    }
+}
+
 
 pub type Result<T> = std::result::Result<T, Error>;

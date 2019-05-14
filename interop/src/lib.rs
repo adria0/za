@@ -26,9 +26,16 @@ mod test {
 
     #[test]
     fn circomlib_tests() {
-        if let Err((_,err)) = tester::run_embeeded_tests("./circomlib","all_tests.circom",Ram::default()) {
-            println!("{:?}",err);
-            assert!(false);
+        match tester::run_embeeded_tests("./circomlib","all_tests.circom",Ram::default()) {
+            Ok(Some((_,err))) => {
+                println!("{:?}",err);
+                assert!(false);
+            },
+            Err(err) => {
+                println!("{:?}",err);
+                assert!(false);
+            }
+            _ => {},
         }
     }
 

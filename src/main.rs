@@ -1,23 +1,27 @@
 extern crate circom2_parser;
-extern crate circom2_compiler;
+extern crate circom2_compiler; 
 extern crate codespan;
 extern crate codespan_reporting;
+extern crate structopt;
+extern crate stderrlog;
 
-use std::env;
+#[macro_use]
+extern crate log;
 
 use circom2_compiler::{evaluator,tester};
 use codespan_reporting::termcolor::{StandardStream, ColorChoice};
 use codespan::{CodeMap, Span, ByteSpan};
 use codespan_reporting::{emit, Diagnostic, Label, Severity};
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use circom2_compiler::evaluator::{Signals,Constraints};
-use circom2_compiler::storage::{Ram,StorageFactory};
+use circom2_compiler::storage::{Signals,Constraints};
+use circom2_compiler::storage::{Ram,Rocks,StorageFactory};
 
 fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : &str) {
 
     let msg = format!("{:?}",err);
 
-    println!("ERROR: {}",msg);
+    println!("ERROR : {}",msg);
 
     if let Some(ctx) = &eval.last_error {
 
@@ -45,20 +49,22 @@ fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : 
 
 }
 
-fn generate_constrains(filename : &str) {
-    let storage = Ram::default();
+fn generate_constrains_rocks(filename : &str) {
+    let start = SystemTime::now();
+    let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let mut storage = Rocks::new(format!("{}_db_{}",filename,since_the_epoch));
 
     let mut eval = evaluator::Evaluator::new(
         evaluator::Mode::GenConstraints,
-        storage.new_signals(),
-        storage.new_constraints()
+        storage.new_signals().unwrap(),
+        storage.new_constraints().unwrap()
     );
     if let Err(err) = eval.eval_file(".",&filename) {
         dump_error(&eval, &format!("{:?}",err));
     } else {
         println!(
             "{} signals, {} constraints",
-            eval.signals.len(),eval.constraints.len()
+            eval.signals.len().unwrap(),eval.constraints.len().unwrap()
         );     
         // print constraints
         //println!("{:?}",eval.signals);
@@ -69,20 +75,87 @@ fn generate_constrains(filename : &str) {
     }
 }
 
-fn main() {
-    let args : Vec<String> = env::args().collect();
-    if args.len() == 3 {
-        if args[1] ==  "c" {
-            generate_constrains(&args[2]);
-        } else if args[1] == "t" {
-            let ram = Ram::default();
-            if let Err((eval,err)) = tester::run_embeeded_tests(".",&args[2],ram) {
-                dump_error(&eval,&err);
-            }
-        } else {
-            panic!("Invald parameter");
-        }
+fn generate_constrains_ram(filename : &str) {
+    let mut storage = Ram::default();
+
+    let mut eval = evaluator::Evaluator::new(
+        evaluator::Mode::GenConstraints,
+        storage.new_signals().unwrap(),
+        storage.new_constraints().unwrap()
+    );
+    if let Err(err) = eval.eval_file(".",&filename) {
+        dump_error(&eval, &format!("{:?}",err));
     } else {
-        println!("Usage: {} [c|t] <file>",args[0]);
+        println!(
+            "{} signals, {} constraints",
+            eval.signals.len().unwrap(),eval.constraints.len().unwrap()
+        );     
+        // print constraints
+        //println!("{:?}",eval.signals);
+        //println!("constrains ----------------------");
+        //for constrain in eval.constrains {
+        //    println!("  {:?}=0",constrain);
+        //}
+    }
+}
+
+
+use structopt::StructOpt;
+
+/// A StructOpt example
+#[derive(StructOpt, Debug)]
+#[structopt()]
+struct Opt {
+    /// Verbose mode (-v, -vv, -vvv, etc)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
+
+    /// Timestamp (sec, ms, ns, none)
+    #[structopt(short = "t", long = "timestamp")]
+    ts: Option<stderrlog::Timestamp>,
+
+    /// Timestamp (sec, ms, ns, none)
+    #[structopt(short = "cfg", long = "cfg")]
+    cfg: String,
+
+}
+
+#[derive(StructOpt)]
+enum Command {
+    #[structopt(name = "compile")]
+    /// Compile the circuit
+    Compile {
+        file: String,
+        
+        #[structopt(long = "ram")]
+        /// Use RAM (default) or local storage 
+        use_ram: Option<bool>,
+    },
+    #[structopt(name = "test")]
+    /// Run embeeded circuit tests
+    Test {
+        file : String,
+    },
+}
+
+fn main() {
+    let cmd = Command::from_args();
+    match cmd {
+        Command::Compile{file,use_ram} => {
+            let use_ram = use_ram.unwrap_or(true);
+            if use_ram {
+                generate_constrains_ram(&file)
+            } else {
+                generate_constrains_rocks(&file)               
+            }
+        }
+        Command::Test{file} => {
+            let ram = Ram::default();
+            match tester::run_embeeded_tests(".",&file,ram) {
+                Ok(Some((eval,err))) => dump_error(&eval,&err),
+                Err(err) => println!("Error: {:?}",err),
+                _ => {}
+            }
+        }
     }
 }

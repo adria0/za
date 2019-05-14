@@ -2,20 +2,22 @@
 mod test {
     use crate::evaluator::eval::{Mode,Evaluator};
     use crate::storage::{RamSignals, RamConstraints, Ram,StorageFactory};
-    use crate::evaluator::constraint::Constraints;
-    use crate::evaluator::signal::Signals;
+    use crate::storage::{Signals,Constraints};
     use super::super::scope::Scope;
     use super::super::error::Result;
 
     fn constrain_eq<'a,S:Signals,C:Constraints>(eval: &Evaluator<S,C>, index: usize, value : &str) {
-        let formatted = eval.constraints.get(index).format(
-            |id| format!("{:?}",eval.signals.get_by_id(id).unwrap().full_name)
+        let name_of = |id|  (*(eval.signals.get_by_id(id).unwrap().unwrap())).full_name.clone();
+
+        let formatted = eval.constraints.get(index).unwrap().format(
+            |id| format!("{:?}",name_of(id))
         );
+
         assert_eq!(formatted,value);
     }
     fn signal_eq<'a,S:Signals,C:Constraints>(eval: &Evaluator<S,C>, name: &str, value: &str) {
-        if let Some(signal) = eval.signals.get_by_name(name) {
-            assert_eq!(eval.signals.to_string(signal.id),value);
+        if let Some(signal) = eval.signals.get_by_name(name).unwrap() {
+            assert_eq!(eval.signals.to_string(signal.id).unwrap(),value);
         } else {
             assert_eq!("None",value);
         }
@@ -24,12 +26,12 @@ mod test {
         assert_eq!(scope.get(name, |v| format!("{:?}",v)),value);
     }
 
-    fn eval_generic<F,S,C>(mode: Mode, s : &str, factory: F) -> Result<(Evaluator<S,C>,Scope)>
+    fn eval_generic<F,S,C>(mode: Mode, s : &str, mut factory: F) -> Result<(Evaluator<S,C>,Scope)>
     where F : StorageFactory<S,C>,
           S : Signals,
           C : Constraints
     {
-        let mut evaluator = Evaluator::new(mode, factory.new_signals(),factory.new_constraints());
+        let mut evaluator = Evaluator::new(mode, factory.new_signals()?,factory.new_constraints()?);
         let mut scope = Scope::new(true, None, "root".to_string());
         evaluator.eval_inline(&mut scope, s)?;
         Ok((evaluator,scope))

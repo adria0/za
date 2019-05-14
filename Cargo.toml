@@ -10,10 +10,13 @@ codespan-reporting = "0.2.1"
 circom2-parser = { path = "parser" }
 circom2-compiler = { path = "compiler" }
 circom2-interop = { path = "interop" }
+stderrlog = "0.4.1"
+structopt = "0.2.14"
+log = "0.4.6"
 
 [workspace]
 members = [
-    "parser",
+    "parser",   
     "compiler",
     "interop"
 ]

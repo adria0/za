@@ -1,5 +1,5 @@
 use num_bigint::BigInt;
-
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Clone, Debug)]
 pub struct Attributes(Vec<String>);
@@ -175,7 +175,7 @@ pub enum BodyElementP {
     },
 }
 
-#[derive(Debug,Copy, Clone, PartialEq)]
+#[derive(Debug,Copy, Clone, PartialEq,Serialize,Deserialize)]
 pub enum SignalType {
     Internal,
     PublicInput,
