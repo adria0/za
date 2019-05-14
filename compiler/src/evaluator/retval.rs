@@ -3,7 +3,7 @@ use num_traits::cast::ToPrimitive;
 use super::algebra;
 use super::algebra::{FS,SignalId};
 use super::error::*;
-use super::signal::*;
+use crate::storage::{Signal,Signals};
 use super::types::*;
 
 #[derive(Debug, Clone)]
@@ -15,11 +15,13 @@ pub enum ReturnValue {
 
 impl ReturnValue {
     pub fn from_signal_name(full_name: &str, signals : &Signals ) -> Result<ReturnValue> {
-        match signals.get_by_name(full_name) {
-            Some(Signal{value:Some(algebra::Value::FieldScalar(fs)), ..})
-                => Ok(ReturnValue::Algebra(algebra::Value::from(fs))),
-            Some(Signal{value:Some(_),id,..}) | Some(Signal{value:None,id,..})
-                => Ok(ReturnValue::Algebra(algebra::Value::from_signal(*id))),
+        match signals.get_by_name(full_name)? {
+            Some(rc) => match &*rc {
+                Signal{value:Some(algebra::Value::FieldScalar(fs)), ..}
+                    => Ok(ReturnValue::Algebra(algebra::Value::from(fs))),
+                Signal{value:Some(_),id,..} | Signal{value:None,id,..}
+                    => Ok(ReturnValue::Algebra(algebra::Value::from_signal(*id))),
+            }
             None
                 => Err(Error::NotFound(format!("Signal {:?}",full_name)))
         }

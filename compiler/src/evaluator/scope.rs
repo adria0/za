@@ -47,7 +47,13 @@ pub struct Scope<'a> {
     pub return_value: RefCell<Option<ReturnValue>>,
     pub vars: RefCell<HashMap<String, ScopeValue>>,
 }
-
+/*
+impl<'a> Drop for Scope<'a> {
+    fn drop(&mut self) {
+        println!("Dropping!");
+    }
+}
+*/
 impl<'a> Scope<'a> {
     pub fn new(start: bool, prev: Option<&'a Scope>, pos:String) -> Self {
         Self {

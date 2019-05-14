@@ -1,20 +1,20 @@
-use crate::evaluator::{Evaluator,Mode,ScopeValue,Signals};
-use crate::evaluator::Constraints;
-use crate::storage::StorageFactory;
+use crate::evaluator::{Evaluator,Mode,ScopeValue};
+use crate::storage::{Signals,Constraints,StorageFactory};
+use super::error::Result;
 
 pub fn run_embeeded_tests<F,S,C>(
     path: &str,
     filename : &str,
-    factory: F,
-) -> Result<(),(Evaluator<S,C>,String)>
+    mut factory: F,
+) -> Result<Option<(Evaluator<S,C>,String)>>
 where S : Signals,
       C : Constraints,
       F : StorageFactory<S,C>
 {   
     let mut eval = Evaluator::new(
         Mode::Collect,
-        factory.new_signals(),
-        factory.new_constraints()
+        factory.new_signals()?,
+        factory.new_constraints()?
     );
     let scan_scope = eval.eval_file(&path, &filename);
     
@@ -33,7 +33,7 @@ where S : Signals,
             tests
         },
         Err(err) => {
-            return Err((eval,format!("{:?}",err)));
+            return Ok(Some((eval,format!("{:?}",err))));
         }
     };
 
@@ -44,15 +44,15 @@ where S : Signals,
         let code = format!("component test_{}={}();",test_name,test_name);        
         let mut eval = Evaluator::new(
             Mode::GenWitness,
-            factory.new_signals(),
-            factory.new_constraints()
+            factory.new_signals()?,
+            factory.new_constraints()?
         );
         if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
-            return Err((eval,format!("{:?}",err)));
+            return Ok(Some((eval,format!("{:?}",err))));
         }
 
         println!("Testing witness for {}",test_name);
     }
     
-    Ok(())
+    Ok(None)
 }

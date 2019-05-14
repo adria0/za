@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use std::rc::Rc;
 use circom2_parser::ast::SignalType;
 
 use crate::algebra;
 use crate::algebra::{QEQ,SignalId};
-use crate::evaluator::{SignalName,Signal,Signals};
-use crate::evaluator::Constraints;
+use super::types::*;
+
 use super::StorageFactory;
+use super::error::Result;
 
 pub struct Ram {}
 impl Default for Ram {
@@ -16,17 +18,17 @@ impl Default for Ram {
 }
 
 impl StorageFactory<RamSignals,RamConstraints> for Ram {
-    fn new_signals(&self) -> RamSignals {
-        RamSignals::default()
+    fn new_signals(&mut self) -> Result<RamSignals> {
+        Ok(RamSignals::default())
     }
-    fn new_constraints(&self) -> RamConstraints {
-        RamConstraints::default()
-    }
+    fn new_constraints(&mut self) -> Result<RamConstraints> {
+        Ok(RamConstraints::default())
+    } 
 }
 
 pub struct RamSignals {   
     names : HashMap<SignalName,SignalId>,
-    ids   : Vec<Signal>,
+    ids   : Vec<Rc<Signal>>,
 }
 
 impl Default for RamSignals {
@@ -34,39 +36,39 @@ impl Default for RamSignals {
         let ids = Vec::new();
         let names = HashMap::new();
         let mut signals = Self { names, ids };
-        signals.insert("one".to_string(), SignalType::PublicInput,None);
+        // FIX
+        signals.insert("one".to_string(), SignalType::PublicInput,None).unwrap();
         signals
     }
 }
 
 impl Signals for RamSignals {
-    fn len(&self) -> usize {
-        self.ids.len()
+
+    fn len(&self) -> Result<usize> {
+        Ok(self.ids.len())
     }
-    fn get_by_id(&self, id : SignalId) -> Option<&Signal> {
+    
+    fn get_by_id(&self, id : SignalId) -> Result<Option<Rc<Signal>>> {
         if (id as usize) < self.ids.len() {
-            Some(&self.ids[id as usize])
+            Ok(Some(self.ids[id as usize].clone()))
         } else {
-            None
-        }
-    }
-    fn get_by_id_mut(&mut self, id : SignalId) -> Option<&mut Signal> {
-        if (id as usize) < self.ids.len() {
-            Some(&mut self.ids[id as usize])
-        } else {
-            None
+            Ok(None)
         }
     }
 
-    fn get_by_name(&self, full_name : &str) -> Option<&Signal> {
-        self.names.get(full_name)
-            .map(|id| &self.ids[*id as usize])
+    fn update(&mut self, id: SignalId, value : algebra::Value) -> Result<()> {
+        let signal = &mut self.ids[id as usize];
+        let signal_inner = Rc::get_mut(signal).unwrap();
+        signal_inner.value = Some(value);
+        Ok(())
     }
-    fn get_by_name_mut(&mut self, full_name : &str) -> Option<&mut Signal> {
-        let id = self.names.get(full_name).cloned();
-        id.map(move |id| &mut (self.ids[id as usize]))
+
+    fn get_by_name(&self, full_name : &str) -> Result<Option<Rc<Signal>>> {
+        Ok(self.names.get(full_name)
+            .map(|id| self.ids[*id as usize].clone()))
     }
-    fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> SignalId {
+
+    fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> Result<SignalId> {
         let id = self.ids.len() as SignalId;
         let full_name_rc = SignalName::new(full_name);
 
@@ -77,14 +79,14 @@ impl Signals for RamSignals {
             value : value,
         };
 
-        self.ids.push(signal);
+        self.ids.push(Rc::new(signal));
         self.names.insert(full_name_rc, id);
 
-        id
+        Ok(id)
     }
-    fn to_string(&self, id : SignalId) -> String {
+    fn to_string(&self, id : SignalId) -> Result<String> {
         let s = &self.ids[id as usize];
-        format!("{:?}:{:?}:{:?}",s.full_name,s.xtype,s.value)
+        Ok(format!("{:?}:{:?}:{:?}",s.full_name,s.xtype,s.value))
     }
 }
 
@@ -92,7 +94,7 @@ impl Debug for RamSignals {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
         writeln!(fmt, "signals --------------------------------------------")?;
         for (_,id) in &self.names {
-            writeln!(fmt, "{}",self.to_string(*id))?;
+            writeln!(fmt, "{}",self.to_string(*id).unwrap())?;
         }
         Ok(())
     }
@@ -106,14 +108,14 @@ impl Default for RamConstraints {
 }
 
 impl Constraints for RamConstraints {
-    fn len(&self) -> usize {
-        self.0.len()
+    fn len(&self) -> Result<usize> {
+        Ok(self.0.len())
     }
-    fn get(&self, i : usize) -> QEQ {
-        self.0[i].clone()
+    fn get(&self, i : usize) -> Result<QEQ> {
+        Ok(self.0[i].clone())
     }
-    fn push(&mut self, qeq : QEQ) -> usize {
+    fn push(&mut self, qeq : QEQ) -> Result<usize> {
         self.0.push(qeq);
-        self.0.len() - 1
+        Ok(self.0.len() - 1)
     }   
 }

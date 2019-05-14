@@ -1,6 +1,7 @@
-use crate::evaluator::{Signals,Constraints};
+use super::types::{Signals,Constraints};
+use super::error::Result;
 
 pub trait StorageFactory<S:Signals,C:Constraints> {
-    fn new_signals(&self) -> S;
-    fn new_constraints(&self) -> C;
+    fn new_signals(&mut self) -> Result<S>;
+    fn new_constraints(&mut self) -> Result<C>;
 }
