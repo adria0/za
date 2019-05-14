@@ -21,8 +21,6 @@ fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : 
 
     let msg = format!("{:?}",err);
 
-    println!("ERROR : {}",msg);
-
     if let Some(ctx) = &eval.last_error {
 
         let span : ByteSpan= Span::from_offset(
@@ -30,7 +28,7 @@ fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : 
             (1+(ctx.meta.end - ctx.meta.start) as i64).into()
         );
 
-        //println!("{}",ctx.scope);
+        println!("{}",ctx.scope);
 
         if ctx.file != "" {    
             let mut code_map = CodeMap::new();
@@ -52,7 +50,7 @@ fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : 
 fn generate_constrains_rocks(filename : &str) {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
-    let mut storage = Rocks::new(format!("{}_db_{}",filename,since_the_epoch));
+    let mut storage = Rocks::new(format!("db_{}_{}",filename,since_the_epoch));
 
     let mut eval = evaluator::Evaluator::new(
         evaluator::Mode::GenConstraints,
@@ -62,7 +60,7 @@ fn generate_constrains_rocks(filename : &str) {
     if let Err(err) = eval.eval_file(".",&filename) {
         dump_error(&eval, &format!("{:?}",err));
     } else {
-        println!(
+        info!(
             "{} signals, {} constraints",
             eval.signals.len().unwrap(),eval.constraints.len().unwrap()
         );     
@@ -86,7 +84,7 @@ fn generate_constrains_ram(filename : &str) {
     if let Err(err) = eval.eval_file(".",&filename) {
         dump_error(&eval, &format!("{:?}",err));
     } else {
-        println!(
+        info!(
             "{} signals, {} constraints",
             eval.signals.len().unwrap(),eval.constraints.len().unwrap()
         );     
@@ -139,6 +137,13 @@ enum Command {
 }
 
 fn main() {
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(2)
+        .timestamp(stderrlog::Timestamp::Off)
+        .init()
+    .unwrap();
+
     let cmd = Command::from_args();
     match cmd {
         Command::Compile{file,use_ram} => {
@@ -153,7 +158,7 @@ fn main() {
             let ram = Ram::default();
             match tester::run_embeeded_tests(".",&file,ram) {
                 Ok(Some((eval,err))) => dump_error(&eval,&err),
-                Err(err) => println!("Error: {:?}",err),
+                Err(err) => warn!("Error: {:?}",err),
                 _ => {}
             }
         }

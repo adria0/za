@@ -53,9 +53,10 @@ where
 
     // the current file, component and function being processed
     pub current_file : String,
-    pub current_component : String,
-    pub current_function  : Option<String>,
-    pub debug_iterations  : usize,
+    pub current_component     : String,
+    pub current_function      : Option<String>,
+    pub debug_iterations      : usize,
+    pub debug_last_constraint : std::time::Instant,
 
     // collected signals, constraints and components
     pub signals     : S,
@@ -89,9 +90,10 @@ where
             current_component : "".to_string(),
             current_function : None,
             debug_iterations : 0,
+            debug_last_constraint : std::time::Instant::now(),
             processed_files : Vec::new(),
             last_error : None,
-            path : PathBuf::from(".")
+            path : PathBuf::from("."),
         }
     }
 
@@ -1108,8 +1110,13 @@ where
                         )),
                     _ => constrain.into_qeq()
                 };
-                self.constraints.push(qeq)?;
-
+                let count = self.constraints.push(qeq)?;
+                if count > 0 && count % 100000 == 0 {
+                    let now = std::time::Instant::now();
+                    let diff = now.duration_since(self.debug_last_constraint);
+                    println!("Generated {} constrains, @ {} c/s",count,100000000/diff.as_millis());
+                    self.debug_last_constraint = now;
+                }
             }
 
             Ok(())

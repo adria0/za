@@ -88,10 +88,6 @@ impl<'a> Signals for RocksSignals {
     fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) ->  Result<SignalId> {
 
         let index = inc_u64(&mut self.db,&vec![0])? - 1;
-        if index % 100000 == 0 {
-            println!("{} signals defined",index);
-        }
-
         let index_bytes = u64_to_le(index as u64);
 
         let entry = SignalEntry {
