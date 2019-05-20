@@ -20,8 +20,7 @@ where S : Signals,
     
     let tests = match &scan_scope {
         Ok(scope) => {
-            let vars = scope.vars.borrow();
-            let tests = vars.iter()
+            scope.vars.borrow().iter()
                 .filter_map( |(k,v)|
                     match v  {
                         ScopeValue::Template{attrs,..} if attrs.has_tag_test() => Some(k),
@@ -29,8 +28,7 @@ where S : Signals,
                     }
                 )
                 .map ( |f| f.to_string() )
-                .collect::<Vec<_>>();
-            tests
+                .collect::<Vec<_>>()
         },
         Err(err) => {
             return Ok(Some((eval,format!("{:?}",err))));

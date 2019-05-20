@@ -280,7 +280,7 @@ where
 
     fn eval_component_decl(
         &mut self,
-        meta: &Meta,
+        _meta: &Meta,
         scope: &Scope,
         name: &VariableP,
      ) -> Result<()> {
@@ -329,15 +329,13 @@ where
 
                             if let StatementP::Block{stmts,..} = &**stmt {
                                 for stmt in stmts {
-                                    match &**stmt { 
-                                        StatementP::Declaration{meta,name,xtype:VariableType::Signal(xtype),..}
-                                        =>  if *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput {                                           
+                                    if let StatementP::Declaration{meta,name,xtype:VariableType::Signal(xtype),..} = &**stmt {
+                                       if *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput {                                           
                                             let mut signals = self.eval_declaration_signals(meta, &mut template_scope,*xtype, name)?;
                                             if self.mode == Mode::GenWitness {
                                                 all_pending_input_signals.append(&mut signals);
                                             }
-                                        }
-                                        _ => {}
+                                       }                                       
                                     }
                                 }
                             } else {
@@ -718,7 +716,7 @@ where
 
     fn eval_declaration_signals(
         &mut self,
-        meta: &Meta,
+        _meta: &Meta,
         scope: &mut Scope,
         xtype: SignalType,
         var: &VariableP,
@@ -955,10 +953,8 @@ where
             //    
 
             // eval == iff in GenContraints
-            if self.mode == Mode::GenConstraints {     
-                if op == Opcode::SignalContrainLeft {
-                    self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
-                }
+            if self.mode == Mode::GenConstraints && op == Opcode::SignalContrainLeft {
+                self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
             }
 
             // eval <-- 
@@ -1005,10 +1001,8 @@ where
             }
 
             // eval == iff when generating witness
-            if self.mode == Mode::GenWitness {     
-                if op == Opcode::SignalContrainLeft {
-                    self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
-                }
+            if self.mode == Mode::GenWitness && op == Opcode::SignalContrainLeft {
+                self.eval_signal_eq(meta, scope,&ExpressionP::Variable{meta:meta.clone(), name:Box::new(signal.clone())},expr)?;
             }
               
             Ok(())
@@ -1079,10 +1073,10 @@ where
                     _ => constrain.into_qeq()
                 };
                 let count = self.constraints.push(qeq)?;
-                if count > 0 && count % 100000 == 0 {
+                if count > 0 && count % 100_000 == 0 {
                     let now = std::time::Instant::now();
                     let diff = now.duration_since(self.debug_last_constraint);
-                    println!("Generated {} constrains, @ {} c/s",count,100000000/diff.as_millis());
+                    println!("Generated {} constrains, @ {} c/s",count,100_000_000/diff.as_millis());
                     self.debug_last_constraint = now;
                 }
             }
@@ -1261,7 +1255,7 @@ where
         Ok(v_sel)
     }
 
-    fn expand_indexes(&mut self, scope: &Scope, sels : &Vec<Box<SelectorP>>) -> Result<Vec<usize>>{
+    fn expand_indexes(&mut self, scope: &Scope, sels : &[Box<SelectorP>]) -> Result<Vec<usize>>{
         let mut indexes = Vec::new();
         for sel in sels {
             match &**sel {

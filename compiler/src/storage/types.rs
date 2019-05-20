@@ -57,6 +57,7 @@ pub struct Signal {
 }
 
 pub trait Signals {
+    fn is_empty(&self) -> Result<bool>;
     fn len(&self) -> Result<usize>;
     fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> Result<SignalId>;
     fn update(&mut self, id : SignalId, value : algebra::Value) -> Result<()>;
@@ -66,6 +67,7 @@ pub trait Signals {
 }
 
 pub trait Constraints {
+    fn is_empty(&self) -> Result<bool>;
     fn len(&self) -> Result<usize>;
     fn get(&self, i : usize) -> Result<QEQ>;
     fn push(&mut self, qeq : QEQ) -> Result<usize>;

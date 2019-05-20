@@ -33,7 +33,7 @@ fn dump_error<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, err : 
         if ctx.file != "" {    
             let mut code_map = CodeMap::new();
             code_map.add_filemap_from_disk(&ctx.file)
-                .expect(&format!("cannot read source file '{}'",&ctx.file));
+                .unwrap_or_else(|_| panic!("cannot read source file '{}'",&ctx.file));
                 
             let error = Diagnostic::new(Severity::Error, "Failed to execute")
                 .with_label(
