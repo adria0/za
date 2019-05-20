@@ -23,10 +23,10 @@ pub fn print_summary(qeqs : Vec<QEQ>) {
         let id = qeq_type(&constrain);
         *counts.entry(id).or_insert(0) += 1;
 
-        if constrain.a.0.len() == 0
-           && constrain.b.0.len() == 0
+        if constrain.a.0.is_empty()
+           && constrain.b.0.is_empty()
            && constrain.c.0.len() == 2
-           && ( constrain.c.0[0].0 == one || constrain.c.0[0].0 == one ) {
+           && ( constrain.c.0[0].0 == one || constrain.c.0[1].0 == one ) {
                constants +=1;
         }
     }
@@ -36,7 +36,7 @@ pub fn print_summary(qeqs : Vec<QEQ>) {
     
     println!("constants => {}",constants);
     for key in keys {
-        println!("{:09} => {}",key,counts.get(key).unwrap());
+        println!("{:09} => {}",key,counts[key]);
     }
 }
 
@@ -59,10 +59,10 @@ pub fn reduce_constrains(qeqs : Vec<QEQ>) {
         
         *counts.entry(id).or_insert(0) += 1;
 
-        if constrain.a.0.len() == 0
-           && constrain.b.0.len() == 0
+        if constrain.a.0.is_empty()
+           && constrain.b.0.is_empty()
            && constrain.c.0.len() == 2
-           && ( constrain.c.0[0].0 == one || constrain.c.0[0].0 == one ) {
+           && ( constrain.c.0[0].0 == one || constrain.c.0[1].0 == one ) {
                constants +=1;
         }
     }
@@ -72,7 +72,7 @@ pub fn reduce_constrains(qeqs : Vec<QEQ>) {
     
     println!("constants => {}",constants);
     for key in keys {
-        println!("{:09} => {}",key,counts.get(key).unwrap());
+        println!("{:09} => {}",key,counts[&key]);
     }
 }
 
@@ -103,8 +103,8 @@ pub fn print_dot(qeqs : Vec<QEQ>) {
             for j in 0..i {
                 let one = 0 as SignalId;
                 if i != j && *signals[i]!= one && *signals[j]!=one {
-                    let id1 = signals[i] * 100000000 + signals[j];
-                    let id2 = signals[i] + signals[j] * 100000000 ;
+                    let id1 = signals[i] * 100_000_000 + signals[j];
+                    let id2 = signals[i] + signals[j] * 100_000_000 ;
                     if !added.contains_key(&id1) && !added.contains_key(&id2) {
                         println!("s{} -- s{};",signals[i],signals[j]);
                         added.insert(id1,());

@@ -77,9 +77,6 @@ pub fn parse(expr: &str) -> Result<Vec<ast::BodyElementP>> {
 
 #[cfg(test)]
 mod test {
-    use std::fs::{read_dir, File};
-    use std::io::prelude::*;
-
     fn test_preprocess(expr: &str, expected: &str) {
         let pp = super::preprocess(expr).unwrap();
         assert_eq!(&format!("{}", pp), expected);

@@ -44,6 +44,10 @@ impl Default for RamSignals {
 
 impl Signals for RamSignals {
 
+    fn is_empty(&self) -> Result<bool> {
+        Ok(self.len()?==0)
+    }
+
     fn len(&self) -> Result<usize> {
         Ok(self.ids.len())
     }
@@ -76,7 +80,7 @@ impl Signals for RamSignals {
             id,
             xtype,
             full_name : full_name_rc.clone(),
-            value : value,
+            value,
         };
 
         self.ids.push(Rc::new(signal));
@@ -93,7 +97,7 @@ impl Signals for RamSignals {
 impl Debug for RamSignals {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
         writeln!(fmt, "signals --------------------------------------------")?;
-        for (_,id) in &self.names {
+        for id in self.names.values() {
             writeln!(fmt, "{}",self.to_string(*id).unwrap())?;
         }
         Ok(())
@@ -108,6 +112,9 @@ impl Default for RamConstraints {
 }
 
 impl Constraints for RamConstraints {
+    fn is_empty(&self) -> Result<bool> {
+        Ok(self.len()?==0)
+    }
     fn len(&self) -> Result<usize> {
         Ok(self.0.len())
     }

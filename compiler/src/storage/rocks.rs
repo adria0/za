@@ -82,16 +82,15 @@ impl RocksSignals {
 }
 
 impl<'a> Signals for RocksSignals {
+    fn is_empty(&self) -> Result<bool> {
+        Ok(self.len()?==0)
+    }
     fn len(&self) -> Result<usize>  {
-        Ok(get_u64(&self.db,&vec![0])?.unwrap_or(0) as usize)
+        Ok(get_u64(&self.db,&[0])?.unwrap_or(0) as usize)
     }
     fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) ->  Result<SignalId> {
 
-        let index = inc_u64(&mut self.db,&vec![0])? - 1;
-        if index % 100000 == 0 {
-            println!("{} signals defined",index);
-        }
-
+        let index = inc_u64(&mut self.db,&[0])? - 1;
         let index_bytes = u64_to_le(index as u64);
 
         let entry = SignalEntry {
@@ -115,7 +114,8 @@ impl<'a> Signals for RocksSignals {
     fn update(&mut self, id : SignalId, value : algebra::Value) ->  Result<()> {
         if let Some((index,mut entry)) = self.load(id)? {
             entry.value = Some(value);
-            Ok(self.db.put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?)
+            self.db.put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?;
+            Ok(())
         } else {
             Err(Error::NotFound(format!("signal {}",id)))
         }
@@ -151,8 +151,11 @@ impl<'a> Signals for RocksSignals {
 }
 
 impl<'a> Constraints for RockConstraints {
+    fn is_empty(&self) -> Result<bool> {
+        Ok(self.len()?==0)
+    }
     fn len(&self) -> Result<usize> {
-        Ok(get_u64(&self.db,&vec![0])?.unwrap_or(0) as usize)
+        Ok(get_u64(&self.db,&[0])?.unwrap_or(0) as usize)
     }
     fn get(&self, i : usize) -> Result<QEQ> {
         let mut key: Vec<u8> = vec![1];
@@ -163,7 +166,7 @@ impl<'a> Constraints for RockConstraints {
         }
     }
     fn push(&mut self, qeq : QEQ) -> Result<usize> {
-        let index = inc_u64(&mut self.db,&vec![0])? - 1;
+        let index = inc_u64(&mut self.db,&[0])? - 1;
         let mut key: Vec<u8> = vec![1];
         key.extend_from_slice(&u64_to_le(index as u64));
         self.db.put(&key.to_owned(), to_vec(&qeq).unwrap().as_slice())?;

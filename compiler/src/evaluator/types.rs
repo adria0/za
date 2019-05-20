@@ -9,7 +9,7 @@ pub enum List {
 
 impl List {
     pub fn new(sizes : &[usize]) -> Self {
-        if sizes.len() == 0{
+        if sizes.is_empty() {
             List::Algebra(algebra::Value::default())
         } else {
             let mut l = Vec::new();
@@ -21,7 +21,7 @@ impl List {
     }
 
     pub fn get(&self, indexes : &[usize]) -> Result<&List> {
-        if indexes.len() > 0 {
+        if !indexes.is_empty() {
             match self {
                 List::Algebra(_) =>
                     Err(Error::InvalidSelector(format!("index at [{}] contains a value",indexes[0]))),
@@ -44,7 +44,7 @@ impl List {
                 Err(Error::InvalidSelector(format!("index at [{}] contains a value",indexes[0]))),
             
             List::List(v) => {
-                if indexes.len()==0 || indexes[0] >= v.len() {
+                if indexes.is_empty() || indexes[0] >= v.len() {
                     Err(Error::InvalidSelector(format!("invalid index for {:?}",v)))
                 } else if indexes.len() == 1 {
                     v[indexes[0]] = List::Algebra(value.clone());
