@@ -17,9 +17,23 @@ pub enum ScopeValue {
     UndefComponent,
     Bool(bool),
     Algebra(algebra::Value),
-    Function(Vec<String>, Box<StatementP>, String),
-    Template(Attributes, Vec<String>, Box<StatementP>, String),
-    Component(String,String,Vec<ReturnValue>,Vec<algebra::SignalId>), 
+    Function {
+        args : Vec<String>,
+        stmt : Box<StatementP>,
+        path : String
+    },
+    Template {
+        attrs : Attributes,
+        args : Vec<String>,
+        stmt : Box<StatementP>,
+        path : String
+    },
+    Component {
+        template : String,
+        path : String,
+        args : Vec<ReturnValue>,
+        pending_inputs : Vec<algebra::SignalId>
+    }, 
     List(List),
 }
 
@@ -47,13 +61,7 @@ pub struct Scope<'a> {
     pub return_value: RefCell<Option<ReturnValue>>,
     pub vars: RefCell<HashMap<String, ScopeValue>>,
 }
-/*
-impl<'a> Drop for Scope<'a> {
-    fn drop(&mut self) {
-        println!("Dropping!");
-    }
-}
-*/
+
 impl<'a> Scope<'a> {
     pub fn new(start: bool, prev: Option<&'a Scope>, pos:String) -> Self {
         Self {

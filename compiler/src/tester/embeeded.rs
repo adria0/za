@@ -24,7 +24,7 @@ where S : Signals,
             let tests = vars.iter()
                 .filter_map( |(k,v)|
                     match v  {
-                        ScopeValue::Template(attrs,_,_,_) if attrs.has_tag_test() => Some(k),
+                        ScopeValue::Template{attrs,..} if attrs.has_tag_test() => Some(k),
                          _  => None
                     }
                 )

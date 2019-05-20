@@ -55,9 +55,8 @@ where
     pub current_file : String,
     pub current_component     : String,
     pub current_function      : Option<String>,
-    pub debug_iterations      : usize,
     pub debug_last_constraint : std::time::Instant,
-
+    
     // collected signals, constraints and components
     pub signals     : S,
     pub constraints : C,
@@ -89,7 +88,6 @@ where
             current_file : "".to_string(),
             current_component : "".to_string(),
             current_function : None,
-            debug_iterations : 0,
             debug_last_constraint : std::time::Instant::now(),
             processed_files : Vec::new(),
             last_error : None,
@@ -129,15 +127,6 @@ where
     }
 
     // evaluators -----------------------------------------------------------------------------------
-
-    fn debug_trace(&mut self, intfunc: &str, _meta: &Meta) {
-        if self.debug_iterations == 0 {
-            self.debug_iterations = 100000;
-            // println!("debug: {} {}:{} {:?}",intfunc, self.current_file,self.current_component,self.current_function);
-        } else {
-            self.debug_iterations -= 1;
-        }
-    }
 
     fn register_error<T>(&mut self,  meta: &Meta, scope: &Scope, res: Result<T>) -> Result<T> {        
         if res.is_err() && self.last_error.is_none() {
@@ -223,8 +212,6 @@ where
         name: &str,
         params: &[Box<ExpressionP>],
     ) -> Result<()> {
-        self.debug_trace("eval_internal_call",meta);
-
         let mut internal = || {        
             if name == "dbg" {
                 print!("DBG ");            
@@ -253,12 +240,10 @@ where
         scope: &Scope,
         name: &str,
         params: &[Box<ExpressionP>],
-    ) -> Result<ReturnValue> {
-        self.debug_trace("eval_function_call",meta);
-        
+    ) -> Result<ReturnValue> {        
         let mut internal = || {        
             scope.root().get(name, |v| match v {
-                Some(ScopeValue::Function(args, stmt, function_path)) => {
+                Some(ScopeValue::Function{args, stmt, path}) => {
                     if args.len() != params.len() {
                         return Err(Error::InvalidParameter(name.to_string()));
                     }
@@ -274,7 +259,7 @@ where
                     }
 
                     let mut new_current_function = Some(name.to_string()); 
-                    let mut new_current_file = function_path.to_string(); 
+                    let mut new_current_file = path.to_string(); 
 
                     std::mem::swap(&mut new_current_function, &mut self.current_function);
                     std::mem::swap(&mut new_current_file, &mut self.current_file);
@@ -299,7 +284,6 @@ where
         scope: &Scope,
         name: &VariableP,
      ) -> Result<()> {
-        self.debug_trace("eval_component_decl",meta);
         for selector_name in self.generate_selectors(scope, &name)? {
             scope.insert(selector_name, ScopeValue::UndefComponent);
         }
@@ -313,12 +297,11 @@ where
         component_name: &str,
         init: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace("eval_component_inst",meta);
 
         let mut internal = || {
             let (updated, pending_signals_count) = if let ExpressionP::FunctionCall{name: template_name, args: params,..} = init {
                 scope.root().get(template_name, |v| match v {
-                    Some(ScopeValue::Template(_, args, stmt, template_path)) => {
+                    Some(ScopeValue::Template{args, stmt, path,..}) => {
                         if args.len() != params.len() {
                             Err(Error::InvalidParameter(format!("Invalid parameter count when instantiating {}",template_name)))
                         } else {
@@ -339,7 +322,7 @@ where
                             }
 
                             let mut new_current_component = self.expand_full_name(component_name);
-                            let mut new_current_file = template_path.to_string();
+                            let mut new_current_file = path.to_string();
 
                             std::mem::swap(&mut new_current_file, &mut self.current_file);
                             std::mem::swap(&mut new_current_component, &mut self.current_component);
@@ -367,7 +350,12 @@ where
                             let all_pending_input_signals_count = all_pending_input_signals.len();
 
                             Ok((
-                                ScopeValue::Component(template_name.to_string(),template_path.to_string(),evalargs,all_pending_input_signals),
+                                ScopeValue::Component {
+                                    template: template_name.to_string(),
+                                    path: path.to_string(),
+                                    args: evalargs,
+                                    pending_inputs : all_pending_input_signals,
+                                },
                                 all_pending_input_signals_count
                             ))
                         }
@@ -405,13 +393,12 @@ where
         scope: &Scope,
         component_name: &str,
     ) -> Result<()> {
-        self.debug_trace(&format!("eval_component_expand {}",component_name),meta);
 
         scope.get(component_name, |c| match c {
-            Some(ScopeValue::Component(template_name, _, values, _)) => {
+            Some(ScopeValue::Component{template, args: values,..}) => {
 
-                scope.root().get(template_name, |t| match t {
-                    Some(ScopeValue::Template(_, args, stmt, template_path)) => {
+                scope.root().get(template, |t| match t {
+                    Some(ScopeValue::Template{args, stmt, path,..}) => {
 
                         // put arguments in scope
                         let mut template_scope = Scope::new(
@@ -424,7 +411,7 @@ where
                         
                         // set new component & file scope
                         let mut new_current_component = self.expand_full_name(component_name);
-                        let mut new_current_file = template_path.to_string();
+                        let mut new_current_file = path.to_string();
 
                         std::mem::swap(&mut new_current_file, &mut self.current_file);
                         std::mem::swap(&mut new_current_component, &mut self.current_component);
@@ -451,7 +438,6 @@ where
         scope: &Scope,
         var: &VariableP
     ) -> Result<ReturnValue> {
-        self.debug_trace("eval_variable",meta);
 
         let mut internal = || {
 
@@ -502,7 +488,6 @@ where
         scope: &Scope,
         n: &BigInt
     ) -> Result<ReturnValue> {
-        self.debug_trace("eval_number",meta);
 
         let internal = || {
             Ok(ReturnValue::Algebra(algebra::Value::from(n)))
@@ -518,7 +503,6 @@ where
         op: Opcode,
         rhe: &ExpressionP
     ) -> Result<ReturnValue> {
-        self.debug_trace("eval_prefix_op",meta);
 
         let mut internal = || {
             let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
@@ -536,7 +520,6 @@ where
         op: Opcode, 
         rhe: &ExpressionP,
     ) -> Result<ReturnValue> {
-        self.debug_trace("eval_infix_op",meta);
 
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?;
@@ -594,7 +577,6 @@ where
         scope: &Scope,
         exprs: &[Box<ExpressionP>]
     ) -> Result<ReturnValue> {
-        self.debug_trace("eval_array",meta);
 
         let mut internal = || {
             let mut out : Vec<List> = Vec::new();
@@ -619,7 +601,6 @@ where
         xthen: &StatementP,
         xelse: &Option<Box<StatementP>>,
     ) -> Result<()> {
-        self.debug_trace("eval_if_then_else",meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -646,7 +627,6 @@ where
         step: &StatementP,
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace("eval_for",meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -686,8 +666,6 @@ where
         cond: &ExpressionP,
         stmt: &StatementP
     ) -> Result<()> {
-
-        self.debug_trace("eval_while",meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -725,8 +703,6 @@ where
         scope: &mut Scope,
         expr: &ExpressionP
     ) -> Result<()> {
-
-        self.debug_trace("eval_return",meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -747,8 +723,6 @@ where
         xtype: SignalType,
         var: &VariableP,
     ) -> Result<Vec<SignalId>> {
-        self.debug_trace("eval_declaration_signals",meta);
-
         let mut signals = Vec::new();
         for signal_name in self.generate_selectors(scope, &var)? {
             let full_name = self.expand_full_name(&signal_name);
@@ -771,7 +745,6 @@ where
         var: &VariableP,
         init: &Option<(Opcode, Box<ExpressionP>)>,
     ) -> Result<()> {
-        self.debug_trace("eval_declaration",meta);
 
         if self.mode.skip_eval(&meta) {
             return Ok(())
@@ -856,7 +829,6 @@ where
         op: Opcode,
         expr: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace(&format!("eval_substitution {:?}={:?}",var,expr),meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -928,7 +900,6 @@ where
         scope: &mut Scope,
         stmts: &[Box<StatementP>]
     ) -> Result<()> {
-        self.debug_trace("eval_block",meta);
         if self.mode.skip_eval(&meta) {
             return Ok(())
         }
@@ -960,7 +931,6 @@ where
         op: Opcode, 
         expr: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace("eval_signal_left",meta);
         
         // inv : op == Opcode::SignalContrainLeft || op == Opcode::SignalWireLeft 
 
@@ -1013,9 +983,9 @@ where
 
                             let pending_signals_len = scope.get_mut(&component_name, |var| {
                                 match var {
-                                    Some(ScopeValue::Component(_, _, _, pending_signals)) => {
-                                        pending_signals.retain(|s| *s!=signal_id);
-                                        pending_signals.len()
+                                    Some(ScopeValue::Component{pending_inputs,..}) => {
+                                        pending_inputs.retain(|s| *s!=signal_id);
+                                        pending_inputs.len()
                                     }
                                     _ => {
                                         panic!("signal not found '{}' in scope {:?}",signal.name,meta)
@@ -1056,7 +1026,6 @@ where
         op: Opcode,
         signal: &VariableP,
     ) -> Result<()> {
-        self.debug_trace("eval_signal_right",meta);
 
         let mut internal = || {
             use Opcode::*;
@@ -1077,7 +1046,6 @@ where
         lhe: &ExpressionP,
         rhe: &ExpressionP,
     ) -> Result<()> {
-        self.debug_trace("eval_signal_eq",meta);
 
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?.into_algebra()?;
@@ -1131,7 +1099,6 @@ where
         scope: &mut Scope,
         filename: &str
     ) -> Result<()> {
-        self.debug_trace("eval_include",meta);
 
         let mut internal = || {
             
@@ -1182,16 +1149,15 @@ where
         args: &[String],
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace("eval_function_def",meta);
 
         let internal = || {
             scope.insert(
                 name.to_string(),
-                ScopeValue::Function(
-                    args.to_vec(),
-                    Box::new(stmt.clone()),
-                    self.current_file.to_string()
-                )
+                ScopeValue::Function{
+                    args : args.to_vec(),
+                    stmt : Box::new(stmt.clone()),
+                    path : self.current_file.to_string()
+                }
             );
             Ok(())
         };
@@ -1207,18 +1173,17 @@ where
         args: &[String],
         stmt: &StatementP,
     ) -> Result<()> {
-        self.debug_trace("eval_template_def",meta);
 
         let internal = || {
 
             scope.insert(
                 name.to_string(),
-                ScopeValue::Template(
-                    meta.attrs.clone(),
-                    args.to_vec(),
-                    Box::new(stmt.clone()),
-                    self.current_file.clone()
-                )
+                ScopeValue::Template {
+                    attrs : meta.attrs.clone(),
+                    args : args.to_vec(),
+                    stmt : Box::new(stmt.clone()),
+                    path : self.current_file.clone()
+                }
             );
             Ok(())
         };
@@ -1232,7 +1197,6 @@ where
         scope: &mut Scope,
         bes : &[BodyElementP]
     ) -> Result<()> {
-        self.debug_trace("eval_body_elements_p",meta);
         let mut internal = || {
             for be in bes {
                 self.eval_body_element_p(scope, &be)?;
