@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use std::rc::Rc;
-use std::fmt::{Debug, Formatter};
-use circom2_parser::ast::SignalType;
 use crate::algebra::QEQ;
+use circom2_parser::ast::SignalType;
+use std::fmt::{Debug, Formatter};
+use std::rc::Rc;
 
 use super::error::Result;
 
@@ -19,14 +19,14 @@ impl SignalName {
 }
 
 impl std::borrow::Borrow<str> for SignalName {
-   fn borrow(&self) -> &str {
-       &self.0
-   }
+    fn borrow(&self) -> &str {
+        &self.0
+    }
 }
 impl std::cmp::PartialEq for SignalName {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
-    }    
+    }
 }
 impl std::cmp::Eq for SignalName {}
 
@@ -38,7 +38,7 @@ impl std::hash::Hash for SignalName {
 
 impl Debug for SignalName {
     fn fmt(&self, fmt: &mut Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(fmt, "{}",self.0)
+        write!(fmt, "{}", self.0)
     }
 }
 
@@ -50,25 +50,30 @@ impl std::string::ToString for SignalName {
 
 #[derive(Clone)]
 pub struct Signal {
-    pub id : SignalId,
-    pub xtype : SignalType,
-    pub full_name : SignalName,
-    pub value : Option<algebra::Value>,         
+    pub id: SignalId,
+    pub xtype: SignalType,
+    pub full_name: SignalName,
+    pub value: Option<algebra::Value>,
 }
 
 pub trait Signals {
     fn is_empty(&self) -> Result<bool>;
     fn len(&self) -> Result<usize>;
-    fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) -> Result<SignalId>;
-    fn update(&mut self, id : SignalId, value : algebra::Value) -> Result<()>;
-    fn get_by_id(&self, id : SignalId) -> Result<Option<Rc<Signal>>>;
-    fn get_by_name(&self, full_name : &str) -> Result<Option<Rc<Signal>>>;
-    fn to_string(&self, id : SignalId) -> Result<String>;
+    fn insert(
+        &mut self,
+        full_name: String,
+        xtype: SignalType,
+        value: Option<algebra::Value>,
+    ) -> Result<SignalId>;
+    fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()>;
+    fn get_by_id(&self, id: SignalId) -> Result<Option<Rc<Signal>>>;
+    fn get_by_name(&self, full_name: &str) -> Result<Option<Rc<Signal>>>;
+    fn to_string(&self, id: SignalId) -> Result<String>;
 }
 
 pub trait Constraints {
     fn is_empty(&self) -> Result<bool>;
     fn len(&self) -> Result<usize>;
-    fn get(&self, i : usize) -> Result<QEQ>;
-    fn push(&mut self, qeq : QEQ) -> Result<usize>;
+    fn get(&self, i: usize) -> Result<QEQ>;
+    fn push(&mut self, qeq: QEQ) -> Result<usize>;
 }

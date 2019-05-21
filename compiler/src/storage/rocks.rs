@@ -1,74 +1,77 @@
-use rocksdb::{DB};
 use circom2_parser::ast::SignalType;
+use rocksdb::DB;
 
 use std::rc::Rc;
 
-use crate::algebra;
-use crate::algebra::{QEQ,SignalId};
+use super::error::{Error, Result};
+use super::types::{Constraints, Signal, SignalName, Signals};
 use super::StorageFactory;
-use super::error::{Error,Result};
-use super::types::{Constraints,Signals,Signal,SignalName};
+use crate::algebra;
+use crate::algebra::{SignalId, QEQ};
 
 use serde_cbor::{from_slice, to_vec};
 use std::path::PathBuf;
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct SignalEntry {
-    pub id : u64,
-    pub xtype : SignalType,
-    pub full_name : String,
-    pub value : Option<algebra::Value>,
+    pub id: u64,
+    pub xtype: SignalType,
+    pub full_name: String,
+    pub value: Option<algebra::Value>,
 }
 
 pub struct Rocks {
-    base_path : String,
-    count : usize,
+    base_path: String,
+    count: usize,
 }
 
 impl Rocks {
-    pub fn new(base_path: String ) -> Rocks {
-        Rocks{base_path,count:0}
+    pub fn new(base_path: String) -> Rocks {
+        Rocks {
+            base_path,
+            count: 0,
+        }
     }
 }
 
-impl StorageFactory<RocksSignals,RockConstraints> for Rocks {
+impl StorageFactory<RocksSignals, RockConstraints> for Rocks {
     fn new_signals(&mut self) -> Result<RocksSignals> {
         let mut full_path = PathBuf::new();
         full_path.push(&self.base_path);
-        full_path.push(format!("_signals_{}",self.count));
-        self.count+=1;
+        full_path.push(format!("_signals_{}", self.count));
+        self.count += 1;
         RocksSignals::new(full_path.as_os_str().to_str().unwrap())
     }
     fn new_constraints(&mut self) -> Result<RockConstraints> {
         let mut full_path = PathBuf::new();
         full_path.push(&self.base_path);
-        full_path.push(format!("_constraints_{}",self.count));
-        self.count+=1;
+        full_path.push(format!("_constraints_{}", self.count));
+        self.count += 1;
         RockConstraints::new(full_path.as_os_str().to_str().unwrap())
     }
 }
 
 pub struct RocksSignals {
-    db : DB,
+    db: DB,
 }
 
 impl RocksSignals {
     pub fn new(path: &str) -> Result<Self> {
-        Ok(DB::open_default(path).map(|x| RocksSignals{ db: x })?)
+        Ok(DB::open_default(path).map(|x| RocksSignals { db: x })?)
     }
 }
 
 pub struct RockConstraints {
-    db : DB,
+    db: DB,
 }
 impl RockConstraints {
     pub fn new(path: &str) -> Result<Self> {
-        Ok(DB::open_default(path).map(|x| RockConstraints{ db: x })?)
+        Ok(DB::open_default(path).map(|x| RockConstraints { db: x })?)
     }
 }
 
 impl RocksSignals {
-    fn load(&self,  id : SignalId) -> Result<Option<(Vec<u8>,SignalEntry)>>{
+    fn load(&self, id: SignalId) -> Result<Option<(Vec<u8>, SignalEntry)>> {
         let index_bytes = u64_to_le(id as u64);
 
         let mut key: Vec<u8> = vec![1];
@@ -76,119 +79,126 @@ impl RocksSignals {
 
         match self.db.get(&key)? {
             None => Ok(None),
-            Some(v) => Ok(Some((key,from_slice::<SignalEntry>(&v)?)))
+            Some(v) => Ok(Some((key, from_slice::<SignalEntry>(&v)?))),
         }
     }
 }
 
 impl<'a> Signals for RocksSignals {
     fn is_empty(&self) -> Result<bool> {
-        Ok(self.len()?==0)
+        Ok(self.len()? == 0)
     }
-    fn len(&self) -> Result<usize>  {
-        Ok(get_u64(&self.db,&[0])?.unwrap_or(0) as usize)
+    fn len(&self) -> Result<usize> {
+        Ok(get_u64(&self.db, &[0])?.unwrap_or(0) as usize)
     }
-    fn insert(&mut self, full_name: String, xtype: SignalType, value : Option<algebra::Value>) ->  Result<SignalId> {
-
-        let index = inc_u64(&mut self.db,&[0])? - 1;
+    fn insert(
+        &mut self,
+        full_name: String,
+        xtype: SignalType,
+        value: Option<algebra::Value>,
+    ) -> Result<SignalId> {
+        let index = inc_u64(&mut self.db, &[0])? - 1;
         let index_bytes = u64_to_le(index as u64);
 
         let entry = SignalEntry {
-            id : index,
+            id: index,
             xtype,
             full_name,
-            value 
+            value,
         };
 
         let mut key: Vec<u8> = vec![1];
         key.extend_from_slice(&index_bytes);
-        self.db.put(&key.to_owned(), to_vec(&entry).unwrap().as_slice())?;
-        
+        self.db
+            .put(&key.to_owned(), to_vec(&entry).unwrap().as_slice())?;
+
         let mut key: Vec<u8> = vec![2];
         key.extend_from_slice(entry.full_name.as_bytes());
         self.db.put(&key.to_owned(), &index_bytes)?;
-        
+
         Ok(index as usize)
     }
 
-    fn update(&mut self, id : SignalId, value : algebra::Value) ->  Result<()> {
-        if let Some((index,mut entry)) = self.load(id)? {
+    fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()> {
+        if let Some((index, mut entry)) = self.load(id)? {
             entry.value = Some(value);
-            self.db.put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?;
+            self.db
+                .put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?;
             Ok(())
         } else {
-            Err(Error::NotFound(format!("signal {}",id)))
+            Err(Error::NotFound(format!("signal {}", id)))
         }
     }
 
-    fn get_by_id(&self, id : SignalId) ->  Result<Option<Rc<Signal>>> {
-
-        if let Some((_,entry)) = self.load(id)? {
+    fn get_by_id(&self, id: SignalId) -> Result<Option<Rc<Signal>>> {
+        if let Some((_, entry)) = self.load(id)? {
             Ok(Some(Rc::new(Signal {
-                id : entry.id as usize,
-                xtype : entry.xtype,
-                full_name : SignalName::new(entry.full_name),
-                value : entry.value,
+                id: entry.id as usize,
+                xtype: entry.xtype,
+                full_name: SignalName::new(entry.full_name),
+                value: entry.value,
             })))
         } else {
             Ok(None)
         }
     }
 
-    fn get_by_name(&self, full_name : &str) ->  Result<Option<Rc<Signal>>> {
+    fn get_by_name(&self, full_name: &str) -> Result<Option<Rc<Signal>>> {
         let mut key: Vec<u8> = vec![2];
         key.extend_from_slice(full_name.as_bytes());
         match self.db.get(&key)? {
             None => Ok(None),
-            Some(v) => self.get_by_id(u64_from_slice(&v) as usize) 
+            Some(v) => self.get_by_id(u64_from_slice(&v) as usize),
         }
     }
 
-    fn to_string(&self, id : SignalId) ->  Result<String> {
-        let (_,s) = self.load(id)?.unwrap();
-        Ok(format!("{:?}:{:?}:{:?}",s.full_name,s.xtype,s.value))
+    fn to_string(&self, id: SignalId) -> Result<String> {
+        let (_, s) = self.load(id)?.unwrap();
+        Ok(format!("{:?}:{:?}:{:?}", s.full_name, s.xtype, s.value))
     }
 }
 
 impl<'a> Constraints for RockConstraints {
     fn is_empty(&self) -> Result<bool> {
-        Ok(self.len()?==0)
+        Ok(self.len()? == 0)
     }
     fn len(&self) -> Result<usize> {
-        Ok(get_u64(&self.db,&[0])?.unwrap_or(0) as usize)
+        Ok(get_u64(&self.db, &[0])?.unwrap_or(0) as usize)
     }
-    fn get(&self, i : usize) -> Result<QEQ> {
+    fn get(&self, i: usize) -> Result<QEQ> {
         let mut key: Vec<u8> = vec![1];
         key.extend_from_slice(&u64_to_le(i as u64));
         match self.db.get(&key)? {
-            None => Err(Error::NotFound(format!("Constraint at index {}",i))),
-            Some(v) => Ok(from_slice::<QEQ>(&v)?)
+            None => Err(Error::NotFound(format!("Constraint at index {}", i))),
+            Some(v) => Ok(from_slice::<QEQ>(&v)?),
         }
     }
-    fn push(&mut self, qeq : QEQ) -> Result<usize> {
-        let index = inc_u64(&mut self.db,&[0])? - 1;
+    fn push(&mut self, qeq: QEQ) -> Result<usize> {
+        let index = inc_u64(&mut self.db, &[0])? - 1;
         let mut key: Vec<u8> = vec![1];
         key.extend_from_slice(&u64_to_le(index as u64));
-        self.db.put(&key.to_owned(), to_vec(&qeq).unwrap().as_slice())?;
+        self.db
+            .put(&key.to_owned(), to_vec(&qeq).unwrap().as_slice())?;
         Ok(index as usize)
     }
 }
 
 /// increment an u64 counter
-fn inc_u64(db:&mut DB, key : &[u8]) -> Result<u64> {
-    let value = 1+get_u64(db,&key)?.unwrap_or(0);
-    set_u64(db,&key,value)?;
-    Ok(value)       
+fn inc_u64(db: &mut DB, key: &[u8]) -> Result<u64> {
+    let value = 1 + get_u64(db, &key)?.unwrap_or(0);
+    set_u64(db, &key, value)?;
+    Ok(value)
 }
 
 /// get an u64 counter
-fn get_u64(db: &DB, key : &[u8]) -> Result<Option<u64>> {
-    Ok(db.get(&key)
+fn get_u64(db: &DB, key: &[u8]) -> Result<Option<u64>> {
+    Ok(db
+        .get(&key)
         .map(|bytes| bytes.map(|v| u64_from_slice(&*v)))?)
 }
 
 /// set an u64 counter
-fn set_u64(db:&mut DB, key: &[u8], n: u64) -> Result<()> {
+fn set_u64(db: &mut DB, key: &[u8], n: u64) -> Result<()> {
     db.put(&key, &u64_to_le(n))?;
     Ok(())
 }
@@ -203,20 +213,20 @@ fn u64_to_le(v: u64) -> [u8; 8] {
         ((v >> 24) & 0xff) as u8,
         ((v >> 16) & 0xff) as u8,
         ((v >> 8) & 0xff) as u8,
-        ((v     ) & 0xff) as u8,
+        ((v) & 0xff) as u8,
     ]
 }
 
 /// get u64 from litte endian
 fn le_to_u64(v: [u8; 8]) -> u64 {
     u64::from(v[7])
-    + (u64::from(v[6]) << 8 )
-    + (u64::from(v[5]) << 16)
-    + (u64::from(v[4]) << 24)
-    + (u64::from(v[3]) << 32)
-    + (u64::from(v[2]) << 40)
-    + (u64::from(v[1]) << 48)
-    + (u64::from(v[0]) << 56)
+        + (u64::from(v[6]) << 8)
+        + (u64::from(v[5]) << 16)
+        + (u64::from(v[4]) << 24)
+        + (u64::from(v[3]) << 32)
+        + (u64::from(v[2]) << 40)
+        + (u64::from(v[1]) << 48)
+        + (u64::from(v[0]) << 56)
 }
 
 /// get u64 from litte endian slice
@@ -229,10 +239,10 @@ fn u64_from_slice(v: &[u8]) -> u64 {
 #[cfg(test)]
 mod test {
 
-    use super::{Rocks,Signals,Constraints};
     use super::super::Result;
     use super::super::StorageFactory;
-    use crate::algebra::{FS,QEQ,Value};
+    use super::{Constraints, Rocks, Signals};
+    use crate::algebra::{Value, FS, QEQ};
 
     use super::SignalType;
     use rand::distributions::Alphanumeric;
@@ -256,55 +266,61 @@ mod test {
 
     #[test]
     fn test_rocks_signals() -> Result<()> {
-
         let one = FS::one();
         let two = &one + &one;
         let three = &one + &two;
 
         let mut rocks = init();
         let mut signals = rocks.new_signals()?;
-        assert_eq!(0,signals.len()?);
+        assert_eq!(0, signals.len()?);
 
-        signals.insert("s1".to_string(),SignalType::Internal,Some(Value::from(one)))?;
-        signals.insert("s2".to_string(),SignalType::Internal,Some(Value::from(two)))?;
-        signals.insert("s3".to_string(),SignalType::Internal,None)?;
-        assert_eq!(3,signals.len()?);
+        signals.insert(
+            "s1".to_string(),
+            SignalType::Internal,
+            Some(Value::from(one)),
+        )?;
+        signals.insert(
+            "s2".to_string(),
+            SignalType::Internal,
+            Some(Value::from(two)),
+        )?;
+        signals.insert("s3".to_string(), SignalType::Internal, None)?;
+        assert_eq!(3, signals.len()?);
 
         let s1 = &*signals.get_by_name("s1")?.unwrap();
-        assert_eq!("Some(1)",format!("{:?}",s1.value));
+        assert_eq!("Some(1)", format!("{:?}", s1.value));
 
         let s2 = &*signals.get_by_name("s2")?.unwrap();
-        assert_eq!("Some(2)",format!("{:?}",s2.value));
+        assert_eq!("Some(2)", format!("{:?}", s2.value));
 
         let s3 = &*signals.get_by_name("s3")?.unwrap();
-        assert_eq!("s3",s3.full_name.to_string());
-        assert_eq!(true,s3.value.is_none());
+        assert_eq!("s3", s3.full_name.to_string());
+        assert_eq!(true, s3.value.is_none());
 
-        signals.update(s3.id,Value::from(three))?;
-        assert_eq!(3,signals.len()?);
+        signals.update(s3.id, Value::from(three))?;
+        assert_eq!(3, signals.len()?);
 
         let s3 = &*signals.get_by_name("s3")?.unwrap();
-        assert_eq!("Some(3)",format!("{:?}",s3.value));
+        assert_eq!("Some(3)", format!("{:?}", s3.value));
 
         Ok(())
     }
 
     #[test]
     fn test_rocks_constraints() -> Result<()> {
-        
         let one = QEQ::from(&FS::one());
         let two = QEQ::from(&(&FS::one() + &FS::one()));
 
         let mut rocks = init();
         let mut constraints = rocks.new_constraints()?;
-        assert_eq!(0,constraints.len()?);
+        assert_eq!(0, constraints.len()?);
 
         let c1 = constraints.push(one)?;
         let c2 = constraints.push(two)?;
 
-        assert_eq!(2,constraints.len()?);
-        assert_eq!("[ ]*[ ]+[1s0]",format!("{:?}",constraints.get(c1)?));
-        assert_eq!("[ ]*[ ]+[2s0]",format!("{:?}",constraints.get(c2)?));
+        assert_eq!(2, constraints.len()?);
+        assert_eq!("[ ]*[ ]+[1s0]", format!("{:?}", constraints.get(c1)?));
+        assert_eq!("[ ]*[ ]+[2s0]", format!("{:?}", constraints.get(c2)?));
 
         Ok(())
     }

@@ -1,5 +1,5 @@
 use super::algebra;
-use super::error::{Result,Error};
+use super::error::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub enum List {
@@ -8,7 +8,7 @@ pub enum List {
 }
 
 impl List {
-    pub fn new(sizes : &[usize]) -> Self {
+    pub fn new(sizes: &[usize]) -> Self {
         if sizes.is_empty() {
             List::Algebra(algebra::Value::default())
         } else {
@@ -20,40 +20,46 @@ impl List {
         }
     }
 
-    pub fn get(&self, indexes : &[usize]) -> Result<&List> {
+    pub fn get(&self, indexes: &[usize]) -> Result<&List> {
         if !indexes.is_empty() {
             match self {
-                List::Algebra(_) =>
-                    Err(Error::InvalidSelector(format!("index at [{}] contains a value",indexes[0]))),
+                List::Algebra(_) => Err(Error::InvalidSelector(format!(
+                    "index at [{}] contains a value",
+                    indexes[0]
+                ))),
                 List::List(v) => {
                     if indexes[0] >= v.len() {
-                        Err(Error::InvalidSelector(format!("index at [{}] too large",indexes[0])))
+                        Err(Error::InvalidSelector(format!(
+                            "index at [{}] too large",
+                            indexes[0]
+                        )))
                     } else {
                         v[indexes[0]].get(&indexes[1..])
                     }
                 }
             }
         } else {
-            Ok(self)    
+            Ok(self)
         }
     }
 
-    pub fn set(&mut self, value: &algebra::Value, indexes : &[usize]) -> Result<()> {
+    pub fn set(&mut self, value: &algebra::Value, indexes: &[usize]) -> Result<()> {
         match self {
-            List::Algebra(_) =>
-                Err(Error::InvalidSelector(format!("index at [{}] contains a value",indexes[0]))),
-            
+            List::Algebra(_) => Err(Error::InvalidSelector(format!(
+                "index at [{}] contains a value",
+                indexes[0]
+            ))),
+
             List::List(v) => {
                 if indexes.is_empty() || indexes[0] >= v.len() {
-                    Err(Error::InvalidSelector(format!("invalid index for {:?}",v)))
+                    Err(Error::InvalidSelector(format!("invalid index for {:?}", v)))
                 } else if indexes.len() == 1 {
                     v[indexes[0]] = List::Algebra(value.clone());
                     Ok(())
                 } else {
-                    v[indexes[0]].set(value, &indexes[1..])  
+                    v[indexes[0]].set(value, &indexes[1..])
                 }
             }
         }
     }
-
 }

@@ -1,5 +1,5 @@
-use num_bigint::{BigInt,BigUint};
 use super::types::SignalId;
+use num_bigint::{BigInt, BigUint};
 
 pub const SIGNAL_ONE: SignalId = 0;
 

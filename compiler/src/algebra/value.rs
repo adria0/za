@@ -1,11 +1,11 @@
 use std::fmt;
 
 use circom2_parser::ast;
-use num_bigint::{BigUint,BigInt};
+use num_bigint::{BigInt, BigUint};
 use num_traits::identities::Zero;
 
+use super::error::{Error, Result};
 use super::types::*;
-use super::error::{Error,Result};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -15,8 +15,8 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn from_signal(signal : SignalId) -> Self {
-        Value::LinearCombination(LC::from_signal(signal,FS::one()))
+    pub fn from_signal(signal: SignalId) -> Self {
+        Value::LinearCombination(LC::from_signal(signal, FS::one()))
     }
     pub fn into_qeq(self) -> QEQ {
         use Value::*;
@@ -29,7 +29,7 @@ impl Value {
     pub fn try_to_signal(&self) -> Option<SignalId> {
         if let Value::LinearCombination(lc) = self {
             if lc.0.len() == 1 && lc.0[0].1.is_one() {
-                return Some(lc.0[0].0)
+                return Some(lc.0[0].0);
             }
         }
         None
@@ -90,8 +90,8 @@ impl fmt::Debug for Value {
 }
 
 pub fn eval_infix(lhv: &Value, op: ast::Opcode, rhv: &Value) -> Result<Value> {
-    use Value::*;
     use ast::Opcode::*;
+    use Value::*;
     match (op, lhv, rhv) {
         // add
         (Add, FieldScalar(lhv), FieldScalar(rhv)) => Ok(FieldScalar(lhv + rhv)),
@@ -156,19 +156,25 @@ pub fn eval_infix(lhv: &Value, op: ast::Opcode, rhv: &Value) -> Result<Value> {
         // powmod
         (Pow, FieldScalar(lhv), FieldScalar(rhv)) => Ok(FieldScalar(lhv.pow(rhv))),
 
-        _ => Err(Error::InvalidOperation(format!("Cannot apply operator {:?} on {:?} over {:?}",op,lhv,rhv))),
+        _ => Err(Error::InvalidOperation(format!(
+            "Cannot apply operator {:?} on {:?} over {:?}",
+            op, lhv, rhv
+        ))),
     }
 }
 
 pub fn eval_prefix(op: ast::Opcode, rhv: &Value) -> Result<Value> {
-    use Value::*;
     use ast::Opcode::Sub;
+    use Value::*;
     match (op, rhv) {
         // negate
         (Sub, FieldScalar(rhv)) => Ok(FieldScalar(-rhv)),
         (Sub, LinearCombination(rhv)) => Ok(LinearCombination(-rhv)),
         (Sub, QuadraticEquation(rhv)) => Ok(QuadraticEquation(-rhv)),
 
-        _ => Err(Error::InvalidOperation(format!("Cannot apply operator {:?} on {:?}",op,rhv))),
+        _ => Err(Error::InvalidOperation(format!(
+            "Cannot apply operator {:?} on {:?}",
+            op, rhv
+        ))),
     }
 }

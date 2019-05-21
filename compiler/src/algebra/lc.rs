@@ -2,8 +2,8 @@ use std::fmt;
 use std::iter;
 use std::ops::{Add, Mul, Neg};
 
-use super::traits::AlgZero;
 use super::constants::*;
+use super::traits::AlgZero;
 use super::types::*;
 
 impl LC {
@@ -33,13 +33,15 @@ impl LC {
     pub fn rm(&mut self, signal: SignalId) {
         self.0.retain(|(s, _)| *s != signal);
     }
-    pub fn format<F>(&self, func : F) -> String
-    where 
-        F : Fn(SignalId)-> String {
-
-        if let Some((head,tail)) = self.0.split_first() {
-            let head = format!("{}{}",head.1.format(false),func(head.0));
-            let tail = tail.iter().map(|(s,v)|  format!("{}{}",v.format(true),func(*s)));
+    pub fn format<F>(&self, func: F) -> String
+    where
+        F: Fn(SignalId) -> String,
+    {
+        if let Some((head, tail)) = self.0.split_first() {
+            let head = format!("{}{}", head.1.format(false), func(head.0));
+            let tail = tail
+                .iter()
+                .map(|(s, v)| format!("{}{}", v.format(true), func(*s)));
             iter::once(head).chain(tail).collect::<Vec<_>>().join("")
         } else {
             "0".to_string()
@@ -69,8 +71,8 @@ impl<'a> From<&'a FS> for LC {
 }
 
 impl fmt::Debug for LC {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {        
-        write!(fmt,"{}",self.format(|s| format!("s{}",s)))
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
+        write!(fmt, "{}", self.format(|s| format!("s{}", s)))
     }
 }
 
@@ -106,7 +108,7 @@ impl<'a> Mul<&'a FS> for &'a LC {
 
     fn mul(self, rhs: &'a FS) -> LC {
         if rhs.is_zero() {
-            LC::zero()    
+            LC::zero()
         } else {
             LC(self.0.iter().map(|(s, e)| (*s, e * rhs)).collect())
         }
@@ -206,7 +208,7 @@ mod test {
         let lc_1s1_n1s2 = &-lc_n1s1_1s2;
         assert_eq!("1s1-1s2", format!("{:?}", lc_1s1_n1s2));
 
-        let lc_zero =  lc_n1s1_1s2 + lc_1s1_n1s2;
+        let lc_zero = lc_n1s1_1s2 + lc_1s1_n1s2;
         assert_eq!("0", format!("{:?}", lc_zero));
     }
 

@@ -1,16 +1,16 @@
-use num_bigint::{BigInt,BigUint};
+use num_bigint::{BigInt, BigUint};
 use num_traits;
-use std::fmt;
-use std::ops::{Add, AddAssign, Mul, Div, Neg,Shl,Shr, Rem, BitAnd, BitOr, BitXor };
-use std::cmp::Ordering;
-use num_traits::cast::ToPrimitive;
 use num_traits::cast::FromPrimitive;
-use num_traits::identities::{Zero,One};
+use num_traits::cast::ToPrimitive;
+use num_traits::identities::{One, Zero};
+use std::cmp::Ordering;
+use std::fmt;
+use std::ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr};
 
-use super::error::{Result,Error};
-use super::types::*;
-use super::traits::AlgZero;
 use super::constants::{FIELD_INT, FIELD_UINT, FIELD_UINT_NEG, ONE};
+use super::error::{Error, Result};
+use super::traits::AlgZero;
+use super::types::*;
 
 // Field Scalar  ------------------------------------------------
 
@@ -31,10 +31,10 @@ impl FS {
     pub fn is_neg(&self) -> bool {
         self.0.cmp(&FIELD_UINT_NEG as &BigUint) == Ordering::Greater
     }
-    pub fn format(&self, plus_sign_at_start : bool) -> String {
+    pub fn format(&self, plus_sign_at_start: bool) -> String {
         if self.is_neg() {
             format!("-{}", (-self).0.to_str_radix(10))
-        } else if plus_sign_at_start  {
+        } else if plus_sign_at_start {
             format!("+{}", self.0.to_str_radix(10))
         } else {
             self.0.to_str_radix(10)
@@ -44,19 +44,23 @@ impl FS {
         if let Some(self_u64) = self.0.to_u64() {
             if let Some(rhs_u64) = rhs.0.to_u64() {
                 let v = BigUint::from_u64(self_u64 << rhs_u64).unwrap();
-                return Ok(FS(v ))
-            }  
+                return Ok(FS(v));
+            }
         }
-        Err(Error::InvalidOperation("Only can shl on 64 bit values".to_string()))
+        Err(Error::InvalidOperation(
+            "Only can shl on 64 bit values".to_string(),
+        ))
     }
     pub fn shr(&self, rhs: &FS) -> Result<FS> {
         if let Some(self_u64) = self.0.to_u64() {
             if let Some(rhs_u64) = rhs.0.to_u64() {
                 let v = BigUint::from_u64(self_u64 >> rhs_u64).unwrap();
-                return Ok(FS(v))
-            }  
+                return Ok(FS(v));
+            }
         }
-        Err(Error::InvalidOperation("Only can shr on 64 bit values".to_string()))
+        Err(Error::InvalidOperation(
+            "Only can shr on 64 bit values".to_string(),
+        ))
     }
     pub fn pow(&self, rhs: &FS) -> FS {
         FS::from(self.0.modpow(&rhs.0, FS::field()))
@@ -65,7 +69,6 @@ impl FS {
     pub fn intdiv(&self, rhs: &FS) -> FS {
         FS::from(&self.0 / &rhs.0)
     }
-
 }
 
 impl PartialEq for FS {
@@ -124,7 +127,7 @@ impl AlgZero for FS {
 
 impl fmt::Debug for FS {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
-        write!(fmt,"{}",self.format(false))
+        write!(fmt, "{}", self.format(false))
     }
 }
 
@@ -136,7 +139,6 @@ impl<'a> Neg for &'a FS {
         FS::from(FS::field() - &self.0)
     }
 }
-
 
 // &FS + &FS -> FS
 impl<'a> Add<&'a FS> for &'a FS {
@@ -159,19 +161,22 @@ impl<'a> Mul<&'a FS> for &'a FS {
 // &FS / &FS -> FS
 impl<'a> Div<&'a FS> for &'a FS {
     type Output = Result<FS>;
-    
+
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: &'a FS) -> Result<FS> {
         let GcdResult { gcd, c1: c, .. } = extended_gcd(
-            BigInt::from_biguint(num_bigint::Sign::Plus,rhs.0.clone()), 
-            FS::field_int().clone()
+            BigInt::from_biguint(num_bigint::Sign::Plus, rhs.0.clone()),
+            FS::field_int().clone(),
         );
 
         if gcd == BigInt::one() {
             let rhs_inv = normalize(&c, FS::field_int()).to_biguint().unwrap();
             Ok(FS::from(&self.0 * rhs_inv))
         } else {
-            Err(Error::InvalidOperation(format!("Cannot find inv gcd={}",gcd.to_str_radix(10))))
+            Err(Error::InvalidOperation(format!(
+                "Cannot find inv gcd={}",
+                gcd.to_str_radix(10)
+            )))
         }
     }
 }
@@ -201,9 +206,11 @@ impl<'a> Shl<&'a FS> for &'a FS {
     type Output = Result<FS>;
     fn shl(self, rhs: &'a FS) -> Result<FS> {
         if let Some(rhs_usize) = rhs.0.to_usize() {
-            return Ok(FS::from(&self.0 << rhs_usize))
+            return Ok(FS::from(&self.0 << rhs_usize));
         } else {
-            Err(Error::InvalidOperation("Only can shl on 64 bit values".to_string()))
+            Err(Error::InvalidOperation(
+                "Only can shl on 64 bit values".to_string(),
+            ))
         }
     }
 }
@@ -213,9 +220,11 @@ impl<'a> Shr<&'a FS> for &'a FS {
     type Output = Result<FS>;
     fn shr(self, rhs: &'a FS) -> Result<FS> {
         if let Some(rhs_usize) = rhs.0.to_usize() {
-            return Ok(FS::from(&self.0 >> rhs_usize))
+            return Ok(FS::from(&self.0 >> rhs_usize));
         } else {
-            Err(Error::InvalidOperation("Only can shr on 64 bit values".to_string()))
+            Err(Error::InvalidOperation(
+                "Only can shr on 64 bit values".to_string(),
+            ))
         }
     }
 }
@@ -250,14 +259,14 @@ pub struct GcdResult {
     /// Greatest common divisor.
     pub gcd: BigInt,
     /// Coefficients such that: gcd(a, b) = c1*a + c2*b
-    pub c1: BigInt, pub c2: BigInt,
+    pub c1: BigInt,
+    pub c2: BigInt,
 }
 
 /// Taken from unknown source, re-check
 /// Calculate greatest common divisor and the corresponding coefficients.
 #[allow(clippy::many_single_char_names)]
 pub fn extended_gcd(a: BigInt, b: BigInt) -> GcdResult {
-
     // Euclid's extended algorithm
     let (mut s, mut old_s) = (BigInt::zero(), BigInt::one());
     let (mut t, mut old_t) = (BigInt::one(), BigInt::zero());
@@ -265,14 +274,21 @@ pub fn extended_gcd(a: BigInt, b: BigInt) -> GcdResult {
 
     while r != BigInt::zero() {
         let quotient = &old_r / &r;
-        old_r -= &quotient * &r; std::mem::swap(&mut old_r, &mut r);
-        old_s -= &quotient * &s; std::mem::swap(&mut old_s, &mut s);
-        old_t -= quotient * &t; std::mem::swap(&mut old_t, &mut t);
+        old_r -= &quotient * &r;
+        std::mem::swap(&mut old_r, &mut r);
+        old_s -= &quotient * &s;
+        std::mem::swap(&mut old_s, &mut s);
+        old_t -= quotient * &t;
+        std::mem::swap(&mut old_t, &mut t);
     }
 
     let _quotients = (t, s); // == (a, b) / gcd
 
-    GcdResult { gcd: old_r, c1: old_s, c2: old_t }
+    GcdResult {
+        gcd: old_r,
+        c1: old_s,
+        c2: old_t,
+    }
 }
 
 /// Find the standard representation of a (mod n).
@@ -288,9 +304,9 @@ pub fn normalize(a: &BigInt, n: &BigInt) -> BigInt {
 
 #[cfg(test)]
 mod test {
+    use super::super::Result;
     use super::*;
     use num_bigint::ToBigUint;
-    use super::super::Result;
 
     fn u32_to_fs(n: u32) -> FS {
         FS::from(n.to_biguint().unwrap())
@@ -335,25 +351,25 @@ mod test {
     }
 
     #[test]
-    fn test_fs_shl() -> Result<()> {        
-        let forty = &u32_to_fs(10) << &u32_to_fs(2);        
+    fn test_fs_shl() -> Result<()> {
+        let forty = &u32_to_fs(10) << &u32_to_fs(2);
         assert_eq!("40", format!("{:?}", forty?));
 
         Ok(())
     }
 
     #[test]
-    fn test_fs_shr() -> Result<()> {    
-        let twenty = &u32_to_fs(40) >> &u32_to_fs(1);        
+    fn test_fs_shr() -> Result<()> {
+        let twenty = &u32_to_fs(40) >> &u32_to_fs(1);
         assert_eq!("20", format!("{:?}", twenty?));
 
         Ok(())
     }
 
     #[test]
-    fn test_div() -> Result<()> {    
-        let div = &u32_to_fs(1) / &u32_to_fs(2); 
-        let mul = &u32_to_fs(6)  * &div?;
+    fn test_div() -> Result<()> {
+        let div = &u32_to_fs(1) / &u32_to_fs(2);
+        let mul = &u32_to_fs(6) * &div?;
         assert_eq!("3", format!("{:?}", mul));
 
         Ok(())

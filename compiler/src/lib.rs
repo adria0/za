@@ -10,11 +10,11 @@ extern crate serde;
 extern crate serde_cbor;
 #[macro_use]
 extern crate serde_derive;
-extern crate rand;
 extern crate log;
+extern crate rand;
 
-pub mod evaluator;
 pub mod algebra;
+pub mod evaluator;
 pub mod optimizer;
 pub mod storage;
 pub mod tester;

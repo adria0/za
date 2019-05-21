@@ -1,18 +1,20 @@
 use std::fmt;
 use std::ops::{Add, Mul, Neg};
 
-use super::types::*;
 use super::traits::AlgZero;
+use super::types::*;
 
 impl QEQ {
-    pub fn format<F>(&self, func : F) -> String
-    where 
-        F : Fn(SignalId)-> String {
-
-        let f = |v:&LC| if !v.0.is_empty() {
-            v.format(&func)
-        } else {
-             " ".to_string()
+    pub fn format<F>(&self, func: F) -> String
+    where
+        F: Fn(SignalId) -> String,
+    {
+        let f = |v: &LC| {
+            if !v.0.is_empty() {
+                v.format(&func)
+            } else {
+                " ".to_string()
+            }
         };
         format!("[{}]*[{}]+[{}]", f(&self.a), f(&self.b), f(&self.c))
     }
@@ -33,10 +35,9 @@ impl AlgZero for QEQ {
 
 impl fmt::Debug for QEQ {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
-        write!(fmt, "{}", self.format(|s| format!("s{}",s)))
+        write!(fmt, "{}", self.format(|s| format!("s{}", s)))
     }
 }
-
 
 // &QEQ + &FS -> QEQ
 impl<'a> Add<&'a FS> for &'a QEQ {
@@ -124,7 +125,7 @@ mod test {
         let lc_1s1 = &LC::from_signal(s1, FS::one());
         let lc_1s2 = &LC::from_signal(s2, FS::one());
         let lc_1s1_1s2_one = &(lc_1s1 * lc_1s2) + one;
-        
+
         assert_eq!("[1s1]*[1s2]+[1s0]", format!("{:?}", lc_1s1_1s2_one));
         assert_eq!("[2s1]*[1s2]+[2s0]", format!("{:?}", &lc_1s1_1s2_one * two));
     }

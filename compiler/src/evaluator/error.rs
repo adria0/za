@@ -17,7 +17,7 @@ pub enum Error {
     CannotTestConstrain(String),
     CannotConvertToU64(algebra::FS),
     Storage(storage::Error),
-    Io(String,String),
+    Io(String, String),
 }
 
 impl From<storage::Error> for Error {
@@ -25,6 +25,5 @@ impl From<storage::Error> for Error {
         Error::Storage(err)
     }
 }
-
 
 pub type Result<T> = std::result::Result<T, Error>;

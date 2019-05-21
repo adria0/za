@@ -1,181 +1,182 @@
 use num_bigint::BigInt;
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug)]
 pub struct Attributes(Vec<String>);
 
 impl Attributes {
-    pub fn has_tag(&self, t : &str) -> bool {
-        self.0.iter().any(|e| e==t)
+    pub fn has_tag(&self, t: &str) -> bool {
+        self.0.iter().any(|e| e == t)
     }
     pub fn has_tag_w(&self) -> bool {
         self.has_tag("w")
     }
     pub fn has_tag_test(&self) -> bool {
-        self.has_tag("test")        
+        self.has_tag("test")
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub struct Meta {
-    pub start   : usize,
-    pub end     : usize,
+    pub start: usize,
+    pub end: usize,
 
-    pub attrs   : Attributes,
+    pub attrs: Attributes,
 }
 
 impl Meta {
-    pub fn new(start : usize, end : usize, attrs : Option<Vec<String>>) -> Self {
+    pub fn new(start: usize, end: usize, attrs: Option<Vec<String>>) -> Self {
         if let Some(attrs) = attrs {
-            Self { start, end, attrs : Attributes(attrs) }
+            Self {
+                start,
+                end,
+                attrs: Attributes(attrs),
+            }
         } else {
-            Self { start, end, attrs : Attributes(Vec::new()) }
+            Self {
+                start,
+                end,
+                attrs: Attributes(Vec::new()),
+            }
         }
     }
 }
 
 #[derive(Clone)]
 pub enum SelectorP {
-    Pin {
-        meta : Meta,
-        name : String,
-    },
-    Index { 
-        meta : Meta,
-        pos : Box<ExpressionP>,
-    },
+    Pin { meta: Meta, name: String },
+    Index { meta: Meta, pos: Box<ExpressionP> },
 }
 
 #[derive(Clone)]
 pub struct VariableP {
-    pub meta : Meta,
-    pub name : String,
-    pub sels : Vec<Box<SelectorP>>
+    pub meta: Meta,
+    pub name: String,
+    pub sels: Vec<Box<SelectorP>>,
 }
 
 #[derive(Clone)]
 pub enum ExpressionP {
     FunctionCall {
-        meta : Meta,
-        name : String,
-        args : Vec<Box<ExpressionP>>,
+        meta: Meta,
+        name: String,
+        args: Vec<Box<ExpressionP>>,
     },
     Variable {
-        meta : Meta,        
-        name : Box<VariableP>,
+        meta: Meta,
+        name: Box<VariableP>,
     },
     Number {
-        meta : Meta,                
-        value : BigInt
+        meta: Meta,
+        value: BigInt,
     },
     PrefixOp {
-        meta : Meta,                
-        op :  Opcode,
+        meta: Meta,
+        op: Opcode,
         rhe: Box<ExpressionP>,
     },
     InfixOp {
-        meta : Meta,                        
-        lhe : Box<ExpressionP>,
-        op : Opcode,
-        rhe : Box<ExpressionP>
+        meta: Meta,
+        lhe: Box<ExpressionP>,
+        op: Opcode,
+        rhe: Box<ExpressionP>,
     },
     Array {
-        meta : Meta,                        
-        values : Vec<Box<ExpressionP>>
+        meta: Meta,
+        values: Vec<Box<ExpressionP>>,
     },
 }
 
 #[derive(Clone)]
 pub enum StatementP {
     IfThenElse {
-        meta : Meta,                        
-        xif : Box<ExpressionP>,
-        xthen : Box<StatementP>,
-        xelse : Option<Box<StatementP>>
+        meta: Meta,
+        xif: Box<ExpressionP>,
+        xthen: Box<StatementP>,
+        xelse: Option<Box<StatementP>>,
     },
     For {
-        meta : Meta,                        
-        init : Box<StatementP>,
-        cond : Box<ExpressionP>,
-        step : Box<StatementP>,
-        stmt : Box<StatementP>,
+        meta: Meta,
+        init: Box<StatementP>,
+        cond: Box<ExpressionP>,
+        step: Box<StatementP>,
+        stmt: Box<StatementP>,
     },
     While {
-        meta : Meta,                        
-        cond : Box<ExpressionP>,
-        stmt : Box<StatementP>
+        meta: Meta,
+        cond: Box<ExpressionP>,
+        stmt: Box<StatementP>,
     },
     Return {
-        meta : Meta,
-        value : Box<ExpressionP>
+        meta: Meta,
+        value: Box<ExpressionP>,
     },
     Declaration {
-        meta : Meta,                        
-        xtype : VariableType,
-        name : Box<VariableP>,
-        init : Option<(Opcode, Box<ExpressionP>)>,
+        meta: Meta,
+        xtype: VariableType,
+        name: Box<VariableP>,
+        init: Option<(Opcode, Box<ExpressionP>)>,
     },
     Substitution {
-        meta : Meta,                        
-        name : Box<VariableP>,
-        op : Opcode,
-        value : Box<ExpressionP>
+        meta: Meta,
+        name: Box<VariableP>,
+        op: Opcode,
+        value: Box<ExpressionP>,
     },
     Block {
-        meta : Meta,                        
-        stmts : Vec<Box<StatementP>>
+        meta: Meta,
+        stmts: Vec<Box<StatementP>>,
     },
     SignalLeft {
-        meta : Meta,                        
-        name : Box<VariableP>,
-        op : Opcode,
-        value : Box<ExpressionP>
+        meta: Meta,
+        name: Box<VariableP>,
+        op: Opcode,
+        value: Box<ExpressionP>,
     },
     SignalRight {
-        meta : Meta,                        
-        value : Box<ExpressionP>,
-        op : Opcode,
-        name : Box<VariableP>
+        meta: Meta,
+        value: Box<ExpressionP>,
+        op: Opcode,
+        name: Box<VariableP>,
     },
     SignalEq {
-        meta : Meta,                        
-        lhe : Box<ExpressionP>,
-        op : Opcode,
-        rhe : Box<ExpressionP>
+        meta: Meta,
+        lhe: Box<ExpressionP>,
+        op: Opcode,
+        rhe: Box<ExpressionP>,
     },
     InternalCall {
-        meta : Meta,
-        name : String,
-        args : Vec<Box<ExpressionP>>,
+        meta: Meta,
+        name: String,
+        args: Vec<Box<ExpressionP>>,
     },
 }
 
 #[derive(Clone)]
 pub enum BodyElementP {
     Include {
-        meta : Meta,                        
-        path : String
+        meta: Meta,
+        path: String,
     },
     FunctionDef {
-        meta : Meta,                        
-        name : String,
-        args : Vec<String>,
-        stmt : Box<StatementP>
+        meta: Meta,
+        name: String,
+        args: Vec<String>,
+        stmt: Box<StatementP>,
     },
     TemplateDef {
-        meta : Meta,                        
-        name : String,
-        args : Vec<String>,
-        stmt : Box<StatementP>
+        meta: Meta,
+        name: String,
+        args: Vec<String>,
+        stmt: Box<StatementP>,
     },
     Declaration {
-        meta : Meta,                        
-        decl : Box<StatementP>
+        meta: Meta,
+        decl: Box<StatementP>,
     },
 }
 
-#[derive(Debug,Copy, Clone, PartialEq,Serialize,Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SignalType {
     Internal,
     PublicInput,
@@ -191,7 +192,7 @@ pub enum VariableType {
     Component,
 }
 
-#[derive(Copy, Clone,PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Opcode {
     Mul,
     Div,

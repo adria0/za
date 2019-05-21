@@ -11,4 +11,4 @@ impl From<storage::Error> for Error {
     }
 }
 
-pub type Result<T> = std::result::Result<T,Error>;
+pub type Result<T> = std::result::Result<T, Error>;

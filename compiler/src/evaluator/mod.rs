@@ -1,12 +1,12 @@
 pub use super::algebra;
 
 mod error;
-mod test;
-mod scope;
-mod retval;
 mod eval;
+mod retval;
+mod scope;
+mod test;
 mod types;
 
 pub use self::error::*;
-pub use self::scope::{Scope,ScopeValue};
-pub use self::eval::{Evaluator,Mode,ErrorContext};
+pub use self::eval::{ErrorContext, Evaluator, Mode};
+pub use self::scope::{Scope, ScopeValue};

@@ -6,14 +6,14 @@ impl Debug for BodyElementP {
         use self::BodyElementP::*;
 
         match self {
-            Include{path,..}
-                => write!(fmt, "include \"{}\";", path),
-            FunctionDef{name,args,stmt,..}
-                => write!(fmt, "function {}({}) {:?}", name, args.join(","), stmt),
-            TemplateDef{name,args,stmt,..}
-                => write!(fmt, "template {}({}) {:?}", name, args.join(","), stmt),
-            Declaration{decl,..}
-                => write!(fmt, "{:?}", decl),
+            Include { path, .. } => write!(fmt, "include \"{}\";", path),
+            FunctionDef {
+                name, args, stmt, ..
+            } => write!(fmt, "function {}({}) {:?}", name, args.join(","), stmt),
+            TemplateDef {
+                name, args, stmt, ..
+            } => write!(fmt, "template {}({}) {:?}", name, args.join(","), stmt),
+            Declaration { decl, .. } => write!(fmt, "{:?}", decl),
         }
     }
 }
@@ -39,12 +39,21 @@ impl Debug for StatementP {
         use self::StatementP::*;
 
         let for_item = |stp: &StatementP| match stp {
-            Declaration{xtype, name, init: Some((op,value)),..}
-                => format!("{:?} {:?} {:?} {:?}", xtype, name, op, value),
-            Declaration{xtype, name, init: None,..}
-                => format!("{:?} {:?}", xtype, name),
-            Substitution{name, op, value,..}
-                => format!("{:?} {:?} {:?}", name, op, value),
+            Declaration {
+                xtype,
+                name,
+                init: Some((op, value)),
+                ..
+            } => format!("{:?} {:?} {:?} {:?}", xtype, name, op, value),
+            Declaration {
+                xtype,
+                name,
+                init: None,
+                ..
+            } => format!("{:?} {:?}", xtype, name),
+            Substitution {
+                name, op, value, ..
+            } => format!("{:?} {:?} {:?}", name, op, value),
             _ => unreachable!(),
         };
 
@@ -63,32 +72,58 @@ impl Debug for StatementP {
         };
 
         match self {
-            Block{stmts,..}
-                => write!(fmt, "{{{}}}", sl(stmts)),
-            IfThenElse{xif,xthen, xelse : Some(xelse),..}
-                => write!(fmt, "if ({:?}) {:?} else {:?}", xif, xthen, xelse),
-            IfThenElse{xif, xthen, xelse: None,..}
-                => write!(fmt, "if ({:?}) {:?}", xif, xthen),
-            For{init, cond, step, stmt,..}
-                => write!(fmt, "for ({};{:?};{}) {:?}", for_item(init), cond, for_item(step), stmt),
-            While{cond, stmt,..}
-                => write!(fmt, "while ({:?}) {:?}", cond, stmt),
-            Return{value,..}
-                => write!(fmt, "return {:?};", value),
-            Declaration{xtype, name, init : Some((op, value)),..}
-                => write!(fmt, "{:?} {:?} {:?} {:?};", xtype, name, op, value),
-            Declaration{xtype, name, init : None,.. }
-                => write!(fmt, "{:?} {:?};", xtype, name),
-            Substitution{name, op, value,..}
-                => write!(fmt, "{:?} {:?} {:?};", name, op, value),
-            SignalLeft{name, op, value,..}
-                => write!(fmt, "{:?} {:?} {:?};", name,op,value),
-            SignalRight{value,op,name,..}
-                => write!(fmt, "{:?} {:?} {:?};", value, op, name),
-            SignalEq{lhe,op,rhe,..}
-                => write!(fmt, "{:?} {:?} {:?};", lhe,op,rhe),
-            InternalCall{name, args,..}
-                => write!(fmt, "{}!({});", name, comma_concat(args)),
+            Block { stmts, .. } => write!(fmt, "{{{}}}", sl(stmts)),
+            IfThenElse {
+                xif,
+                xthen,
+                xelse: Some(xelse),
+                ..
+            } => write!(fmt, "if ({:?}) {:?} else {:?}", xif, xthen, xelse),
+            IfThenElse {
+                xif,
+                xthen,
+                xelse: None,
+                ..
+            } => write!(fmt, "if ({:?}) {:?}", xif, xthen),
+            For {
+                init,
+                cond,
+                step,
+                stmt,
+                ..
+            } => write!(
+                fmt,
+                "for ({};{:?};{}) {:?}",
+                for_item(init),
+                cond,
+                for_item(step),
+                stmt
+            ),
+            While { cond, stmt, .. } => write!(fmt, "while ({:?}) {:?}", cond, stmt),
+            Return { value, .. } => write!(fmt, "return {:?};", value),
+            Declaration {
+                xtype,
+                name,
+                init: Some((op, value)),
+                ..
+            } => write!(fmt, "{:?} {:?} {:?} {:?};", xtype, name, op, value),
+            Declaration {
+                xtype,
+                name,
+                init: None,
+                ..
+            } => write!(fmt, "{:?} {:?};", xtype, name),
+            Substitution {
+                name, op, value, ..
+            } => write!(fmt, "{:?} {:?} {:?};", name, op, value),
+            SignalLeft {
+                name, op, value, ..
+            } => write!(fmt, "{:?} {:?} {:?};", name, op, value),
+            SignalRight {
+                value, op, name, ..
+            } => write!(fmt, "{:?} {:?} {:?};", value, op, name),
+            SignalEq { lhe, op, rhe, .. } => write!(fmt, "{:?} {:?} {:?};", lhe, op, rhe),
+            InternalCall { name, args, .. } => write!(fmt, "{}!({});", name, comma_concat(args)),
         }
     }
 }
@@ -97,8 +132,8 @@ impl Debug for SelectorP {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::SelectorP::*;
         match self {
-            Pin{name,..} => write!(fmt, ".{}", name),
-            Index{pos,..} => write!(fmt, "[{:?}]", pos),
+            Pin { name, .. } => write!(fmt, ".{}", name),
+            Index { pos, .. } => write!(fmt, "[{:?}]", pos),
         }
     }
 }
@@ -127,18 +162,12 @@ impl Debug for ExpressionP {
         };
 
         match self {
-            Variable{name,..}
-                => write!(fmt, "{:?}", name),
-            Number{value,..}
-                => write!(fmt, "0x{:x}", value),
-            PrefixOp{op, rhe,..}
-                => write!(fmt, "({:?} {:?})", op, rhe),
-            InfixOp{lhe,op,rhe,..}
-                => write!(fmt, "({:?} {:?} {:?})", lhe, op, rhe),
-            Array{values,..}
-                => write!(fmt, "[{}]", comma_concat(values)),
-            FunctionCall{name, args,..}
-                => write!(fmt, "{}({})", name, comma_concat(args)),
+            Variable { name, .. } => write!(fmt, "{:?}", name),
+            Number { value, .. } => write!(fmt, "0x{:x}", value),
+            PrefixOp { op, rhe, .. } => write!(fmt, "({:?} {:?})", op, rhe),
+            InfixOp { lhe, op, rhe, .. } => write!(fmt, "({:?} {:?} {:?})", lhe, op, rhe),
+            Array { values, .. } => write!(fmt, "[{}]", comma_concat(values)),
+            FunctionCall { name, args, .. } => write!(fmt, "{}({})", name, comma_concat(args)),
         }
     }
 }

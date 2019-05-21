@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod test {
+    use circom2_compiler::storage::Ram;
+    use circom2_compiler::tester;
+    use circom2_parser::parse;
     use std::fs::{read_dir, File};
     use std::io::prelude::*;
-    use circom2_parser::parse;
-    use circom2_compiler::tester;
-    use circom2_compiler::storage::Ram;
 
     #[test]
     fn circomlib_parse() {
@@ -26,16 +26,16 @@ mod test {
 
     #[test]
     fn circomlib_tests() {
-        match tester::run_embeeded_tests("./circomlib","all_tests.circom",Ram::default()) {
-            Ok(Some((_,err))) => {
-                println!("{:?}",err);
-                assert!(false);
-            },
-            Err(err) => {
-                println!("{:?}",err);
+        match tester::run_embeeded_tests("./circomlib", "all_tests.circom", Ram::default()) {
+            Ok(Some((_, err))) => {
+                println!("{:?}", err);
                 assert!(false);
             }
-            _ => {},
+            Err(err) => {
+                println!("{:?}", err);
+                assert!(false);
+            }
+            _ => {}
         }
     }
 
