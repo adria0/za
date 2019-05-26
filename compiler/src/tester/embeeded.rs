@@ -48,7 +48,6 @@ where
         if let Err(err) = &eval.eval_inline(&mut scan_scope, &code) {
             return Ok(Some((eval, format!("{:?}", err))));
         }
-
         println!("Testing witness for {}", test_name);
     }
 

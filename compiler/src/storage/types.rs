@@ -10,7 +10,7 @@ use crate::algebra;
 use crate::algebra::SignalId;
 
 #[derive(Clone)]
-pub struct SignalName(Rc<String>); // see E0210
+pub struct SignalName(pub Rc<String>); // see E0210
 
 impl SignalName {
     pub fn new(s: String) -> Self {
@@ -48,7 +48,7 @@ impl std::string::ToString for SignalName {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Signal {
     pub id: SignalId,
     pub xtype: SignalType,
@@ -76,4 +76,9 @@ pub trait Constraints {
     fn len(&self) -> Result<usize>;
     fn get(&self, i: usize) -> Result<QEQ>;
     fn push(&mut self, qeq: QEQ) -> Result<usize>;
+}
+
+pub trait StorageFactory<S: Signals, C: Constraints> {
+    fn new_signals(&mut self) -> Result<S>;
+    fn new_constraints(&mut self) -> Result<C>;
 }

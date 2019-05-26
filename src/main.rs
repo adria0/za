@@ -43,7 +43,31 @@ fn dump_error<S: Signals, C: Constraints>(eval: &evaluator::Evaluator<S, C>, err
     }
 }
 
-fn generate_constrains_rocks(filename: &str) {
+fn print_info<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, print_all: bool) {
+    info!(
+        "{} signals, {} constraints",
+        eval.signals.len().unwrap(),
+        eval.constraints.len().unwrap()
+    );
+    if print_all {
+        println!("signals -------------------------");
+        for n in 0..eval.signals.len().unwrap() {
+            println!("{}: {:?}",n,eval.signals.get_by_id(n).unwrap());
+        }
+        println!("constrains ----------------------");
+        for n in 0..eval.constraints.len().unwrap() {
+            println!("{}:  {:?}=0",n,eval.constraints.get(n).unwrap());
+        }
+    }
+}
+
+fn generate_cuda<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, cuda_file : Option<String>) {
+    if let Some(cuda_file) = cuda_file {
+        circom2_compiler::storage::generate_cuda(&cuda_file, &eval.constraints, &eval.signals).unwrap();
+    }
+}
+
+fn generate_constrains_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let mut storage = Rocks::new(format!("db_{}_{}", filename, since_the_epoch));
@@ -56,21 +80,12 @@ fn generate_constrains_rocks(filename: &str) {
     if let Err(err) = eval.eval_file(".", &filename) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
-        info!(
-            "{} signals, {} constraints",
-            eval.signals.len().unwrap(),
-            eval.constraints.len().unwrap()
-        );
-        // print constraints
-        //println!("{:?}",eval.signals);
-        //println!("constrains ----------------------");
-        //for constrain in eval.constrains {
-        //    println!("  {:?}=0",constrain);
-        //}
+        generate_cuda(&eval,cuda_file);
+        print_info(&eval, print_all);
     }
 }
 
-fn generate_constrains_ram(filename: &str) {
+fn generate_constrains_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let mut storage = Ram::default();
 
     let mut eval = evaluator::Evaluator::new(
@@ -81,17 +96,8 @@ fn generate_constrains_ram(filename: &str) {
     if let Err(err) = eval.eval_file(".", &filename) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
-        info!(
-            "{} signals, {} constraints",
-            eval.signals.len().unwrap(),
-            eval.constraints.len().unwrap()
-        );
-        // print constraints
-        //println!("{:?}",eval.signals);
-        //println!("constrains ----------------------");
-        //for constrain in eval.constrains {
-        //    println!("  {:?}=0",constrain);
-        //}
+        generate_cuda(&eval,cuda_file);
+        print_info(&eval, print_all);
     }
 }
 
@@ -124,6 +130,14 @@ enum Command {
         #[structopt(long = "ram")]
         /// Use RAM (default) or local storage
         use_ram: Option<bool>,
+
+        #[structopt(long = "print")]
+        /// Print constaints and signals
+        print: Option<bool>,
+
+        #[structopt(long = "cuda")]
+        /// Export cuda format
+        cuda: Option<String>,
     },
     #[structopt(name = "test")]
     /// Run embeeded circuit tests
@@ -140,12 +154,13 @@ fn main() {
 
     let cmd = Command::from_args();
     match cmd {
-        Command::Compile { file, use_ram } => {
+        Command::Compile { file, use_ram, print, cuda } => {
             let use_ram = use_ram.unwrap_or(true);
+            let print_all = print.unwrap_or(false);
             if use_ram {
-                generate_constrains_ram(&file)
+                generate_constrains_ram(&file,print_all,cuda)
             } else {
-                generate_constrains_rocks(&file)
+                generate_constrains_rocks(&file,print_all, cuda)
             }
         }
         Command::Test { file } => {
