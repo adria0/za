@@ -7,19 +7,38 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr};
 
-use super::constants::{FIELD_INT, FIELD_UINT, FIELD_UINT_NEG, ONE};
 use super::error::{Error, Result};
 use super::traits::AlgZero;
 use super::types::*;
+
+lazy_static! {
+    pub static ref BABYJUB_FIELD_UINT: BigUint = BigUint::parse_bytes(
+        b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
+    )
+    .unwrap();
+    pub static ref BABYJUB_FIELD_UINT_NEG: BigUint = BigUint::parse_bytes(
+        b"10944121435919637611123202872628637544274182200208017171849102093287904247808",
+        10
+    )
+    .unwrap();
+    pub static ref BABYJUB_FIELD_INT: BigInt = BigInt::parse_bytes(
+        b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
+        10
+    )
+    .unwrap();
+    pub static ref ONE: BigUint = BigUint::parse_bytes(b"1", 10).unwrap();
+}
+
 
 // Field Scalar  ------------------------------------------------
 
 impl FS {
     fn field() -> &'static BigUint {
-        &FIELD_UINT as &BigUint
+        &BABYJUB_FIELD_UINT as &BigUint
     }
     fn field_int() -> &'static BigInt {
-        &FIELD_INT as &BigInt
+        &BABYJUB_FIELD_INT as &BigInt
     }
 
     pub fn one() -> Self {
@@ -29,7 +48,7 @@ impl FS {
         self.0.cmp(&ONE) == Ordering::Equal
     }
     pub fn is_neg(&self) -> bool {
-        self.0.cmp(&FIELD_UINT_NEG as &BigUint) == Ordering::Greater
+        self.0.cmp(&BABYJUB_FIELD_UINT_NEG as &BigUint) == Ordering::Greater
     }
     pub fn format(&self, plus_sign_at_start: bool) -> String {
         if self.is_neg() {
@@ -111,7 +130,7 @@ impl From<BigInt> for FS {
 
 impl From<&BigInt> for FS {
     fn from(n: &BigInt) -> Self {
-        let v = n % (&FIELD_INT as &BigInt);
+        let v = n % (&BABYJUB_FIELD_INT as &BigInt);
         FS(v.to_biguint().unwrap())
     }
 }

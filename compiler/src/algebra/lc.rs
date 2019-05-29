@@ -2,7 +2,7 @@ use std::fmt;
 use std::iter;
 use std::ops::{Add, Mul, Neg};
 
-use super::constants::*;
+use super::SIGNAL_ONE;
 use super::traits::AlgZero;
 use super::types::*;
 
