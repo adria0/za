@@ -1,5 +1,7 @@
 extern crate circom2_compiler;
 extern crate circom2_parser;
+extern crate circom2_prover;
+
 extern crate codespan;
 extern crate codespan_reporting;
 extern crate stderrlog;
@@ -63,7 +65,7 @@ fn print_info<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, print_
 
 fn generate_cuda<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
-        circom2_compiler::storage::generate_cuda(&cuda_file, &eval.constraints, &eval.signals).unwrap();
+        circom2_prover::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
     }
 }
 

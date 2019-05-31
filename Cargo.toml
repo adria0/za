@@ -10,6 +10,7 @@ codespan-reporting = "0.2.1"
 circom2-parser = { path = "parser" }
 circom2-compiler = { path = "compiler" }
 circom2-interop = { path = "interop" }
+circom2-prover = { path = "prover" }
 stderrlog = "0.4.1"
 structopt = "0.2.14"
 log = "0.4.6"
@@ -18,7 +19,8 @@ log = "0.4.6"
 members = [
     "parser",   
     "compiler",
-    "interop"
+    "interop",
+    "prover"
 ]
 
 # for
