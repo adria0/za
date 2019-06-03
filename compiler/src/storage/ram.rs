@@ -63,7 +63,7 @@ impl Signals for RamSignals {
 
     fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()> {
         let signal = &mut self.ids[id as usize];
-        let signal_inner = Rc::get_mut(signal).unwrap();
+        let signal_inner = Rc::get_mut(signal).expect("cannot mutate signal");
         signal_inner.value = Some(value);
         Ok(())
     }

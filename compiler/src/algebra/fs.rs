@@ -122,6 +122,13 @@ impl From<BigUint> for FS {
     }
 }
 
+impl From<u64> for FS {
+    fn from(n: u64) -> Self {
+        FS::from(BigUint::from_u64(n).unwrap())
+    }
+}
+
+
 impl From<BigInt> for FS {
     fn from(n: BigInt) -> Self {
         FS::from(&n)
