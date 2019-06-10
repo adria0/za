@@ -2,6 +2,7 @@
 mod test {
     use super::super::error::Result;
     use super::super::scope::Scope;
+    use crate::algebra;
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::storage::{Constraints, Signals};
     use crate::storage::{Ram, RamConstraints, RamSignals, StorageFactory};
@@ -39,6 +40,7 @@ mod test {
     fn eval_generic<F, S, C>(
         mode: Mode,
         s: &str,
+        deferred_values: Vec<(String, u64)>,
         mut factory: F,
     ) -> Result<(Evaluator<S, C>, Scope)>
     where
@@ -48,18 +50,32 @@ mod test {
     {
         let mut evaluator =
             Evaluator::new(mode, factory.new_signals()?, factory.new_constraints()?);
+        deferred_values
+            .into_iter()
+            .for_each(|(s, v)| evaluator.set_deferred_value(s, algebra::Value::from(v)));
+
         let mut scope = Scope::new(true, None, "root".to_string());
         evaluator.eval_inline(&mut scope, s)?;
         Ok((evaluator, scope))
     }
 
     fn eval_constraint(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval, scope) = eval_generic(Mode::GenConstraints, s, Ram::default())?;
+        let (eval, scope) = eval_generic(Mode::GenConstraints, s, vec![], Ram::default())?;
         Ok((eval, scope))
     }
 
     fn eval_witness(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval, scope) = eval_generic(Mode::GenWitness, s, Ram::default())?;
+        let (eval, scope) = eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
+        assert_eq!(eval.constraints.len()?,0);
+        Ok((eval, scope))
+    }
+
+    fn eval_witness_with_defer(
+        s: &str,
+        deferred_values: Vec<(String, u64)>,
+    ) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
+        let (eval, scope) = eval_generic(Mode::GenWitness, s, deferred_values, Ram::default())?;
+        assert_eq!(eval.constraints.len()?,0);
         Ok((eval, scope))
     }
 
@@ -676,6 +692,22 @@ mod test {
             }
             component main = t0();
         ",
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_deferred_evaluation() -> Result<()> {
+        eval_witness_with_defer(
+            "
+            template t() {
+                signal input a;
+                signal input b;
+                a === 2 * b;
+            }
+            component main = t();
+        ",
+            vec![("main.a".to_string(), 4), ("main.b".to_string(), 2)],
         )?;
         Ok(())
     }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -73,6 +74,9 @@ where
 
     // default path
     pub path: PathBuf,
+
+    // deferred signal values
+    pub deferred_signal_values: HashMap<String, algebra::Value>,
 }
 
 impl<S, C> Evaluator<S, C>
@@ -92,6 +96,7 @@ where
             processed_files: Vec::new(),
             last_error: None,
             path: PathBuf::from("."),
+            deferred_signal_values: HashMap::new(),
         }
     }
 
@@ -113,6 +118,10 @@ where
         let mut scope = Scope::new(true, None, filename.to_string());
         self.eval_include(&Meta::new(0, 0, None), &mut scope, filename)?;
         Ok(scope)
+    }
+
+    pub fn set_deferred_value(&mut self, signal_full_name: String, value: algebra::Value) {
+        self.deferred_signal_values.insert(signal_full_name, value);
     }
 
     pub fn format_algebra(&self, a: algebra::Value) -> String {
@@ -388,14 +397,16 @@ where
                                         if *xtype == SignalType::PublicInput
                                             || *xtype == SignalType::PrivateInput
                                         {
-                                            let mut signals = self.eval_declaration_signals(
-                                                meta,
-                                                &mut template_scope,
-                                                *xtype,
-                                                name,
-                                            )?;
+                                            let mut pending_signals = self
+                                                .eval_declaration_signals(
+                                                    meta,
+                                                    &mut template_scope,
+                                                    *xtype,
+                                                    name,
+                                                )?;
                                             if self.mode == Mode::GenWitness {
-                                                all_pending_input_signals.append(&mut signals);
+                                                all_pending_input_signals
+                                                    .append(&mut pending_signals);
                                             }
                                         }
                                     }
@@ -794,18 +805,21 @@ where
         xtype: SignalType,
         var: &VariableP,
     ) -> Result<Vec<SignalId>> {
-        let mut signals = Vec::new();
+        let mut pending_signals = Vec::new();
         for signal_name in self.generate_selectors(scope, &var)? {
             let full_name = self.expand_full_name(&signal_name);
             if self.signals.get_by_name(&full_name)?.is_some() {
                 return Err(Error::AlreadyExists(format!("signal {}", full_name)));
             }
-
-            let signal_id = self.signals.insert(full_name, xtype, None)?;
-            signals.push(signal_id);
+            if let Some(v) = self.deferred_signal_values.remove(&full_name) {
+                self.signals.insert(full_name, xtype, Some(v))?;
+            } else {
+                let signal_id = self.signals.insert(full_name, xtype, None)?;
+                pending_signals.push(signal_id);
+            }
         }
 
-        Ok(signals)
+        Ok(pending_signals)
     }
 
     fn eval_declaration(

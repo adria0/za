@@ -47,8 +47,15 @@ impl From<&BigInt> for Value {
         Value::FieldScalar(FS::from(n))
     }
 }
+
 impl From<&BigUint> for Value {
     fn from(n: &BigUint) -> Self {
+        Value::FieldScalar(FS::from(n))
+    }
+}
+
+impl From<u64> for Value {
+    fn from(n: u64) -> Self {
         Value::FieldScalar(FS::from(n))
     }
 }
