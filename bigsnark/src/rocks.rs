@@ -1,16 +1,44 @@
 use circom2_parser::ast::SignalType;
-use rocksdb::DB;
+use circom2_compiler::algebra;
+use circom2_compiler::algebra::{SignalId, QEQ};
+use circom2_compiler::storage;
+use circom2_compiler::storage::{StorageFactory,Constraints, Signal, SignalName, Signals};
+
+use rocksdb::{DB};
 
 use std::rc::Rc;
 
-use super::error::{Error, Result};
-use super::types::{Constraints, Signal, SignalName, Signals};
-use super::StorageFactory;
-use crate::algebra;
-use crate::algebra::{SignalId, QEQ};
-
 use serde_cbor::{from_slice, to_vec};
 use std::path::PathBuf;
+
+#[derive(Debug)]
+pub enum Error {
+    NotFound(String),
+    RocksDb(rocksdb::Error),
+    Cbor(serde_cbor::error::Error),
+}
+
+impl From<rocksdb::Error> for Error {
+    fn from(err: rocksdb::Error) -> Self {
+        Error::RocksDb(err)
+    }
+}
+
+impl From<serde_cbor::error::Error> for Error {
+    fn from(err: serde_cbor::error::Error) -> Self {
+        Error::Cbor(err)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[macro_export]
+macro_rules! map_err {
+    ( $x:block ) => {
+        ({|| Ok($x) })()
+            .map_err(|err:Error| storage::Error::Inner(format!("{:?})",err)))
+    };
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SignalEntry {
@@ -35,14 +63,14 @@ impl Rocks {
 }
 
 impl StorageFactory<RocksSignals, RockConstraints> for Rocks {
-    fn new_signals(&mut self) -> Result<RocksSignals> {
+    fn new_signals(&mut self) -> storage::Result<RocksSignals> {
         let mut full_path = PathBuf::new();
         full_path.push(&self.base_path);
         full_path.push(format!("_signals_{}", self.count));
         self.count += 1;
         RocksSignals::new(full_path.as_os_str().to_str().unwrap())
     }
-    fn new_constraints(&mut self) -> Result<RockConstraints> {
+    fn new_constraints(&mut self) -> storage::Result<RockConstraints> {
         let mut full_path = PathBuf::new();
         full_path.push(&self.base_path);
         full_path.push(format!("_constraints_{}", self.count));
@@ -56,18 +84,23 @@ pub struct RocksSignals {
 }
 
 impl RocksSignals {
-    pub fn new(path: &str) -> Result<Self> {
-        Ok(DB::open_default(path).map(|x| RocksSignals { db: x })?)
+    pub fn new(path: &str) -> storage::Result<Self> {
+        (||{
+            Ok(DB::open_default(path).map(|x| RocksSignals { db: x })?)
+        })().map_err(|err:Error| storage::Error::Inner(format!("{:?})",err)))
     }
 }
 
 pub struct RockConstraints {
     db: DB,
 }
+
 impl RockConstraints {
-    pub fn new(path: &str) -> Result<Self> {
-        Ok(DB::open_default(path).map(|x| RockConstraints { db: x })?)
-    }
+    pub fn new(path: &str) -> storage::Result<Self> {
+        map_err!{{
+            DB::open_default(path).map(|x| RockConstraints { db: x })?
+        }}
+    }               
 }
 
 impl RocksSignals {
@@ -82,55 +115,7 @@ impl RocksSignals {
             Some(v) => Ok(Some((key, from_slice::<SignalEntry>(&v)?))),
         }
     }
-}
-
-impl<'a> Signals for RocksSignals {
-    fn is_empty(&self) -> Result<bool> {
-        Ok(self.len()? == 0)
-    }
-    fn len(&self) -> Result<usize> {
-        Ok(get_u64(&self.db, &[0])?.unwrap_or(0) as usize)
-    }
-    fn insert(
-        &mut self,
-        full_name: String,
-        xtype: SignalType,
-        value: Option<algebra::Value>,
-    ) -> Result<SignalId> {
-        let index = inc_u64(&mut self.db, &[0])? - 1;
-        let index_bytes = u64_to_le(index as u64);
-
-        let entry = SignalEntry {
-            id: index,
-            xtype,
-            full_name,
-            value,
-        };
-
-        let mut key: Vec<u8> = vec![1];
-        key.extend_from_slice(&index_bytes);
-        self.db
-            .put(&key.to_owned(), to_vec(&entry).unwrap().as_slice())?;
-
-        let mut key: Vec<u8> = vec![2];
-        key.extend_from_slice(entry.full_name.as_bytes());
-        self.db.put(&key.to_owned(), &index_bytes)?;
-
-        Ok(index as usize)
-    }
-
-    fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()> {
-        if let Some((index, mut entry)) = self.load(id)? {
-            entry.value = Some(value);
-            self.db
-                .put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?;
-            Ok(())
-        } else {
-            Err(Error::NotFound(format!("signal {}", id)))
-        }
-    }
-
-    fn get_by_id(&self, id: SignalId) -> Result<Option<Rc<Signal>>> {
+    fn _get_by_id(&self, id: SignalId) -> Result<Option<Rc<Signal>>> {
         if let Some((_, entry)) = self.load(id)? {
             Ok(Some(Rc::new(Signal {
                 id: entry.id as usize,
@@ -142,44 +127,114 @@ impl<'a> Signals for RocksSignals {
             Ok(None)
         }
     }
+}
 
-    fn get_by_name(&self, full_name: &str) -> Result<Option<Rc<Signal>>> {
-        let mut key: Vec<u8> = vec![2];
-        key.extend_from_slice(full_name.as_bytes());
-        match self.db.get(&key)? {
-            None => Ok(None),
-            Some(v) => self.get_by_id(u64_from_slice(&v) as usize),
-        }
+impl<'a> Signals for RocksSignals {
+    fn is_empty(&self) -> storage::Result<bool> {
+        Ok(self.len()? == 0)
+    }
+    fn len(&self) -> storage::Result<usize> {
+        map_err!{{
+            get_u64(&self.db, &[0])?.unwrap_or(0) as usize
+        }}
+    }
+    fn insert(
+        &mut self,
+        full_name: String,
+        xtype: SignalType,
+        value: Option<algebra::Value>,
+    ) -> storage::Result<SignalId> {
+        map_err!{{
+            let index = inc_u64(&mut self.db, &[0])? - 1;
+            let index_bytes = u64_to_le(index as u64);
+
+            let entry = SignalEntry {
+                id: index,
+                xtype,
+                full_name,
+                value,
+            };
+
+            let mut key: Vec<u8> = vec![1];
+            key.extend_from_slice(&index_bytes);
+            self.db
+                .put(&key.to_owned(), to_vec(&entry).unwrap().as_slice())?;
+
+            let mut key: Vec<u8> = vec![2];
+            key.extend_from_slice(entry.full_name.as_bytes());
+            self.db.put(&key.to_owned(), &index_bytes)?;
+
+            index as usize
+        }}
     }
 
-    fn to_string(&self, id: SignalId) -> Result<String> {
-        let (_, s) = self.load(id)?.unwrap();
-        Ok(format!("{:?}:{:?}:{:?}", s.full_name, s.xtype, s.value))
+    fn update(&mut self, id: SignalId, value: algebra::Value) -> storage::Result<()> {
+        map_err!{{
+            if let Some((index, mut entry)) = self.load(id)? {
+                entry.value = Some(value);
+                self.db
+                    .put(&index.to_owned(), to_vec(&entry).unwrap().as_slice())?;
+                Ok(())
+            } else {
+                Err(Error::NotFound(format!("signal {}", id)))
+            }?
+        }}
+    }
+
+    fn get_by_id(&self, id: SignalId) -> storage::Result<Option<Rc<Signal>>> {
+        map_err!{{
+            self._get_by_id(id)?
+        }}
+    }
+
+    fn get_by_name(&self, full_name: &str) -> storage::Result<Option<Rc<Signal>>> {
+        map_err!{{
+            let mut key: Vec<u8> = vec![2];
+            key.extend_from_slice(full_name.as_bytes());
+            match self.db.get(&key)? {
+                None => Ok(None),
+                Some(v) => self._get_by_id(u64_from_slice(&v) as usize),
+            }?
+        }}
+    }
+
+    fn to_string(&self, id: SignalId) -> storage::Result<String> {
+        map_err!{{
+            let (_, s) = self.load(id)?.unwrap();
+            format!("{:?}:{:?}:{:?}", s.full_name, s.xtype, s.value)
+        }}
     }
 }
 
 impl<'a> Constraints for RockConstraints {
-    fn is_empty(&self) -> Result<bool> {
+    fn is_empty(&self) -> storage::Result<bool> {
         Ok(self.len()? == 0)
     }
-    fn len(&self) -> Result<usize> {
-        Ok(get_u64(&self.db, &[0])?.unwrap_or(0) as usize)
+    fn len(&self) -> storage::Result<usize> {
+        map_err!{{
+            get_u64(&self.db, &[0])?.unwrap_or(0) as usize
+        }}
     }
-    fn get(&self, i: usize) -> Result<QEQ> {
-        let mut key: Vec<u8> = vec![1];
-        key.extend_from_slice(&u64_to_le(i as u64));
-        match self.db.get(&key)? {
-            None => Err(Error::NotFound(format!("Constraint at index {}", i))),
-            Some(v) => Ok(from_slice::<QEQ>(&v)?),
-        }
+    fn get(&self, i: usize) -> storage::Result<QEQ> {
+        map_err!{{
+            let mut key: Vec<u8> = vec![1];
+            key.extend_from_slice(&u64_to_le(i as u64));
+            match self.db.get(&key)? {
+                None => Err(Error::NotFound(format!("Constraint at index {}", i))),
+                Some(v) => Ok(from_slice::<QEQ>(&v)?),
+            }?
+        }}
     }
-    fn push(&mut self, qeq: QEQ) -> Result<usize> {
-        let index = inc_u64(&mut self.db, &[0])? - 1;
-        let mut key: Vec<u8> = vec![1];
-        key.extend_from_slice(&u64_to_le(index as u64));
-        self.db
-            .put(&key.to_owned(), to_vec(&qeq).unwrap().as_slice())?;
-        Ok(index as usize)
+
+    fn push(&mut self, qeq: QEQ) -> storage::Result<usize> {
+        map_err!{{
+            let index = inc_u64(&mut self.db, &[0])? - 1;
+            let mut key: Vec<u8> = vec![1];
+            key.extend_from_slice(&u64_to_le(index as u64));
+            self.db
+                .put(&key.to_owned(), to_vec(&qeq).unwrap().as_slice())?;
+            index as usize
+        }}
     }
 }
 
@@ -239,10 +294,8 @@ fn u64_from_slice(v: &[u8]) -> u64 {
 #[cfg(test)]
 mod test {
 
-    use super::super::Result;
-    use super::super::StorageFactory;
-    use super::{Constraints, Rocks, Signals};
-    use crate::algebra::{Value, FS, QEQ};
+    use super::*;
+    use circom2_compiler::algebra::{Value, FS};
 
     use super::SignalType;
     use rand::distributions::Alphanumeric;
@@ -265,7 +318,7 @@ mod test {
     }
 
     #[test]
-    fn test_rocks_signals() -> Result<()> {
+    fn test_rocks_signals() -> storage::Result<()> {
         let one = FS::one();
         let two = &one + &one;
         let three = &one + &two;
@@ -307,7 +360,7 @@ mod test {
     }
 
     #[test]
-    fn test_rocks_constraints() -> Result<()> {
+    fn test_rocks_constraints() -> storage::Result<()> {
         let one = QEQ::from(&FS::one());
         let two = QEQ::from(&(&FS::one() + &FS::one()));
 

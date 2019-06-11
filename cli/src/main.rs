@@ -17,7 +17,10 @@ use codespan_reporting::{emit, Diagnostic, Label, Severity};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use circom2_compiler::storage::{Constraints, Signals};
-use circom2_compiler::storage::{Ram, Rocks, StorageFactory};
+use circom2_compiler::storage::{Ram, StorageFactory};
+
+use circom2_bigsnark::Rocks;
+
 
 fn dump_error<S: Signals, C: Constraints>(eval: &evaluator::Evaluator<S, C>, err: &str) {
     let msg = format!("{:?}", err);

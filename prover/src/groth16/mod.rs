@@ -46,8 +46,7 @@ fn map_storage_error<V>(
 ) -> std::result::Result<V, SynthesisError> {
     match e {
         Ok(v) => Ok(v),
-        Err(storage::Error::Io(io)) => Err(SynthesisError::IoError(io)),
-        _ => Err(SynthesisError::Unsatisfiable), // ???
+        _ => Err(SynthesisError::Unsatisfiable), 
     }
 }
 

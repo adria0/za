@@ -5,7 +5,6 @@ extern crate codespan_reporting;
 extern crate lazy_static;
 extern crate blake2_rfc;
 extern crate hex;
-extern crate rocksdb;
 extern crate serde;
 extern crate serde_cbor;
 #[macro_use]
