@@ -117,36 +117,38 @@ mod test {
     use std::marker::PhantomData;
 
     #[test]
-    fn test_simple() {
+    fn test_generate_witness() {
         let circuit = "
             template t() {
                 signal private input a;
                 signal private input b;  
-                signal input c;
+                signal output c;
 
-                a * b === c;  
+                c <== a * b;  
             }
             component main = t();
         ";
 
         let mut ram = Ram::default();
-        let mut evaluator = Evaluator::new(
+        let mut ev_r1cs = Evaluator::new(
             Mode::GenConstraints,
             ram.new_signals().unwrap(),
             ram.new_constraints().unwrap(),
         );
 
-        let mut scope = Scope::new(true, None, "root".to_string());
-        evaluator.eval_inline(&mut scope, circuit).unwrap();
+        ev_r1cs.eval_inline(
+            &mut Scope::new(true, None, "root".to_string()),
+            circuit
+        ).unwrap();
 
         let rng = &mut thread_rng();
 
         // Create parameters for our circuit
-        println!("Run setup...");
+        println!("Run setup ---------------------------------");
         let params = {
             let circuit = CircomCircuit::<Bn256> {
-                signals: &evaluator.signals,
-                constraints: &evaluator.constraints,
+                signals: &ev_r1cs.signals,
+                constraints: &ev_r1cs.constraints,
                 phantom: PhantomData,
             };
 
@@ -156,23 +158,25 @@ mod test {
         // Prepare the verification key (for proof verification)
         let pvk = prepare_verifying_key(&params.vk);
 
-        println!("Creating proofs...");
-        let mut set_witness = |name, value: u64| {
-            let id = evaluator.signals.get_by_name(name).unwrap().unwrap().id;
-            evaluator
-                .signals
-                .update(id, Value::FieldScalar(FS::from(value)))
-                .unwrap();
-        };
+        // Compute witness
+        let mut ram = Ram::default();
+        let mut ev_witness = Evaluator::new(
+            Mode::GenWitness,
+            ram.new_signals().unwrap(),
+            ram.new_constraints().unwrap(),
+        );
 
-        // Set witness
-        set_witness("main.a", 7);
-        set_witness("main.b", 3);
-        set_witness("main.c", 21);
+        ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));
+        ev_witness.set_deferred_value("main.b".to_string(), Value::from(3));
+        ev_witness.eval_inline(
+            &mut Scope::new(true, None, "root".to_string()),
+            circuit
+        ).unwrap();
 
+        println!("Creating proofs --------------------------------- ");
         let circuit = CircomCircuit::<Bn256> {
-            signals: &evaluator.signals,
-            constraints: &evaluator.constraints,
+            signals: &ev_witness.signals,
+            constraints: &ev_r1cs.constraints,
             phantom: PhantomData,
         };
 
@@ -193,4 +197,5 @@ mod test {
 
         assert!(!success);
     }
+
 }
