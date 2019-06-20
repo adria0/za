@@ -11,6 +11,7 @@ extern crate serde_cbor;
 extern crate serde_derive;
 extern crate log;
 extern crate rand;
+extern crate itertools;
 
 pub mod algebra;
 pub mod evaluator;

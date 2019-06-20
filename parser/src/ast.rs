@@ -176,12 +176,12 @@ pub enum BodyElementP {
     },
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum SignalType {
-    Internal,
+    Output,
     PublicInput,
     PrivateInput,
-    Output,
+    Internal,
 }
 
 #[derive(Copy, Clone, PartialEq)]

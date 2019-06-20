@@ -22,6 +22,8 @@ use super::scope::*;
 use super::types::*;
 use crate::storage::{Constraints, Signal, Signals};
 
+use itertools::Itertools;
+
 #[derive(Debug)]
 pub struct ErrorContext {
     pub scope: String,
@@ -386,31 +388,39 @@ where
                             std::mem::swap(&mut new_current_component, &mut self.current_component);
 
                             if let StatementP::Block { stmts, .. } = &**stmt {
-                                for stmt in stmts {
-                                    if let StatementP::Declaration {
-                                        meta,
-                                        name,
-                                        xtype: VariableType::Signal(xtype),
-                                        ..
-                                    } = &**stmt
+                                let signals = stmts.iter()
+                                    .filter_map(|stmt| 
+                                        if let StatementP::Declaration {
+                                            meta,
+                                            name,
+                                            xtype: VariableType::Signal(xtype),
+                                            ..
+                                        } = &**stmt {
+                                            Some((meta,name,xtype))
+                                        } else {
+                                            None
+                                        }
+                                    )
+                                    .sorted_by(|(_,_,xtype1),(_,_,xtype2)| Ord::cmp(xtype1,xtype2));
+
+                                for (meta,name,xtype) in signals {
+                                    let mut pending_signals = self
+                                        .eval_declaration_signals(
+                                            meta,
+                                            &mut template_scope,
+                                            *xtype,
+                                            name,
+                                        )?;
+                                    if *xtype == SignalType::PublicInput
+                                        || *xtype == SignalType::PrivateInput
                                     {
-                                        if *xtype == SignalType::PublicInput
-                                            || *xtype == SignalType::PrivateInput
-                                        {
-                                            let mut pending_signals = self
-                                                .eval_declaration_signals(
-                                                    meta,
-                                                    &mut template_scope,
-                                                    *xtype,
-                                                    name,
-                                                )?;
-                                            if self.mode == Mode::GenWitness {
-                                                all_pending_input_signals
-                                                    .append(&mut pending_signals);
-                                            }
+                                        if self.mode == Mode::GenWitness {
+                                            all_pending_input_signals
+                                                .append(&mut pending_signals);
                                         }
                                     }
                                 }
+
                             } else {
                                 unreachable!();
                             }
@@ -560,7 +570,7 @@ where
                     }
                 }
                 _ => Err(Error::InvalidType(format!(
-                    "cannot eval {}={:?} cannot be used",
+                    "expected valid value from variable '{}' (current is '{:?}')",
                     name_sel, &v
                 ))),
             })
@@ -893,10 +903,7 @@ where
                     Ok(())
                 }
 
-                (VariableType::Signal(xtype), None) => {
-                    if xtype != SignalType::PublicInput && xtype != SignalType::PrivateInput {
-                        self.eval_declaration_signals(meta, scope, xtype, var)?;
-                    }
+                (VariableType::Signal(_), None) => {
                     Ok(())
                 }
                 _ => Err(Error::NotYetImplemented(format!(

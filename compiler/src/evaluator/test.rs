@@ -66,7 +66,7 @@ mod test {
 
     fn eval_witness(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
         let (eval, scope) = eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
-        assert_eq!(eval.constraints.len()?,0);
+        assert_eq!(eval.constraints.len()?, 0);
         Ok((eval, scope))
     }
 
@@ -75,7 +75,7 @@ mod test {
         deferred_values: Vec<(String, u64)>,
     ) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
         let (eval, scope) = eval_generic(Mode::GenWitness, s, deferred_values, Ram::default())?;
-        assert_eq!(eval.constraints.len()?,0);
+        assert_eq!(eval.constraints.len()?, 0);
         Ok((eval, scope))
     }
 
@@ -709,6 +709,38 @@ mod test {
         ",
             vec![("main.a".to_string(), 4), ("main.b".to_string(), 2)],
         )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_signal_ordering() -> Result<()> {
+        let (eval, _) = eval_constraint(
+            "
+            template t() {
+                signal input pub1;
+                signal private input priv1;
+                signal int1; 
+                signal output out;
+                signal private input priv2;
+                signal int2; 
+                signal input pub2;
+                out <== pub1 + pub2 + int1 + int2 + priv1 + priv2;
+            }
+            component main = t();
+        ",
+        )?;
+        vec![
+            "main.out",
+            "main.pub1",
+            "main.pub2",
+            "main.priv1",
+            "main.priv2",
+            "main.int1",
+            "main.int2",
+        ]
+        .iter()
+        .enumerate()
+        .for_each(|(n, s)| assert_eq!(1 + n, eval.signals.get_by_name(s).unwrap().unwrap().id));
         Ok(())
     }
 
