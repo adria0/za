@@ -23,7 +23,7 @@ use circom2_bigsnark::Rocks;
 
 
 fn dump_error<S: Signals, C: Constraints>(eval: &evaluator::Evaluator<S, C>, err: &str) {
-    let msg = format!("{:?}", err);
+    let msg = format!("{}", err);
 
     if let Some(ctx) = &eval.last_error {
         let span: ByteSpan = Span::from_offset(
