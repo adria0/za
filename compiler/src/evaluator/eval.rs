@@ -271,11 +271,29 @@ where
             if name == "dbg" {
                 print!("DBG ");
                 for param in params {
-                    let value = self.eval_expression_p(scope, param)?;
-                    print!("{:?} ⇨ ", param);
-                    match value {
-                        ReturnValue::Algebra(value) => print!("{} ", self.format_algebra(value)),
-                        _ => print!("{:?} ", value),
+                    let mut processed = false;
+                    if let ExpressionP::Variable{name:var_name,..} = &**param {
+                        if var_name.sels.len() == 0 {
+                            scope.get(&*var_name.name, |var_value|
+                                match var_value {
+                                    Some(ScopeValue::Component{pending_inputs,..}) => {
+                                        for signal in pending_inputs {
+                                            println!("{:?} ⇨ pending {:?}", param, self.signals.get_by_id(*signal).unwrap().unwrap().full_name);
+                                        }                                            
+                                        processed = true;
+                                    }
+                                    _ => {}
+                                }
+                            );                            
+                        }
+                    }
+                    if !processed {
+                        let value = self.eval_expression_p(scope, param)?;
+                        print!("{:?} ⇨ ", param);
+                        match value {
+                            ReturnValue::Algebra(value) => print!("{} ", self.format_algebra(value)),
+                            _ => print!("{:?} ", value),
+                        }
                     }
                 }
                 println!();
@@ -1222,7 +1240,9 @@ where
                 self.processed_files.push(hash_hex);
 
                 let mut new_current_file = full_path.to_str().unwrap().to_string();
+                let mut new_path = full_path.parent().unwrap().to_path_buf();
                 std::mem::swap(&mut new_current_file, &mut self.current_file);
+                std::mem::swap(&mut new_path, &mut self.path);
 
                 match circom2_parser::parse(&code) {
                     Ok(elements) => {
@@ -1234,6 +1254,7 @@ where
                     }
                 }
 
+                std::mem::swap(&mut self.path, &mut new_path);
                 std::mem::swap(&mut self.current_file, &mut new_current_file);
             }
 
