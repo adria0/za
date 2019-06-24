@@ -34,6 +34,13 @@ impl Value {
         }
         None
     }
+    pub fn try_into_fs(self) -> Option<FS> {
+        if let Value::FieldScalar(fs) = self {
+            Some(fs)
+        } else {
+            None
+        }
+    }
 }
 
 impl Default for Value {

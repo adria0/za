@@ -10,11 +10,13 @@ extern crate structopt;
 #[macro_use]
 extern crate log;
 
+
 use circom2_compiler::{evaluator, tester};
 use codespan::{ByteSpan, CodeMap, Span};
 use codespan_reporting::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::{emit, Diagnostic, Label, Severity};
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::fs::File;
 
 use circom2_compiler::storage::{Constraints, Signals};
 use circom2_compiler::storage::{Ram, StorageFactory};
@@ -106,6 +108,30 @@ fn generate_constrains_ram(filename: &str, print_all: bool, cuda_file: Option<St
     }
 }
 
+fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_path: &str) {
+    let mut storage = Ram::default();
+
+    let mut eval = evaluator::Evaluator::new(
+        evaluator::Mode::GenConstraints,
+        storage.new_signals().unwrap(),
+        storage.new_constraints().unwrap(),
+    );
+    info!("Compiling circuit...");
+    if let Err(err) = eval.eval_file(".", &circuit_path) {
+        dump_error(&eval, &format!("{:?}", err));
+        return;
+    } 
+    print_info(&eval,false);
+    info!("Performint setup");
+    let (pk,vk) = (
+        File::create(proving_key_path).unwrap(),
+        File::create(verificator_key_path).unwrap()
+    );
+
+    circom2_prover::groth16::setup(eval, pk, vk).expect("cannot generate setup");
+}
+
+
 use structopt::StructOpt;
 
 /// A StructOpt example
@@ -144,6 +170,19 @@ enum Command {
         /// Export cuda format
         cuda: Option<String>,
     },
+    #[structopt(name = "setup")]
+    /// Compile & generate trusted setup
+    Setup {
+        file: String,
+
+        #[structopt(long = "pk")]
+        /// Proving key file, default prover.key
+        pk: Option<String>,
+
+        #[structopt(long = "verifier")]
+        /// Solidity verifier
+        verifier: Option<String>,
+    },
     #[structopt(name = "test")]
     /// Run embeeded circuit tests
     Test { file: String },
@@ -167,6 +206,11 @@ fn main() {
             } else {
                 generate_constrains_rocks(&file,print_all, cuda)
             }
+        }
+        Command::Setup { file, pk, verifier } => {
+            let pk = pk.unwrap_or("proving.key".to_string());
+            let verifier = verifier.unwrap_or("verifier.sol".to_string());
+            setup_ram(&file,&pk,&verifier);
         }
         Command::Test { file } => {
             let ram = Ram::default();

@@ -583,3 +583,6 @@ template test_rollup_42() {
     t.out === out;
 
 }
+
+component main=Main(4,2);
+

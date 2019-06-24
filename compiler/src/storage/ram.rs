@@ -31,6 +31,9 @@ pub struct RamSignals {
     ids: Vec<Rc<Signal>>,
 }
 
+impl RamSignals {
+}
+
 impl Default for RamSignals {
     fn default() -> Self {
         let ids = Vec::new();
