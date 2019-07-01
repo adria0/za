@@ -1200,7 +1200,6 @@ where
                 match constrain {
                     algebra::Value::FieldScalar(ref fs) if fs.is_zero() => {}
                     _ => {
-                        self.dbg_dump_signals()?;
                         return Err(Error::CannotTestConstrain(format!(
                             "{:?}==={:?} => {}==={}",
                             lhe,
@@ -1484,7 +1483,7 @@ where
         }
     }
 
-    fn dbg_dump_signals(&self) -> Result<()> {
+    fn _dbg_dump_signals(&self) -> Result<()> {
         for n in 0..self.signals.len()? {
             println!("{}: {:?}",n,self.signals.get_by_id(n));
         }
