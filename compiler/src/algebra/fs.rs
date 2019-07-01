@@ -28,6 +28,7 @@ lazy_static! {
     )
     .unwrap();
     pub static ref ONE: BigUint = BigUint::parse_bytes(b"1", 10).unwrap();
+    pub static ref ZERO: BigUint = BigUint::parse_bytes(b"0", 10).unwrap();
 }
 
 
@@ -40,7 +41,25 @@ impl FS {
     fn field_int() -> &'static BigInt {
         &BABYJUB_FIELD_INT as &BigInt
     }
+    pub fn parse(expr: &str) -> Result<Self> {
+        if expr.starts_with("0x") {
+            BigUint::parse_bytes(&expr.as_bytes()[2..],16)
+                .map_or_else(
+                || Err(Error::InvalidFormat(format!("{} is not hexadecimal",expr))),
+                |v| Ok(FS(v)),
+                )
+        } else {
+            BigUint::parse_bytes(expr.as_bytes(),10)
+                .map_or_else(
+                || Err(Error::InvalidFormat(format!("{} is not decimal",expr))),
+                |v| Ok(FS(v)),
+                )
+        }
+    }
 
+    pub fn zero() -> Self {
+        FS(ZERO.clone())
+    }
     pub fn one() -> Self {
         FS(ONE.clone())
     }

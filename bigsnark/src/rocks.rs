@@ -225,8 +225,10 @@ impl<'a> Constraints for RockConstraints {
             }?
         }}
     }
-
-    fn push(&mut self, qeq: QEQ) -> storage::Result<usize> {
+    fn get_debug(&self, _i: usize) -> Option<String> {
+        None
+    }
+    fn push(&mut self, qeq: QEQ, _debug: Option<String>) -> storage::Result<usize> {
         map_err!{{
             let index = inc_u64(&mut self.db, &[0])? - 1;
             let mut key: Vec<u8> = vec![1];
@@ -368,8 +370,8 @@ mod test {
         let mut constraints = rocks.new_constraints()?;
         assert_eq!(0, constraints.len()?);
 
-        let c1 = constraints.push(one)?;
-        let c2 = constraints.push(two)?;
+        let c1 = constraints.push(one, None)?;
+        let c2 = constraints.push(two, None)?;
 
         assert_eq!(2, constraints.len()?);
         assert_eq!("[ ]*[ ]+[1s0]", format!("{:?}", constraints.get(c1)?));

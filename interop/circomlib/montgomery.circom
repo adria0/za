@@ -33,7 +33,6 @@ template Edwards2Montgomery() {
     #[w] out[0] <-- (1 + in[1]) / (1 - in[1]);
     #[w] out[1] <-- out[0] / in[0];
 
-
     out[0] * (1-in[1]) === (1 + in[1]);
     out[1] * in[0] === out[0];
 }
@@ -138,4 +137,42 @@ template MontgomeryDouble() {
 
     out[0] <== B*lamda*lamda - A - 2*in[0];
     out[1] <== lamda * (in[0] - out[0]) - in[1];
+}
+
+#[test]
+template test_Edwards2Montgomery() {
+    component main =Edwards2Montgomery();
+    #[w] {
+        main.in[0] <== 6;
+        main.in[1] <== 7;
+    }
+}
+
+#[test]
+template test_Montgomery2Edwards() {
+    component main =Montgomery2Edwards();
+    #[w] {
+        main.in[0] <== 6;
+        main.in[1] <== 7;
+    }
+}
+
+#[test]
+template test_MontgomeryAdd() {
+    component main =MontgomeryAdd();
+    #[w] {
+        main.in1[0] <== 6;
+        main.in1[1] <== 7;
+        main.in2[0] <== 8;
+        main.in2[1] <== 9;
+    }
+}
+
+#[test]
+template test_MontgomeryDouble() {
+    component main =MontgomeryDouble();
+    #[w] {
+        main.in[0] <== 6;
+        main.in[1] <== 7;
+    }
 }

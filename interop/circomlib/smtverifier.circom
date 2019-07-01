@@ -138,46 +138,50 @@ template SMTVerifier(nLevels) {
 
 #[test] 
 template test_smt_inclusion() {
-    component t = SMTVerifier(10);
-    t.enabled <== 1;
-    t.fnc <== 0;
-    t.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
-    t.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
-    t.siblings[1] <== 0;
-    t.siblings[2] <== 0;
-    t.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
-    t.siblings[4] <== 0;
-    t.siblings[5] <== 0;
-    t.siblings[6] <== 0;
-    t.siblings[7] <== 0;
-    t.siblings[8] <== 0;
-    t.siblings[9] <== 0;
-    t.oldKey <== 32;
-    t.oldValue <== 3232;
-    t.isOld0 <== 0;
-    t.key <== 32;
-    t.value <== 3232;
+    component main =SMTVerifier(10);
+    #[w]{
+        main.enabled <== 1;
+        main.fnc <== 0;
+        main.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
+        main.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
+        main.siblings[1] <== 0;
+        main.siblings[2] <== 0;
+        main.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
+        main.siblings[4] <== 0;
+        main.siblings[5] <== 0;
+        main.siblings[6] <== 0;
+        main.siblings[7] <== 0;
+        main.siblings[8] <== 0;
+        main.siblings[9] <== 0;
+        main.oldKey <== 32;
+        main.oldValue <== 3232;
+        main.isOld0 <== 0;
+        main.key <== 32;
+        main.value <== 3232;
+    }
 }
 
 #[test] 
 template test_smt_exclusion() {
-    component t = SMTVerifier(10);
-    t.enabled <== 1;
-    t.fnc <== 1;
-    t.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
-    t.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
-    t.siblings[1] <== 0;
-    t.siblings[2] <== 0;
-    t.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
-    t.siblings[4] <== 0;
-    t.siblings[5] <== 0;
-    t.siblings[6] <== 0;
-    t.siblings[7] <== 0;
-    t.siblings[8] <== 0;
-    t.siblings[9] <== 0;
-    t.oldKey <== 32;
-    t.oldValue <== 3232;
-    t.isOld0 <== 0;
-    t.key <== 64;
-    t.value <== 0;
+    component main =SMTVerifier(10);
+    #[w]{
+        main.enabled <== 1;
+        main.fnc <== 1;
+        main.root <== 11551450462129540273398008002958622457574029324157946159527568407658859887829;
+        main.siblings[0] <== 13455034059297281016272585298528306605866068217171776345671286666756502579091;
+        main.siblings[1] <== 0;
+        main.siblings[2] <== 0;
+        main.siblings[3] <== 1861165906443293922235287625340159227217462493991641436708152769502026456756;
+        main.siblings[4] <== 0;
+        main.siblings[5] <== 0;
+        main.siblings[6] <== 0;
+        main.siblings[7] <== 0;
+        main.siblings[8] <== 0;
+        main.siblings[9] <== 0;
+        main.oldKey <== 32;
+        main.oldValue <== 3232;
+        main.isOld0 <== 0;
+        main.key <== 64;
+        main.value <== 0;
+    }
 }

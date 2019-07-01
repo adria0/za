@@ -26,7 +26,7 @@ mod test {
 
     #[test]
     fn circomlib_tests() {
-        match tester::run_embeeded_tests("./circomlib", "all_tests.circom", Ram::default()) {
+        match tester::run_embeeded_tests("./circomlib", "all_tests.circom", Ram::default(),false) {
             Ok(Some((_, err))) => {
                 println!("{:?}", err);
                 assert!(false);

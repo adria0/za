@@ -124,13 +124,13 @@ pub fn eval_infix(lhv: &Value, op: ast::Opcode, rhv: &Value) -> Result<Value> {
         (Sub, FieldScalar(lhv), FieldScalar(rhv)) => Ok(FieldScalar(lhv + &-rhv)),
         (Sub, LinearCombination(lhv), LinearCombination(rhv)) => Ok(LinearCombination(lhv + &-rhv)),
 
-        (Sub, FieldScalar(lhv), LinearCombination(rhv)) => Ok(LinearCombination(rhv + &-lhv)),
+        (Sub, FieldScalar(lhv), LinearCombination(rhv)) => Ok(LinearCombination(&-rhv + lhv)),
         (Sub, LinearCombination(lhv), FieldScalar(rhv)) => Ok(LinearCombination(lhv + &-rhv)),
 
-        (Sub, FieldScalar(lhv), QuadraticEquation(rhv)) => Ok(QuadraticEquation(rhv + &-lhv)),
+        (Sub, FieldScalar(lhv), QuadraticEquation(rhv)) => Ok(QuadraticEquation(&-rhv + lhv)),
         (Sub, QuadraticEquation(lhv), FieldScalar(rhv)) => Ok(QuadraticEquation(lhv + &-rhv)),
 
-        (Sub, LinearCombination(lhv), QuadraticEquation(rhv)) => Ok(QuadraticEquation(rhv + &-lhv)),
+        (Sub, LinearCombination(lhv), QuadraticEquation(rhv)) => Ok(QuadraticEquation(&-rhv + lhv)),
         (Sub, QuadraticEquation(lhv), LinearCombination(rhv)) => Ok(QuadraticEquation(lhv + &-rhv)),
 
         // mul

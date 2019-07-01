@@ -32,6 +32,9 @@ pub enum ScopeValue {
         template: String,
         path: String,
         args: Vec<ReturnValue>,
+
+        // None => Component already expanded
+        // Some(n) => Signals pending for expansion
         pending_inputs: Vec<algebra::SignalId>,
     },
     List(List),
@@ -71,6 +74,15 @@ impl<'a> Scope<'a> {
             return_value: RefCell::new(None),
             vars: RefCell::new(HashMap::new()),
         }
+    } 
+    pub fn deep_clone(&self) -> Self {
+        Self {
+            start : self.start,
+            prev  : self.prev.clone(),
+            pos   : self.pos.clone(),
+            return_value: self.return_value.clone(),
+            vars: self.vars.clone(),
+        }    
     }
 
     pub fn root(&self) -> &Scope {

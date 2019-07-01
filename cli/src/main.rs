@@ -10,47 +10,31 @@ extern crate structopt;
 #[macro_use]
 extern crate log;
 
+use circom2_compiler::{
+    evaluator::{Evaluator,Mode},
+    tester,
+    algebra::Value
+};
 
-use circom2_compiler::{evaluator, tester};
-use codespan::{ByteSpan, CodeMap, Span};
-use codespan_reporting::termcolor::{ColorChoice, StandardStream};
-use codespan_reporting::{emit, Diagnostic, Label, Severity};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs::File;
+use std::io::prelude::*;
 
 use circom2_compiler::storage::{Constraints, Signals};
 use circom2_compiler::storage::{Ram, StorageFactory};
+use circom2_compiler::tester::dump_error;
+use circom2_compiler::evaluator::format_algebra;
 
 use circom2_bigsnark::Rocks;
 
+const DEFAULT_CIRCUIT : &str = "circuit.circom";
+const DEFAULT_PROVING_KEY : &str = "proving.key";
+const DEFAULT_INPUT : &str = "input.json";
+const DEFAULT_PROOF : &str = "proof.json";
+const DEFAULT_SOLIDITY_VERIFIER : &str = "verifier.sol";
 
-fn dump_error<S: Signals, C: Constraints>(eval: &evaluator::Evaluator<S, C>, err: &str) {
-    let msg = format!("{}", err);
 
-    if let Some(ctx) = &eval.last_error {
-        let span: ByteSpan = Span::from_offset(
-            (1 + ctx.meta.start as u32).into(),
-            (1 + (ctx.meta.end - ctx.meta.start) as i64).into(),
-        );
-
-        println!("{}", ctx.scope);
-
-        if ctx.file != "" {
-            let mut code_map = CodeMap::new();
-            code_map
-                .add_filemap_from_disk(&ctx.file)
-                .unwrap_or_else(|_| panic!("cannot read source file '{}'", &ctx.file));
-
-            let error = Diagnostic::new(Severity::Error, "Failed to execute")
-                .with_label(Label::new_primary(span).with_message(msg.clone()));
-
-            let writer = StandardStream::stderr(ColorChoice::Always);
-            emit(&mut writer.lock(), &code_map, &error).unwrap();
-        }
-    }
-}
-
-fn print_info<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, print_all: bool) {
+fn print_info<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, print_all: bool) {
     info!(
         "{} signals, {} constraints",
         eval.signals.len().unwrap(),
@@ -63,24 +47,25 @@ fn print_info<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, print_
         }
         println!("constrains ----------------------");
         for n in 0..eval.constraints.len().unwrap() {
-            println!("{}:  {:?}=0",n,eval.constraints.get(n).unwrap());
+            let constrain = Value::QuadraticEquation(eval.constraints.get(n).unwrap());
+            println!("{}:  {}=0",n,format_algebra(&eval.signals,&constrain));
         }
     }
 }
 
-fn generate_cuda<S:Signals,C:Constraints>(eval : &evaluator::Evaluator<S,C>, cuda_file : Option<String>) {
+fn generate_cuda<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
         circom2_prover::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
     }
 }
 
-fn generate_constrains_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
+fn compile_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let mut storage = Rocks::new(format!("db_{}_{}", filename, since_the_epoch));
 
-    let mut eval = evaluator::Evaluator::new(
-        evaluator::Mode::GenConstraints,
+    let mut eval = Evaluator::new(
+        Mode::GenConstraints,
         storage.new_signals().unwrap(),
         storage.new_constraints().unwrap(),
     );
@@ -92,11 +77,11 @@ fn generate_constrains_rocks(filename: &str, print_all: bool, cuda_file: Option<
     }
 }
 
-fn generate_constrains_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
+fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let mut storage = Ram::default();
 
-    let mut eval = evaluator::Evaluator::new(
-        evaluator::Mode::GenConstraints,
+    let mut eval = Evaluator::new(
+        Mode::GenConstraints,
         storage.new_signals().unwrap(),
         storage.new_constraints().unwrap(),
     );
@@ -111,8 +96,8 @@ fn generate_constrains_ram(filename: &str, print_all: bool, cuda_file: Option<St
 fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_path: &str) {
     let mut storage = Ram::default();
 
-    let mut eval = evaluator::Evaluator::new(
-        evaluator::Mode::GenConstraints,
+    let mut eval = Evaluator::new(
+        Mode::GenConstraints,
         storage.new_signals().unwrap(),
         storage.new_constraints().unwrap(),
     );
@@ -122,15 +107,72 @@ fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_path: &
         return;
     } 
     print_info(&eval,false);
-    info!("Performint setup");
+    info!("Running setup");
     let (pk,vk) = (
         File::create(proving_key_path).unwrap(),
         File::create(verificator_key_path).unwrap()
     );
 
-    circom2_prover::groth16::setup(eval, pk, vk).expect("cannot generate setup");
+    circom2_prover::groth16::setup(&eval, pk, vk).expect("cannot generate setup");
 }
 
+fn prove_ram(circuit_path: &str,proving_key_path: &str, input_path: &str, proof_path: &str) {
+
+    let mut inputs = String::new();
+    File::open(input_path)
+        .expect("cannot open inputs file")
+        .read_to_string(&mut inputs)
+        .expect("cannot read inputs file");
+
+    info!("Parsing inputs...");
+    let inputs = circom2_prover::groth16::flatten_json("main",&inputs)
+        .expect("cannot parse input");
+    
+    info!("Generating witness...");
+    let mut ram = Ram::default();
+    let mut ev_witness = Evaluator::new(
+        Mode::GenWitness,
+        ram.new_signals().unwrap(),
+        ram.new_constraints().unwrap(),
+    );
+
+    info!("Checking constraints...");
+    if ev_witness.constraints.len().unwrap() > 0 {
+        panic!("constrains generated in witness");
+    }
+
+    info!("Checking signals...");
+    for n in 1..ev_witness.signals.len().unwrap() {
+        let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
+        if signal.value.is_none() {
+            panic!("signal '{}' value is not defined",signal.full_name.0);
+        }  
+    }
+
+    for (signal,value) in inputs {
+        ev_witness.set_deferred_value(signal, Value::from(value));
+    }
+
+    ev_witness.eval_file(".", &circuit_path)
+        .expect("cannot evaluate circuit");
+
+    // Create proof
+    info!("Creating and self-verifying proof...");
+    let pk = File::open(proving_key_path)
+        .expect("cannot read proving key");
+
+    let mut proof = File::create(proof_path)
+        .expect("cannot create proof file");
+
+    let _ = circom2_prover::groth16::generate_verified_proof(
+        ev_witness.signals,
+        pk,
+        &mut proof
+    ).expect("cannot generate and self-verify proof");
+
+    info!("Done.");
+        
+}
 
 use structopt::StructOpt;
 
@@ -154,9 +196,11 @@ struct Opt {
 #[derive(StructOpt)]
 enum Command {
     #[structopt(name = "compile")]
-    /// Compile the circuit
+    /// Only compile the circuit
     Compile {
-        file: String,
+        #[structopt(long = "circuit")]
+        /// Circuit, defaults to circuit.circom
+        circuit: Option<String>,
 
         #[structopt(long = "ram")]
         /// Use RAM (default) or local storage
@@ -173,19 +217,48 @@ enum Command {
     #[structopt(name = "setup")]
     /// Compile & generate trusted setup
     Setup {
-        file: String,
+        #[structopt(long = "circuit")]
+        /// Circuit, defaults to circuit.circom
+        circuit: Option<String>,
 
         #[structopt(long = "pk")]
-        /// Proving key file, default prover.key
+        /// Proving key file, defaults to prover.key
         pk: Option<String>,
 
         #[structopt(long = "verifier")]
         /// Solidity verifier
         verifier: Option<String>,
     },
+    #[structopt(name = "prove")]
+    /// Compile & generate trusted setup
+    Prove {
+        #[structopt(long = "circuit")]
+        /// Circuit, defaults to circuit.circom
+        circuit: Option<String>,
+
+        #[structopt(long = "pk")]
+        /// Proving key file, defaults to prover.key
+        pk: Option<String>,
+
+        #[structopt(long = "input")]
+        /// Public inputs file, defaults to input.json
+        input: Option<String>,
+
+        #[structopt(long = "proof")]
+        /// Proof file, defaults to proof.json
+        proof: Option<String>,
+    },
     #[structopt(name = "test")]
     /// Run embeeded circuit tests
-    Test { file: String },
+    Test {
+        #[structopt(long = "circuit")]
+        /// Circuit, defaults to circuit.circom
+        circuit: Option<String>,
+
+        #[structopt(long = "debug")]
+        /// Turn on debugging
+        debug: Option<bool>,
+    },
 }
 
 fn main() {
@@ -198,27 +271,38 @@ fn main() {
 
     let cmd = Command::from_args();
     match cmd {
-        Command::Compile { file, use_ram, print, cuda } => {
+        Command::Compile { circuit, use_ram, print, cuda } => {
+            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
             let use_ram = use_ram.unwrap_or(true);
             let print_all = print.unwrap_or(false);
             if use_ram {
-                generate_constrains_ram(&file,print_all,cuda)
+                compile_ram(&circuit,print_all,cuda)
             } else {
-                generate_constrains_rocks(&file,print_all, cuda)
+                compile_rocks(&circuit,print_all, cuda)
             }
         }
-        Command::Setup { file, pk, verifier } => {
-            let pk = pk.unwrap_or("proving.key".to_string());
-            let verifier = verifier.unwrap_or("verifier.sol".to_string());
-            setup_ram(&file,&pk,&verifier);
+        Command::Setup { circuit, pk, verifier } => {
+            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+            let pk = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
+            let verifier = verifier.unwrap_or(DEFAULT_SOLIDITY_VERIFIER.to_string());
+            setup_ram(&circuit,&pk,&verifier);
         }
-        Command::Test { file } => {
+        Command::Test { circuit, debug } => {
+            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+            let debug = debug.unwrap_or(false);
             let ram = Ram::default();
-            match tester::run_embeeded_tests(".", &file, ram) {
+            match tester::run_embeeded_tests(".", &circuit, ram, debug) {
                 Ok(Some((eval, err))) => dump_error(&eval, &err),
                 Err(err) => warn!("Error: {:?}", err),
                 _ => {}
             }
+        }
+        Command::Prove { circuit, pk, input, proof } => {
+            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+            let pk = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
+            let input = input.unwrap_or(DEFAULT_INPUT.to_string());
+            let proof = proof.unwrap_or(DEFAULT_PROOF.to_string());
+            prove_ram(&circuit,&pk,&input,&proof)
         }
     }
 }

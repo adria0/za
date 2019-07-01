@@ -50,17 +50,3 @@ template K(x) {
         out[i] <== (c[x] >> i) & 1;
     }
 }
-
-#[test]
-template test_K1() {
-    component h0 = K(8);
-
-    var lc = 0;
-    var e = 1;
-    for (var i=0; i<32; i+=1) {
-        lc = lc + e*h0.out[i];
-        e *= 2;
-    }
-
-    lc === 0xd807aa98;
-}

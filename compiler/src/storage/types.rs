@@ -75,7 +75,9 @@ pub trait Constraints {
     fn is_empty(&self) -> Result<bool>;
     fn len(&self) -> Result<usize>;
     fn get(&self, i: usize) -> Result<QEQ>;
-    fn push(&mut self, qeq: QEQ) -> Result<usize>;
+    fn get_debug(&self, i: usize) -> Option<String>;
+    fn push(&mut self, qeq: QEQ, debug: Option<String>) -> Result<usize>;
+
 }
 
 pub trait StorageFactory<S: Signals, C: Constraints> {

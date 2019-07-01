@@ -270,17 +270,21 @@ template pedersen256_helper() {
 
 #[test]
 template test_pedersen_at_zero() {
-    component t = pedersen256_helper();
-    t.in <== 0;
-    t.out[0] === 3293356515610993045079966956177080131157890267334663226259472478712367818746;
-    t.out[1] === 20570562226431668734460952502559008517794812804909793924337438584847726792503;
+    component main =pedersen256_helper();
+    #[w] {
+        main.in <== 0;
+        main.out[0] === 3293356515610993045079966956177080131157890267334663226259472478712367818746;
+        main.out[1] === 20570562226431668734460952502559008517794812804909793924337438584847726792503;
+    }
 }
 
 #[test]
 template test_pedersen_at_all_ones() {
-    component t = pedersen256_helper();
-    t.in <== 0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-    t.out[0] === 0x2a35f415ed5a1640bcda758ca9c1d1cfaf9a8c64bb4a146723ca1d260e67039d;
-    t.out[1] === 0x2b7171b2dad3a61309bcf1ee58982094efff4efc43eb8eb86687e3dee0bd6e19;
+    component main =pedersen256_helper();
+    #[w] {
+        main.in <== 0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+        main.out[0] === 0x2a35f415ed5a1640bcda758ca9c1d1cfaf9a8c64bb4a146723ca1d260e67039d;
+        main.out[1] === 0x2b7171b2dad3a61309bcf1ee58982094efff4efc43eb8eb86687e3dee0bd6e19;
+    }
 }
 

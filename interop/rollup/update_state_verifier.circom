@@ -1,6 +1,8 @@
 include "../circomlib/mimc.circom";
 include "../circomlib/eddsamimc.circom";
 include "../circomlib/bitify.circom";
+include "../circomlib/comparators.circom";
+include "../circomlib/gates.circom";
 include "./tx_existence_check.circom";
 include "./balance_existence_check.circom";
 include "./balance_leaf.circom";
@@ -76,6 +78,12 @@ template Main(n,m) {
     component newReceiver[2**m - 1];
     component merkle_root_from_new_receiver[2**m - 1];
 
+    component to_x_is_zero[2**m];
+    component to_y_is_zero[2**m];
+    signal to_x_is_not_zero[2**m];
+    signal to_y_is_not_zero[2**m];
+
+    component tx_y_not_zero_and_tx_y_not_zero[2**m];
 
     current_state === intermediate_roots[0];
 
@@ -126,12 +134,38 @@ template Main(n,m) {
         nonce_from[i] != NONCE_MAX_VALUE;
 
         // check token types for non-withdraw transfers
-        */
-        #[w] {
-            if (to_x[i] != ZERO_ADDRESS_X && to_y[i] != ZERO_ADDRESS_Y){
-                token_type_to[i] === token_type_from[i];
-            }
+
+        template IsZero() {
+            signal input in;
+            signal output out;
         }
+        template IsEqual() {
+            signal input in[2];
+            signal output out;
+
+        */
+        
+        to_x_is_zero[i] = IsEqual();
+        to_x_is_zero[i].in[0] <== to_x[i];
+        to_x_is_zero[i].in[1] <== ZERO_ADDRESS_X;
+        to_x_is_not_zero[i] <== 1 - to_x_is_zero[i].out;
+
+        to_y_is_zero[i] = IsEqual();
+        to_y_is_zero[i].in[0] <== to_y[i];
+        to_y_is_zero[i].in[1] <== ZERO_ADDRESS_Y;
+        to_y_is_not_zero[i] <== 1 - to_y_is_zero[i].out;
+
+        tx_y_not_zero_and_tx_y_not_zero[i] = ForceEqualIfEnabled();
+        tx_y_not_zero_and_tx_y_not_zero[i].enabled <== to_x_is_not_zero[i] * to_y_is_not_zero[i];
+        tx_y_not_zero_and_tx_y_not_zero[i].in[0] <== token_type_to[i];
+        tx_y_not_zero_and_tx_y_not_zero[i].in[1] <== token_type_from[i];
+
+/*
+
+*/
+        //if (to_x[i] != ZERO_ADDRESS_X && to_y[i] != ZERO_ADDRESS_Y){
+        //    token_type_to[i] === token_type_from[i];
+        //}
 
         // subtract amount from sender balance; increase sender nonce 
         newSender[i] = BalanceLeaf();
@@ -539,48 +573,48 @@ template test_rollup_42() {
         1,
         0
     ];
-    component t = Main(4,2);
+    component main =Main(4,2);
     var n = 4;
     var m = 2;
 
-    t.tx_root <== tx_root;
-    t.current_state <== current_state;
+    main.tx_root <== tx_root;
+    main.current_state <== current_state;
     for (var i=0;i<2**m;i+=1) {
         for (var j=0;j<m;j+=1) {
-            t.paths2tx_root[i][j] <== paths2tx_root[i][j];
-            t.paths2tx_root_pos[i][j] <== paths2tx_root_pos[i][j];
+            main.paths2tx_root[i][j] <== paths2tx_root[i][j];
+            main.paths2tx_root_pos[i][j] <== paths2tx_root_pos[i][j];
         }
 
         for (var j=0;j<n;j+=1) {
-            t.paths2root_from[i][j] <== paths2root_from[i][j];
-            t.paths2root_to[i][j] <== paths2root_to[i][j];
-            t.paths2root_from_pos[i][j] <== paths2root_from_pos[i][j];
-            t.paths2root_to_pos[i][j] <== paths2root_to_pos[i][j];
+            main.paths2root_from[i][j] <== paths2root_from[i][j];
+            main.paths2root_to[i][j] <== paths2root_to[i][j];
+            main.paths2root_from_pos[i][j] <== paths2root_from_pos[i][j];
+            main.paths2root_to_pos[i][j] <== paths2root_to_pos[i][j];
         }
 
-        t.from_x[i] <== from_x[i];
-        t.from_y[i] <== from_y[i];
-        t.R8x[i] <== R8x[i];
-        t.R8y[i] <== R8y[i];
-        t.S[i] <== S[i];
+        main.from_x[i] <== from_x[i];
+        main.from_y[i] <== from_y[i];
+        main.R8x[i] <== R8x[i];
+        main.R8y[i] <== R8y[i];
+        main.S[i] <== S[i];
 
-        t.nonce_from[i] <== nonce_from[i];
-        t.to_x[i] <== to_x[i];
-        t.to_y[i] <== to_y[i];
-        t.nonce_to[i] <== nonce_to[i];
-        t.amount[i] <== amount[i];
+        main.nonce_from[i] <== nonce_from[i];
+        main.to_x[i] <== to_x[i];
+        main.to_y[i] <== to_y[i];
+        main.nonce_to[i] <== nonce_to[i];
+        main.amount[i] <== amount[i];
 
-        t.token_balance_from[i] <== token_balance_from[i];
-        t.token_balance_to[i] <== token_balance_to[i];
-        t.token_type_from[i] <== token_type_from[i];
-        t.token_type_to[i] <== token_type_to[i];
+        main.token_balance_from[i] <== token_balance_from[i];
+        main.token_balance_to[i] <== token_balance_to[i];
+        main.token_type_from[i] <== token_type_from[i];
+        main.token_type_to[i] <== token_type_to[i];
     }
 
     for (var i=0;i<2**(m+1);i+=1) {
-        t.intermediate_roots[i] <== intermediate_roots[i];
+        main.intermediate_roots[i] <== intermediate_roots[i];
     }
 
-    t.out === out;
+    main.out === out;
 
 }
 

@@ -19,6 +19,7 @@ pairing = { git = "https://github.com/matterinc/pairing", tag = "0.16.2" }
 ff = { git = 'https://github.com/matterinc/ff', features = ["derive"], tag = "0.5" }
 lazy_static = "1.3.0"
 regex = "0.2"
+serde_json = "1.0.39"
 
 [dependencies.num-bigint]
 version = "0.2.2"

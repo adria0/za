@@ -108,17 +108,20 @@ template Num2BitsNeg(n) {
 
 #[test]
 template test_num2bits() {
-    component t = Num2Bits(2);
-
-    t.in <== 2;
-    t.out[0] === 0;
-    t.out[1] === 1;
+    component main = Num2Bits(2);
+    #[w] {
+        main.in <== 2;
+        main.out[0] === 0;
+        main.out[1] === 1;
+    }
 }
 
 #[test]
 template test_bits2num() {
-    component t = Bits2Num(2);
-    t.in[0] <== 0;
-    t.in[1] <== 1;
-    t.out === 2;
+    component main = Bits2Num(2);
+    #[w] {
+        main.in[0] <== 0;
+        main.in[1] <== 1;
+        main.out === 2;
+    }
 }

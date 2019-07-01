@@ -242,64 +242,67 @@ template ClaimRootUpdate(nLevelsRelayer, nLevelsUser) {
 
 #[test]
 template test_BuildUserRootClaims() {
-    component t = BuildUserRootClaims();
+    component main = BuildUserRootClaims();
+    #[w] {
+        main.version <== 0;
+        main.idIdentity <== 1234;
+        main.era <== 0;
+        main.newRroot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
+        main.oldRroot <== 0;
 
-    t.version <== 0;
-    t.idIdentity <== 1234;
-    t.era <== 0;
-    t.newRroot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
-    t.oldRroot <== 0;
-
-    t.old_hi === 0x182ee393cfcbf975e25af01296a1a3bb70f66049e7fff0c797f268d064e5b550;
-    t.old_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
-    t.new_hi === 0x89fd2edc0a6dd763b006c0a1903b09fcb3b51aabfff7a54ffb51ce940b8933f;
-    t.new_hv === 0x24ae9775f16de9b0cdca722df4d6678c08a817bd40ed4575ef46a375a07daf79;
+        main.old_hi === 0x182ee393cfcbf975e25af01296a1a3bb70f66049e7fff0c797f268d064e5b550;
+        main.old_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
+        main.new_hi === 0x89fd2edc0a6dd763b006c0a1903b09fcb3b51aabfff7a54ffb51ce940b8933f;
+        main.new_hv === 0x24ae9775f16de9b0cdca722df4d6678c08a817bd40ed4575ef46a375a07daf79;
+    }
 }
 
-#[test]
 template test_BuildAuthorizeKeyClaims() {
-    component t = BuildAuthorizeKeyClaims();
-    
-    t.Ax <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
-    t.Ay <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
-    t.inc_hi === 0x1a75f5ec4fbc824c07a75d08848b45c7dff0f264f48fddbd5fed4fb8495cb381;
-    t.inc_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
-    t.exc_hi === 0x2d8b2bb67bec2fce9e6be5bf251869dd5430439f4f21a934726bfad2bd884ad9;
+    component main = BuildAuthorizeKeyClaims();
+    #[w] {
+        main.Ax <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
+        main.Ay <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
+        main.inc_hi === 0x1a75f5ec4fbc824c07a75d08848b45c7dff0f264f48fddbd5fed4fb8495cb381;
+        main.inc_hv === 0x1541a6b5aa9bf7d9be3d5cb0bcc7cacbca26242016a0feebfc19c90f2224baed;
+        main.exc_hi === 0x2d8b2bb67bec2fce9e6be5bf251869dd5430439f4f21a934726bfad2bd884ad9;
+    }
 }
 
 #[test]
 template test_claimrootupdate() {
-    component t = ClaimRootUpdate(10, 10);
-    t.oldRelayerRoot <== 0;
-    t.newRelayerRoot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
-    t.oldUserRoot <== 0;
-    t.idIdentity <== 1234;
-    t.era <== 0;
-    t.newUserRoot <== 9164435831827345487378393454304824441756195871900421654673163382659437536500;
-    t.newUserRootVersion <== 0;
-    t.sigKeyX <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
-    t.sigKeyY <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
-    t.sigS <== 1043684292397350507108850650525684376439518174906421843791686494893141984604;
-    t.sigR8x <== 15395507177505103995870174907385016443674539549000225563955344755542040525521;
-    t.sigR8y <== 8315800102674792436694752406326424429944804229252094505145784491665416975932;
-    
-    t.signingKeyExclusion_oldKey <== 0;
-    t.signingKeyExclusion_oldValue <== 0;
-    t.signingKeyExclusion_isOld0 <== 0;
-    t.relayerInsert_oldKey <== 0;
-    t.relayerInsert_oldValue <== 0;
-    t.relayerInsert_isOld0 <== 1;    
+    component main = ClaimRootUpdate(10, 10);
+    #[w] {
+        main.oldRelayerRoot <== 0;
+        main.newRelayerRoot <== 7149014917815960042505969439971619119991011354574443484106856202048948095881;
+        main.oldUserRoot <== 0;
+        main.idIdentity <== 1234;
+        main.era <== 0;
+        main.newUserRoot <== 9164435831827345487378393454304824441756195871900421654673163382659437536500;
+        main.newUserRootVersion <== 0;
+        main.sigKeyX <== 2610057752638682202795145288373380503107623443963127956230801721756904484787;
+        main.sigKeyY <== 16617171478497210597712478520507818259149717466230047843969353176573634386897;
+        main.sigS <== 1043684292397350507108850650525684376439518174906421843791686494893141984604;
+        main.sigR8x <== 15395507177505103995870174907385016443674539549000225563955344755542040525521;
+        main.sigR8y <== 8315800102674792436694752406326424429944804229252094505145784491665416975932;
+        
+        main.signingKeyExclusion_oldKey <== 0;
+        main.signingKeyExclusion_oldValue <== 0;
+        main.signingKeyExclusion_isOld0 <== 0;
+        main.relayerInsert_oldKey <== 0;
+        main.relayerInsert_oldValue <== 0;
+        main.relayerInsert_isOld0 <== 1;    
 
-    var signingKeyInclussion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-    var signingKeyExclusion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-    var oldRootInclusion_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-    var relayerInsert_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+        var signingKeyInclussion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+        var signingKeyExclusion_siblings =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+        var oldRootInclusion_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+        var relayerInsert_siblings = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
-    for (var i=0;i<10;i+=1) {
-        t.signingKeyInclussion_siblings[i] <== signingKeyInclussion_siblings[i];
-        t.signingKeyExclusion_siblings[i] <== signingKeyExclusion_siblings[i];
-        t.oldRootInclusion_siblings[i] <== oldRootInclusion_siblings[i];
-        t.relayerInsert_siblings[i] <== relayerInsert_siblings[i];
+        for (var i=0;i<10;i+=1) {
+            main.signingKeyInclussion_siblings[i] <== signingKeyInclussion_siblings[i];
+            main.signingKeyExclusion_siblings[i] <== signingKeyExclusion_siblings[i];
+            main.oldRootInclusion_siblings[i] <== oldRootInclusion_siblings[i];
+            main.relayerInsert_siblings[i] <== relayerInsert_siblings[i];
+        }
     }
 }
 

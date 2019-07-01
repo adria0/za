@@ -87,3 +87,33 @@ template LessThan(n) {
 
     adder.out[n-1] ==> out;
 }
+
+#[test]
+template test_IsZero_true() {
+    component main = IsZero();
+    main.in <== 0;
+    main.out === 1;
+}
+
+#[test]
+template test_IsZero_false() {
+    component main = IsZero();
+    main.in <== 2;
+    main.out === 0;
+}
+
+#[test]
+template test_IsEqual_true() {
+    component main = IsEqual();
+    main.in[0] <== 2;
+    main.in[1] <== 2;
+    main.out === 1;
+}
+
+#[test]
+template test_IsEqual_false() {
+    component main = IsEqual();
+    main.in[0] <== 2;
+    main.in[1] <== 3;
+    main.out === 0;
+}

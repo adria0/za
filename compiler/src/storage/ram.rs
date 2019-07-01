@@ -66,8 +66,11 @@ impl Signals for RamSignals {
 
     fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()> {
         let signal = &mut self.ids[id as usize];
-        let signal_inner = Rc::get_mut(signal).expect("cannot mutate signal");
-        signal_inner.value = Some(value);
+        if let Some(signal) =  Rc::get_mut(signal) {
+            signal.value = Some(value);
+        } else {
+            (*Rc::make_mut(signal)).value = Some(value);
+        }
         Ok(())
     }
 
@@ -115,7 +118,8 @@ impl Debug for RamSignals {
     }
 }
 
-pub struct RamConstraints(Vec<QEQ>);
+pub struct RamConstraints(Vec<(QEQ,Option<String>)>);
+
 impl Default for RamConstraints {
     fn default() -> Self {
         RamConstraints(Vec::new())
@@ -130,10 +134,13 @@ impl Constraints for RamConstraints {
         Ok(self.0.len())
     }
     fn get(&self, i: usize) -> Result<QEQ> {
-        Ok(self.0[i].clone())
+        Ok(self.0[i].0.clone())
     }
-    fn push(&mut self, qeq: QEQ) -> Result<usize> {
-        self.0.push(qeq);
+    fn get_debug(&self, i: usize) -> Option<String> {
+        self.0[i].1.clone()
+    }
+    fn push(&mut self, qeq: QEQ, debug: Option<String>) -> Result<usize> {
+        self.0.push((qeq,debug));
         Ok(self.0.len() - 1)
     }
 }

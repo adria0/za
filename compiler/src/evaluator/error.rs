@@ -15,6 +15,7 @@ pub enum Error {
     Algebra(algebra::Error),
     CannotGenerateConstrain(String),
     CannotTestConstrain(String),
+    CannotCheckConstrain(String),
     CannotConvertToU64(algebra::FS),
     Storage(storage::Error),
     Io(String, String),

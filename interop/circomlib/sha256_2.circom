@@ -68,10 +68,12 @@ template Sha256_2() {
 
 #[test]
 template test_sha256_2() {
-    component t = Sha256_2();
-    t.a <== 1;
-    t.b <== 2;
-    t.out === 0xb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
+    component main =Sha256_2();
+    #[w] {
+        main.a <== 1;
+        main.b <== 2;
+        main.out === 0xb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
+    }
 }
 
 

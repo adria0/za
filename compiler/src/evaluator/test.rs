@@ -6,6 +6,7 @@ mod test {
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::storage::{Constraints, Signals};
     use crate::storage::{Ram, RamConstraints, RamSignals, StorageFactory};
+    use crate::evaluator::check_constrains_eval_zero;
 
     fn constrain_eq<'a, S: Signals, C: Constraints>(
         eval: &Evaluator<S, C>,
@@ -65,9 +66,10 @@ mod test {
     }
 
     fn eval_witness(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval, scope) = eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
-        assert_eq!(eval.constraints.len()?, 0);
-        Ok((eval, scope))
+        let (eval_witness, scope_witness) = eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
+        assert_eq!(eval_witness.constraints.len()?, 0);
+            
+        Ok((eval_witness, scope_witness))
     }
 
     fn eval_witness_with_defer(
@@ -76,6 +78,11 @@ mod test {
     ) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
         let (eval, scope) = eval_generic(Mode::GenWitness, s, deferred_values, Ram::default())?;
         assert_eq!(eval.constraints.len()?, 0);
+
+        let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![], Ram::default())?;
+        
+        check_constrains_eval_zero(&eval_constraint.constraints,&eval.signals)?;
+
         Ok((eval, scope))
     }
 
@@ -382,7 +389,7 @@ mod test {
         ",
         )?;
 
-        constrain_eq(&eval, 0, "[5main.a]*[1main.b]+[5one-1main.c]");
+        constrain_eq(&eval, 0, "[-5main.a]*[1main.b]+[-5one+1main.c]");
         Ok(())
     }
     #[test]
@@ -418,7 +425,7 @@ mod test {
         )?;
 
         signal_eq(&eval, "main.const", "main.const:Internal:Some(2)");
-        constrain_eq(&eval, 0, "[ ]*[ ]+[2main.in-1one]");
+        constrain_eq(&eval, 0, "[ ]*[ ]+[-2main.in+1one]");
 
         Ok(())
     }
@@ -455,7 +462,7 @@ mod test {
         ",
         )?;
         constrain_eq(&eval, 0, "[ ]*[ ]+[1main.const-2one]");
-        constrain_eq(&eval, 1, "[ ]*[ ]+[2main.in-1one]");
+        constrain_eq(&eval, 1, "[ ]*[ ]+[-2main.in+1one]");
         Ok(())
     }
 
@@ -510,7 +517,7 @@ mod test {
         ",
         )?;
         constrain_eq(&eval, 0, "[ ]*[ ]+[1main.in[0]-1one]");
-        constrain_eq(&eval, 1, "[ ]*[ ]+[1main.in[1]-1one]");
+        constrain_eq(&eval, 1, "[ ]*[ ]+[-1main.in[1]+1one]");
         Ok(())
     }
 
@@ -708,6 +715,22 @@ mod test {
             component main = t();
         ",
             vec![("main.a".to_string(), 4), ("main.b".to_string(), 2)],
+        )?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_p_1() -> Result<()> {
+        eval_witness_with_defer(
+            "
+            template t() {
+                signal input p;
+                signal output out;
+                out <== 1-p;
+            }
+            component main = t();
+        ",
+            vec![("main.p".to_string(), 2)],
         )?;
         Ok(())
     }

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use circom2_parser;
 use circom2_parser::ast::{
@@ -20,7 +19,8 @@ use super::error::*;
 use super::retval::*;
 use super::scope::*;
 use super::types::*;
-use crate::storage::{Constraints, Signal, Signals};
+use super::utils::*;
+use crate::storage::{Constraints, Signals};
 
 use itertools::Itertools;
 
@@ -37,7 +37,7 @@ pub struct ErrorContext {
 pub enum Mode {
     Collect,        // collect declarations
     GenConstraints, // generate R1CS
-    GenWitness,     // run tests
+    GenWitness,     // generate witness
 }
 
 impl Mode {
@@ -79,6 +79,9 @@ where
 
     // deferred signal values
     pub deferred_signal_values: HashMap<String, algebra::Value>,
+
+    // turn on debugging
+    pub debug : bool,
 }
 
 impl<S, C> Evaluator<S, C>
@@ -99,6 +102,7 @@ where
             last_error: None,
             path: PathBuf::from("."),
             deferred_signal_values: HashMap::new(),
+            debug: false,
         }
     }
 
@@ -115,6 +119,16 @@ where
         Ok(())
     }
 
+    pub fn eval_template(&mut self, scope: &mut Scope, template_name: &str) -> Result<()> {
+        scope.get(&template_name, |value| match value {
+            Some(ScopeValue::Template{stmt,path,..}) => {
+                let mut scope = Scope::new(true, Some(scope), path.to_string());
+                Ok(self.eval_statement_p(&mut scope,stmt)?)
+            } 
+            _ => Err(Error::NotFound(format!("template {}",template_name))),
+        })
+    }
+
     pub fn eval_file(&mut self, path: &str, filename: &str) -> Result<Scope> {
         self.path = PathBuf::from(path);
         let mut scope = Scope::new(true, None, filename.to_string());
@@ -124,19 +138,6 @@ where
 
     pub fn set_deferred_value(&mut self, signal_full_name: String, value: algebra::Value) {
         self.deferred_signal_values.insert(signal_full_name, value);
-    }
-
-    pub fn format_algebra(&self, a: algebra::Value) -> String {
-        let qname = |s: Option<Rc<Signal>>| {
-            Ok(s.map_or("unknown".to_string(), |s| s.full_name.to_string()))
-        };
-        let sname = |id| self.signals.get_by_id(id).and_then(qname).unwrap();
-
-        match a {
-            algebra::Value::FieldScalar(fe) => format!("{:?}", fe),
-            algebra::Value::LinearCombination(lc) => lc.format(sname),
-            algebra::Value::QuadraticEquation(qeq) => qeq.format(sname),
-        }
     }
 
     // evaluators -----------------------------------------------------------------------------------
@@ -166,6 +167,7 @@ where
             Ok(v) => Ok(v),
         }
     }
+
     fn alg_eval_infix(
         &mut self,
         meta: &Meta,
@@ -267,6 +269,7 @@ where
         name: &str,
         params: &[Box<ExpressionP>],
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_internal_call {}",name));
         let mut internal = || {
             if name == "dbg" {
                 print!("DBG ");
@@ -291,7 +294,7 @@ where
                         let value = self.eval_expression_p(scope, param)?;
                         print!("{:?} ⇨ ", param);
                         match value {
-                            ReturnValue::Algebra(value) => print!("{} ", self.format_algebra(value)),
+                            ReturnValue::Algebra(value) => print!("{} ", format_algebra(&self.signals,&value)),
                             _ => print!("{:?} ", value),
                         }
                     }
@@ -312,6 +315,7 @@ where
         name: &str,
         params: &[Box<ExpressionP>],
     ) -> Result<ReturnValue> {
+        self.trace(meta,|| format!("eval_function_call {}",name));
         let mut internal = || {
             scope.root().get(name, |v| match v {
                 Some(ScopeValue::Function { args, stmt, path }) => {
@@ -366,6 +370,7 @@ where
         component_name: &str,
         init: &ExpressionP,
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_component_inst {}",component_name));
         let mut internal = || {
             let (updated, pending_signals_count) = if let ExpressionP::FunctionCall {
                 name: template_name,
@@ -432,7 +437,7 @@ where
                                     if *xtype == SignalType::PublicInput
                                         || *xtype == SignalType::PrivateInput
                                     {
-                                        if self.mode == Mode::GenWitness {
+                                        if !(component_name == "main" && self.mode == Mode::GenConstraints) {
                                             all_pending_input_signals
                                                 .append(&mut pending_signals);
                                         }
@@ -442,7 +447,6 @@ where
                             } else {
                                 unreachable!();
                             }
-
                             std::mem::swap(&mut self.current_file, &mut new_current_file);
                             std::mem::swap(&mut self.current_component, &mut new_current_component);
 
@@ -494,6 +498,7 @@ where
         scope: &Scope,
         component_name: &str,
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_component_expand {}",component_name));
         scope.get(component_name, |c| match c {
             Some(ScopeValue::Component {
                 template,
@@ -587,6 +592,11 @@ where
                         List::List(l) => Ok(ReturnValue::List(List::List(l.clone()))),
                     }
                 }
+                None => {
+                    Err(Error::InvalidType(format!(
+                    "'{}' is not a variable nor a signal",name_sel
+                )))
+                },
                 _ => Err(Error::InvalidType(format!(
                     "expected valid value from variable '{}' (current is '{:?}')",
                     name_sel, &v
@@ -813,6 +823,8 @@ where
     }
 
     fn eval_return(&mut self, meta: &Meta, scope: &mut Scope, expr: &ExpressionP) -> Result<()> {
+        self.trace(meta,|| format!("eval_return"));
+
         if self.mode.skip_eval(&meta) {
             return Ok(());
         }
@@ -1044,6 +1056,8 @@ where
         op: Opcode,
         expr: &ExpressionP,
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_signal_left {:?}",signal));
+
         // inv : op == Opcode::SignalContrainLeft || op == Opcode::SignalWireLeft
 
         let mut internal = || {
@@ -1080,6 +1094,7 @@ where
 
             // eval <--
             if !self.mode.skip_eval(meta) {
+                self.trace(meta,|| format!("eval_signal_left <-- {:?}",signal));
                 let signal_sel = self.expand_selectors(scope, signal, None)?;
                 let signal_full = self.expand_full_name(&signal_sel);
                 if let Some(signal_id) = self.signals.get_by_name(&signal_full)?.map(|s| s.id) {
@@ -1094,24 +1109,26 @@ where
                         )));
                     }
 
-                    // check for lazy component execution
-                    if self.mode == Mode::GenWitness {
-                        if let Some(component_name) = self.signal_component(scope, signal)? {
-                            let pending_signals_len =
-                                scope.get_mut(&component_name, |var| match var {
-                                    Some(ScopeValue::Component { pending_inputs, .. }) => {
+                    if let Some(component_name) = self.signal_component(scope, signal)? {
+                        let needs_expansion =
+                            scope.get_mut(&component_name, |var| match var {
+                                Some(ScopeValue::Component { pending_inputs, .. }) => {
+                                    if pending_inputs.len() > 0 {
                                         pending_inputs.retain(|s| *s != signal_id);
-                                        pending_inputs.len()
+                                        pending_inputs.len() == 0
+                                    } else {
+                                        false
                                     }
-                                    _ => panic!(
-                                        "signal not found '{}' in scope {:?}",
-                                        signal.name, meta
-                                    ),
-                                });
-                            // if all input signals has been set, then expand the component
-                            if pending_signals_len == 0 {
-                                self.eval_component_expand(meta, scope, &component_name)?;
-                            }
+                                }
+                                _ => panic!(
+                                    "signal not found '{}' in scope {:?}",
+                                    signal.name, meta
+                                ),
+                            });
+                        // if all input signals has been set, then expand the component
+                        if needs_expansion {
+                            self.trace(meta,|| format!("eval_signal_left_lazy_eval {}",component_name));
+                            self.eval_component_expand(meta, scope, &component_name)?;
                         }
                     }
                 } else {
@@ -1147,6 +1164,10 @@ where
         op: Opcode,
         signal: &VariableP,
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_signal_right {:?}",signal));
+        if self.mode.skip_eval(&meta) {
+            return Ok(());
+        }
         let mut internal = || {
             use Opcode::*;
             match op {
@@ -1168,6 +1189,7 @@ where
         lhe: &ExpressionP,
         rhe: &ExpressionP,
     ) -> Result<()> {
+        self.trace(meta,|| format!("eval_signal_eq {:?} {:?}",lhe,rhe));
         let mut internal = || {
             let left = self.eval_expression_p(&scope, &lhe)?.into_algebra()?;
             let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
@@ -1178,12 +1200,13 @@ where
                 match constrain {
                     algebra::Value::FieldScalar(ref fs) if fs.is_zero() => {}
                     _ => {
+                        self.dbg_dump_signals()?;
                         return Err(Error::CannotTestConstrain(format!(
                             "{:?}==={:?} => {}==={}",
                             lhe,
                             rhe,
-                            self.format_algebra(left),
-                            self.format_algebra(right)
+                            format_algebra(&self.signals,&left),
+                            format_algebra(&self.signals,&right)
                         )));
                     }
                 }
@@ -1193,13 +1216,17 @@ where
                     algebra::Value::FieldScalar(_) => {
                         return Err(Error::CannotGenerateConstrain(format!(
                             "{}==={}",
-                            self.format_algebra(left),
-                            self.format_algebra(right)
+                            format_algebra(&self.signals,&left),
+                            format_algebra(&self.signals,&right)
                         )));
                     }
-                    _ => constrain.into_qeq(),
+                    _ => constrain.into_qeq(), 
                 };
-                let count = self.constraints.push(qeq)?;
+                let count = if self.debug {
+                    self.constraints.push(qeq,Some(format!("{}:{}",self.current_file,meta.start)))?
+                } else {
+                    self.constraints.push(qeq,None)?
+                };
                 if count > 0 && count % 100_000 == 0 {
                     let now = std::time::Instant::now();
                     let diff = now.duration_since(self.debug_last_constraint);
@@ -1330,6 +1357,13 @@ where
 
     // helpers  -------------------------------------------------------------------------------
 
+    fn trace<F>(&self, meta: &Meta, f: F)
+    where F: FnOnce()->String {
+        if self.debug {
+            println!("*trace {} {}:{:?}",f(),self.current_file,meta.start);
+        }
+    }
+
     fn generate_selectors(&mut self, scope: &Scope, var: &VariableP) -> Result<Vec<String>> {
         // TODO: convert into iterable collection?
         fn generate_selectors_1(
@@ -1448,5 +1482,12 @@ where
         } else {
             format!("{}.{}", self.current_component, s)
         }
+    }
+
+    fn dbg_dump_signals(&self) -> Result<()> {
+        for n in 0..self.signals.len()? {
+            println!("{}: {:?}",n,self.signals.get_by_id(n));
+        }
+        Ok(())
     }
 }
