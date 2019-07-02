@@ -271,24 +271,30 @@ where
     ) -> Result<()> {
         self.trace(meta,|| format!("eval_internal_call {}",name));
         let mut internal = || {
+            if name == "dbg_signals" {
+                self.dbg_dump_signals()?;
+                return Ok(());
+            }
             if name == "dbg" {
                 print!("DBG ");
                 for param in params {
                     let mut processed = false;
-                    if let ExpressionP::Variable{name:var_name,..} = &**param {
-                        if var_name.sels.len() == 0 {
-                            scope.get(&*var_name.name, |var_value|
-                                match var_value {
-                                    Some(ScopeValue::Component{pending_inputs,..}) => {
-                                        for signal in pending_inputs {
-                                            println!("{:?} ⇨ pending {:?}", param, self.signals.get_by_id(*signal).unwrap().unwrap().full_name);
-                                        }                                            
-                                        processed = true;
-                                    }
-                                    _ => {}
+                    if let ExpressionP::Variable{name:var,..} = &**param {
+                        let full_name = self.expand_selectors(scope, var, None)?; 
+                        scope.get(&full_name, |var_value|                                
+                            match var_value {
+                                Some(ScopeValue::Component{pending_inputs,..}) => {
+                                    let pending_inputs_str = pending_inputs
+                                        .iter()
+                                        .map(|signal| format!("{:?}", self.signals.get_by_id(*signal).unwrap().unwrap().full_name))
+                                        .collect::<Vec<_>>()
+                                        .join(",");
+                                    println!("{} ⇨ pending_inputs {{{}}} ",&full_name,pending_inputs_str);                                           
+                                    processed = true;
                                 }
-                            );                            
-                        }
+                                _ => {}
+                            }
+                        );                            
                     }
                     if !processed {
                         let value = self.eval_expression_p(scope, param)?;
@@ -552,9 +558,8 @@ where
         let mut internal = || {
             // check if is a signal
             let name_sel = self.expand_selectors(scope, var, None)?;
-            if let Some(signal) = self
-                .signals
-                .get_by_name(&self.expand_full_name(&name_sel))?
+            let name_sel_full = &self.expand_full_name(&name_sel);
+            if let Some(signal) = self.signals.get_by_name(&name_sel_full)?
             {
                 if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
                     return Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(
@@ -598,8 +603,8 @@ where
                 )))
                 },
                 _ => Err(Error::InvalidType(format!(
-                    "expected valid value from variable '{}' (current is '{:?}')",
-                    name_sel, &v
+                    "expected valid value from variable '{}' (current is '{:?}') [nameselfull={}]",
+                    name_sel, &v, name_sel_full
                 ))),
             })
         };
@@ -1483,9 +1488,9 @@ where
         }
     }
 
-    fn _dbg_dump_signals(&self) -> Result<()> {
+    fn dbg_dump_signals(&self) -> Result<()> {
         for n in 0..self.signals.len()? {
-            println!("{}: {:?}",n,self.signals.get_by_id(n));
+            println!("{:?}",self.signals.get_by_id(n).unwrap().unwrap());
         }
         Ok(())
     }

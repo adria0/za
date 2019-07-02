@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use itertools::sorted;
 
 use circom2_parser::ast::{Attributes, StatementP};
 
@@ -198,7 +199,9 @@ impl<'a> Debug for Scope<'a> {
         writeln!(fmt, "{}", self.pos)?;
         writeln!(fmt, "  start: {}", self.start)?;
         writeln!(fmt, "  return_value: {:?}", self.return_value.borrow())?;
-        for (k, v) in &*self.vars.borrow() {
+        let vars = &*self.vars.borrow();
+        for k in sorted(vars.keys()) {
+            let v = vars.get(k).unwrap();
             if self.prev.is_some() {
                 writeln!(fmt, "  {}: {:?}", k, v)?;
             }
