@@ -39,13 +39,13 @@ differences from jaz.jison are:
   - removed :?
   - loops/conditionals must have { } (alla golang)
   - dbg! function
+  - do not allow lazy-evaluation in loops
+  - signal input/outputs arrays should be evaluable with template parameters
   - Proposals
     - no default values like "var x;"
     - explicit mutability: "const" or "mut";
     - remove "var" => "usize", "fs", "qeq" and "bool"
-    - expressions cannot fail in code generation phase but some of them must be
-      inevaluable in constrain generation phase, so prepend with a "@" the stamements
-      that are not going to be evaluated at signal generation phase
-
+    - tagged signals
+    - embeeded loops signal1[0..n] <== signal2[0..n]
 
 
