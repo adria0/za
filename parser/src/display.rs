@@ -163,7 +163,7 @@ impl Debug for ExpressionP {
 
         match self {
             Variable { name, .. } => write!(fmt, "{:?}", name),
-            Number { value, .. } => write!(fmt, "0x{:x}", value),
+            Number { value, .. } => write!(fmt, "{}", value.to_string()),
             PrefixOp { op, rhe, .. } => write!(fmt, "({:?} {:?})", op, rhe),
             InfixOp { lhe, op, rhe, .. } => write!(fmt, "({:?} {:?} {:?})", lhe, op, rhe),
             Array { values, .. } => write!(fmt, "[{}]", comma_concat(values)),

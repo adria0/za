@@ -254,17 +254,17 @@ mod test {
 
     #[test]
     fn expression_number() {
-        test_expression("255", "0xff");
-        test_expression("-255", "(- 0xff)");
-        test_expression("0xFF", "0xff");
-        test_expression("0xff", "0xff");
+        test_expression("255", "255");
+        test_expression("-255", "(- 255)");
+        test_expression("0xFF", "255");
+        test_expression("0xff", "255");
     }
 
     #[test]
     fn expression_intpri() {
         test_expression(
             "- 1 | 2 ^ 3 & 4 << 5 + 6 * 7",
-            "((- 0x1) | (0x2 ^ (0x3 & (0x4 << (0x5 + (0x6 * 0x7))))))",
+            "((- 1) | (2 ^ (3 & (4 << (5 + (6 * 7))))))",
         );
     }
 
@@ -303,15 +303,15 @@ mod test {
     #[test]
     fn expression_indexed_pinned_variable() {
         test_expression("a", "a");
-        test_expression("a[5]", "a[0x5]");
+        test_expression("a[5]", "a[5]");
         test_expression("a.b", "a.b");
-        test_expression("a[5].b", "a[0x5].b");
-        test_expression("a[c[0x1*0x1].d].b", "a[c[(0x1 * 0x1)].d].b");
+        test_expression("a[5].b", "a[5].b");
+        test_expression("a[c[1*1].d].b", "a[c[(1 * 1)].d].b");
     }
 
     #[test]
     fn expression_function() {
-        test_expression("f(a*1,b(),c(1*2))", "f((a * 0x1),b(),c((0x1 * 0x2)))");
+        test_expression("f(a*1,b(),c(1*2))", "f((a * 1),b(),c((1 * 2)))");
     }
 
     #[test]
@@ -336,7 +336,7 @@ mod test {
         test_statement("a <<= b;");
         test_statement("a |= b;");
         test_statement("a &= b;");
-        test_statement("a[0x1].a = b;");
+        test_statement("a[1].a = b;");
     }
 
     #[test]
