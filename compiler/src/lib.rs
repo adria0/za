@@ -15,6 +15,5 @@ extern crate itertools;
 
 pub mod algebra;
 pub mod evaluator;
-pub mod optimizer;
 pub mod storage;
 pub mod tester;
