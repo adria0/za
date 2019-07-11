@@ -5,6 +5,8 @@ pub enum Error {
     Storage(circom2_compiler::storage::Error),
     Cbor(serde_cbor::error::Error),
     Algebra(circom2_compiler::algebra::Error),
+    Evaluator(circom2_compiler::evaluator::Error),
+    BadFormat(String),
     Unexpected(String),
     Json(serde_json::error::Error),
 }
@@ -42,6 +44,12 @@ impl From<circom2_compiler::algebra::Error> for Error {
 impl From<serde_json::error::Error> for Error {
     fn from(err: serde_json::error::Error) -> Self {
         Error::Json(err)
+    }
+}
+
+impl From<circom2_compiler::evaluator::Error> for Error {
+    fn from(err: circom2_compiler::evaluator::Error) -> Self {
+        Error::Evaluator(err)
     }
 }
 

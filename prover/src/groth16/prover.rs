@@ -23,6 +23,17 @@ use super::format::*;
 use super::ethereum;
 use super::format;
 
+const BELLMAN_VERBOSE : &str = "BELLMAN_VERBOSE";
+
+pub fn bellman_verbose(verbose : bool) {
+    if verbose {
+            std::env::set_var(BELLMAN_VERBOSE, "1");
+    } else {
+            std::env::set_var(BELLMAN_VERBOSE, "0");
+    }
+}
+
+
 pub struct CircomCircuit<'a, E: Engine> {
     constraints: &'a Constraints,
     signals: &'a Signals,
@@ -30,7 +41,6 @@ pub struct CircomCircuit<'a, E: Engine> {
 }
 
 impl<'a, E: Engine> CircomCircuit<'a, E> {}
-
 
 fn map_storage_error<V>(
     e: std::result::Result<V, storage::Error>,

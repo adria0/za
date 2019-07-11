@@ -1,0 +1,21 @@
+[package]
+name = "jsbinding"
+version = "0.1.0"
+authors = ["adriamb <adria@iden3.io>"]
+license = "MIT"
+build = "build.rs"
+exclude = ["artifacts.json", "index.node"]
+
+[lib]
+name = "jsbinding"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+neon = "0.2.0"
+stderrlog = "0.4.1"
+circom2-prover = { path = "../../prover" }
+circom2-compiler = { path = "../../compiler" }
+

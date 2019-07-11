@@ -38,3 +38,4 @@ pub fn dump_error<S: Signals, C: Constraints>(eval: &Evaluator<S, C>, err: &str)
         }
     } 
 }
+

@@ -20,6 +20,7 @@ use pairing::Engine;
 
 use error::{Error, Result};
 use serde_cbor::{from_slice, to_vec};
+use serde_json;
 
 use super::error;
 
@@ -80,43 +81,6 @@ pub fn parse_g2_hex(e: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> String
     let parsed = parse_g2(e);
 
     format!("[{}, {}], [{}, {}]", parsed.0, parsed.1, parsed.2, parsed.3,)
-}
-
-pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {
-    fn flatten(prefix: &str, v: &serde_json::Value, result: &mut Vec<(String, FS)>) -> Result<()> {
-        match v {
-            serde_json::Value::Array(values) => {
-                for (i, value) in values.iter().enumerate() {
-                    flatten(&format!("{}[{}]", prefix, i), value, result)?;
-                }
-                Ok(())
-            }
-            serde_json::Value::Object(values) => {
-                for (key, value) in values.iter() {
-                    flatten(&format!("{}.{}", prefix, key), value, result)?;
-                }
-                Ok(())
-            }
-            serde_json::Value::String(value) => {
-                result.push((prefix.to_string(), FS::parse(value)?));
-                Ok(())
-            }
-            serde_json::Value::Number(value) => {
-                let value = value
-                    .as_u64()
-                    .ok_or_else(|| Error::Unexpected(format!("bad value {:?}", value)))?;
-                result.push((prefix.to_string(), FS::from(value)));
-                Ok(())
-            }
-            _ => Err(Error::Unexpected(format!("Cannot decode value {:?}", v))),
-        }
-    }
-
-    let json: serde_json::Value = serde_json::from_str(json)?;
-
-    let mut result = Vec::new();
-    flatten(prefix, &json, &mut result)?;
-    Ok(result)
 }
 
 pub fn value_to_bellman_fr<E: Engine>(value: &Value) -> E::Fr {
@@ -202,3 +166,43 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(RamConstraints, Parameters<Bn256>)
 
     Ok((constraints, params))
 }
+
+pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {
+
+    fn flatten(prefix: &str, v: &serde_json::Value, result: &mut Vec<(String, FS)>) -> Result<()> {
+        match v {
+            serde_json::Value::Array(values) => {
+                for (i, value) in values.iter().enumerate() {
+                    flatten(&format!("{}[{}]", prefix, i), value, result)?;
+                }
+                Ok(())
+            }
+            serde_json::Value::Object(values) => {
+                for (key, value) in values.iter() {
+                    flatten(&format!("{}.{}", prefix, key), value, result)?;
+                }
+                Ok(())
+            }
+            serde_json::Value::String(value) => {
+                let value = FS::parse(value)?;
+                result.push((prefix.to_string(), value));
+                Ok(())
+            }
+            serde_json::Value::Number(value) => {
+                let value = value.as_u64()
+                    .ok_or_else(|| Error::BadFormat(format!("bad value {:?}", value)))?;
+
+                result.push((prefix.to_string(), FS::from(value)));
+                Ok(())
+            }
+            _ => Err(Error::BadFormat(format!("Cannot decode value {:?}", v))),
+        }
+    }
+
+    let json: serde_json::Value = serde_json::from_str(json)?;
+
+    let mut result = Vec::new();
+    flatten(prefix, &json, &mut result)?;
+    Ok(result)
+}
+

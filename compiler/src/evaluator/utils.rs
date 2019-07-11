@@ -1,6 +1,7 @@
 use super::algebra;
-use super::algebra::AlgZero;
+use super::algebra::{AlgZero, Value};
 use super::error::*;
+use crate::evaluator::Evaluator;
 use crate::storage::{Constraints, Signals, Signal};
 use std::rc::Rc;
 
@@ -51,4 +52,24 @@ pub fn format_algebra<S:Signals>(signals: &S, a: &algebra::Value) -> String {
         algebra::Value::QuadraticEquation(qeq) => qeq.format(sname),
     }
 }
+
+pub fn print_info<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, print_all: bool) {
+    info!(
+        "{} signals, {} constraints",
+        eval.signals.len().unwrap(),
+        eval.constraints.len().unwrap()
+    );
+    if print_all {
+        info!("signals -------------------------");
+        for n in 0..eval.signals.len().unwrap() {
+            info!("{}: {:?}",n,eval.signals.get_by_id(n).unwrap());
+        }
+        info!("constrains ----------------------");
+        for n in 0..eval.constraints.len().unwrap() {
+            let constrain = Value::QuadraticEquation(eval.constraints.get(n).unwrap());
+            info!("{}:  {}=0",n,format_algebra(&eval.signals,&constrain));
+        }
+    }
+}
+
 

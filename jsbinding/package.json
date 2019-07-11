@@ -1,0 +1,22 @@
+{
+  "name": "circom2js",
+  "version": "0.1.0-alpha",
+  "description": "js bindings for circom2",
+  "main": "lib/index.js",
+  "author": "OKims",
+  "directories": {
+    "test": "test"
+  },
+  "license": "GPL3",
+  "dependencies": {
+    "chai": "^4.2.0",
+    "neon-cli": "^0.2.0"
+  },
+  "devDependencies": {
+    "mocha": "^5.2.0"
+  },
+  "scripts": {
+    "test": "mocha --max-old-space-size=4000",
+    "install": "neon build"
+  }
+}
