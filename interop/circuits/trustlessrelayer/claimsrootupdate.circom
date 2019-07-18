@@ -18,12 +18,12 @@
 */
 
 
-include "smtverifier.circom";
-include "smtprocessor.circom";
-include "eddsamimc.circom";
-include "comparators.circom";
-include "mimc.circom";
-include "sign.circom";
+include "../circomlib/circuits/smt/smtverifier.circom";
+include "../circomlib/circuits/smt/smtprocessor.circom";
+include "../circomlib/circuits/eddsamimc.circom";
+include "../circomlib/circuits/comparators.circom";
+include "../circomlib/circuits/mimc.circom";
+include "../circomlib/circuits/sign.circom";
 
 template BuildUserRootClaims() {
     signal input version;

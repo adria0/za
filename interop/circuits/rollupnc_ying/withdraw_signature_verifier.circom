@@ -1,5 +1,5 @@
-include "../circomlib/eddsamimc.circom";
-include "../circomlib/mimc.circom";
+include "../circomlib/circuits/eddsamimc.circom";
+include "../circomlib/circuits/mimc.circom";
 
 template Main(){
 

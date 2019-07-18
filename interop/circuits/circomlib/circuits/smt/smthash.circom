@@ -17,7 +17,7 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-include "mimc.circom";
+include "../mimc.circom";
 
 
 /*

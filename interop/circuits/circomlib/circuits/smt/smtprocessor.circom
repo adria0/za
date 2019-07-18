@@ -1,7 +1,7 @@
-include "gates.circom";
-include "bitify.circom";
-include "comparators.circom";
-include "switcher.circom";
+include "../gates.circom";
+include "../bitify.circom";
+include "../comparators.circom";
+include "../switcher.circom";
 include "smtlevins.circom";
 include "smtprocessorlevel.circom";
 include "smtprocessorsm.circom";

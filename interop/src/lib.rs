@@ -8,7 +8,7 @@ mod test {
 
     #[test]
     fn circomlib_parse() {
-        let paths = read_dir("./circomlib").unwrap();
+        let paths = read_dir("./circuits/circomlib/circuits").unwrap();
         for path in paths {
             let path = path.unwrap().path();
             if path.is_file() {
@@ -26,7 +26,7 @@ mod test {
 
     #[test]
     fn circomlib_tests() {
-        match tester::run_embeeded_tests("./circomlib", "all_tests.circom", Ram::default(),false) {
+        match tester::run_embeeded_tests("./circuits/circomlib", "all_tests.circom", Ram::default(),false) {
             Ok(Some((_, err))) => {
                 println!("{:?}", err);
                 assert!(false);

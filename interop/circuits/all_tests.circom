@@ -1,0 +1,9 @@
+include "circomlib/circuits/bitify.circom";
+include "circomlib/circuits/babyjub.circom";
+include "circomlib/circuits/eddsamimc.circom";
+include "circomlib/circuits/smt/smtprocessor.circom";
+include "circomlib/circuits/smt/smtverifier.circom";
+include "circomlib/circuits/pedersen.circom";
+include "circomlib/circuits/sha256/sha256_2.circom";
+include "circomlib/circuits/sha256/sha256compression.circom";
+include "trustlessrelayer/claimsrootupdate.circom";

@@ -28,10 +28,10 @@ fnc:  0 -> VERIFY INCLUSION
  */
 
 
-include "gates.circom";
-include "bitify.circom";
-include "comparators.circom";
-include "switcher.circom";
+include "../gates.circom";
+include "../bitify.circom";
+include "../comparators.circom";
+include "../switcher.circom";
 include "smtlevins.circom";
 include "smtverifierlevel.circom";
 include "smtverifiersm.circom";
