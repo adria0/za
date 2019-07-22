@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::Write;
+
 use super::error::{Error,Result};
 use super::report::dump_error;
 
@@ -10,6 +13,8 @@ pub fn run_embeeded_tests<F, S, C>(
     filename: &str,
     mut factory: F,
     debug : bool,
+    skip_compile: bool,
+    output_witness: bool,
 ) -> Result<Option<(Evaluator<S, C>, String)>>
 where
     S: Signals,
@@ -40,18 +45,6 @@ where
 
                 println!("📏 Testing {} ",test_name);
 
-                // Generate constraints
-                println!("  ➡ Generating constraints");
-                let mut ev_constraints = Evaluator::new(
-                    Mode::GenConstraints,
-                    factory.new_signals()?,
-                    factory.new_constraints()?,
-                );
-                ev_constraints.debug = debug;
-                if let Err(err) = ev_constraints.eval_template(&mut scan_scope.deep_clone(), &test_name) {
-                    dump_error(&ev_constraints, &format!("{:?}",&err));
-                    return Err(Error::Evaluator(err)); 
-                }
                 // Generate witness
                 println!("➡ Generating witness");
                 let mut ev_witness = Evaluator::new(
@@ -61,44 +54,69 @@ where
                 );
                 ev_witness.debug = debug;
                 if let Err(err) = ev_witness.eval_template(&mut scan_scope.deep_clone(), &test_name) {
-                    dump_error(&ev_constraints, &format!("{:?}",&err));
+                    dump_error(&ev_witness, &format!("{:?}",&err));
                     return Err(Error::Evaluator(err)); 
                 }
 
-                // Sanity check that the generated constrains are the same
-                let wi_count = ev_witness.signals.len()?; 
-                let cn_count = ev_constraints.signals.len()?;
-                let ckeck_up_to = if wi_count < cn_count {
-                    wi_count
-                } else {
-                    cn_count
-                };
-                
-                for n in 1..ckeck_up_to {
-                    let wi_signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
-                    let cn_signal = &*ev_constraints.signals.get_by_id(n).unwrap().unwrap();
-                    if wi_signal.full_name.0 != cn_signal.full_name.0 {
-                        panic!(
-                            "constrain & witness signals differ #cn(len={})={},#wi(len={})={}",
-                            cn_count,
-                            &cn_signal.full_name.0,
-                            wi_count,
-                            &wi_signal.full_name.0
-                        );
+                if output_witness {
+                    let mut witness_file = File::create(format!("./{}.witness",test_name))?;
+                    witness_file.write_all(format!("1\n").as_bytes())?;
+                    for n in 1..ev_witness.signals.len()? {
+                        let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
+                        let value_str = format!("{}\n",signal.value.clone().unwrap().try_into_fs().unwrap().0.to_string());
+                        witness_file.write_all(value_str.as_bytes())?;
+                    }  
+                }
+
+                if !skip_compile {
+                    // Generate constraints
+                    println!("  ➡ Generating constraints");
+                    let mut ev_constraints = Evaluator::new(
+                        Mode::GenConstraints,
+                        factory.new_signals()?,
+                        factory.new_constraints()?,
+                    );
+                    ev_constraints.debug = debug;
+                    if let Err(err) = ev_constraints.eval_template(&mut scan_scope.deep_clone(), &test_name) {
+                        dump_error(&ev_constraints, &format!("{:?}",&err));
+                        return Err(Error::Evaluator(err)); 
                     }
-                }
 
-                if ev_constraints.signals.len()? != ev_witness.signals.len()? {
-                        panic!(
-                            "constrain & witness signals differ #cn(len={}),#wi(len={})",
-                            cn_count,
-                            wi_count
-                        )
-                }
+                    // Sanity check that the generated constrains are the same
+                    let wi_count = ev_witness.signals.len()?; 
+                    let cn_count = ev_constraints.signals.len()?;
+                    let ckeck_up_to = if wi_count < cn_count {
+                        wi_count
+                    } else {
+                        cn_count
+                    };
+                    
+                    for n in 1..ckeck_up_to {
+                        let wi_signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
+                        let cn_signal = &*ev_constraints.signals.get_by_id(n).unwrap().unwrap();
+                        if wi_signal.full_name.0 != cn_signal.full_name.0 {
+                            panic!(
+                                "constrain & witness signals differ #cn(len={})={},#wi(len={})={}",
+                                cn_count,
+                                &cn_signal.full_name.0,
+                                wi_count,
+                                &wi_signal.full_name.0
+                            );
+                        }
+                    }
 
-                // Test constraints
-                println!("➡  Testing {} constraints evals to zero", ev_constraints.constraints.len()?);
-                check_constrains_eval_zero(&ev_constraints.constraints,&ev_witness.signals)?;   
+                    if ev_constraints.signals.len()? != ev_witness.signals.len()? {
+                            panic!(
+                                "constrain & witness signals differ #cn(len={}),#wi(len={})",
+                                cn_count,
+                                wi_count
+                            )
+                    }
+
+                    // Test constraints
+                    println!("➡  Testing {} constraints evals to zero", ev_constraints.constraints.len()?);
+                    check_constrains_eval_zero(&ev_constraints.constraints,&ev_witness.signals)?;
+                }   
             }
         }
 

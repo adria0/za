@@ -101,13 +101,13 @@ enum Command {
         /// Circuit, defaults to circuit.circom
         circuit: Option<String>,
 
-        #[structopt(long = "ram")]
+        #[structopt(long = "disk")]
         /// Use RAM (default) or local storage
-        use_ram: Option<bool>,
+        disk: bool,
 
         #[structopt(long = "print")]
         /// Print constaints and signals
-        print: Option<bool>,
+        print: bool,
 
         #[structopt(long = "cuda")]
         /// Export cuda format
@@ -156,7 +156,16 @@ enum Command {
 
         #[structopt(long = "debug")]
         /// Turn on debugging
-        debug: Option<bool>,
+        debug: bool,
+
+        /// Dump witness
+        #[structopt(long = "outputwitness")]
+        outputwitness: bool,
+
+        /// Skip circuit compilation
+        #[structopt(long = "skipcompile")]
+        skipcompile: bool,
+
     },
 }
 
@@ -171,14 +180,12 @@ fn main() {
 
     let cmd = Command::from_args();
     match cmd {
-        Command::Compile { circuit, use_ram, print, cuda } => {
+        Command::Compile { circuit, disk, print, cuda } => {
             let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
-            let use_ram = use_ram.unwrap_or(true);
-            let print_all = print.unwrap_or(false);
-            if use_ram {
-                compile_ram(&circuit,print_all,cuda)
+            if disk {
+                compile_rocks(&circuit,print, cuda)
             } else {
-                compile_rocks(&circuit,print_all, cuda)
+                compile_ram(&circuit,print,cuda)
             }
         }
         Command::Setup { circuit, pk, verifier } => {
@@ -188,11 +195,10 @@ fn main() {
             circom2_prover::groth16::setup_ram(&circuit,&pk,&verifier)
                 .expect("unable to create proof");
         }
-        Command::Test { circuit, debug } => {
+        Command::Test { circuit, debug, outputwitness, skipcompile } => {
             let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
-            let debug = debug.unwrap_or(false);
             let ram = Ram::default();
-            match tester::run_embeeded_tests(".", &circuit, ram, debug) {
+            match tester::run_embeeded_tests(".", &circuit, ram, debug, skipcompile, outputwitness) {
                 Ok(Some((eval, err))) => dump_error(&eval, &err),
                 Err(err) => warn!("Error: {:?}", err),
                 _ => {}
