@@ -6,4 +6,4 @@ cache:
 - cargo
 
 script:
-- RUST_BACKTRACE=1 CARGO_INCREMENTAL=0 cargo test --all
+- RUST_BACKTRACE=1 CARGO_INCREMENTAL=0 travis_wait 30 cargo test --all -- --nocapture
