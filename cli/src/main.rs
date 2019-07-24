@@ -26,7 +26,6 @@ use circom2_compiler::evaluator::{print_info};
 
 use circom2_bigsnark::Rocks;
 
-
 const DEFAULT_CIRCUIT : &str = "circuit.circom";
 const DEFAULT_PROVING_KEY : &str = "proving.key";
 const DEFAULT_INPUT : &str = "input.json";
@@ -35,7 +34,9 @@ const DEFAULT_SOLIDITY_VERIFIER : &str = "verifier.sol";
 
 fn generate_cuda<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
+        let start = SystemTime::now();
         circom2_prover::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
+        info!("Cuda generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
     }
 }
 
@@ -52,6 +53,7 @@ fn compile_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
     if let Err(err) = eval.eval_file(".", &filename) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
+        info!("Compile time: {:?}",SystemTime::now().duration_since(start).unwrap());
         generate_cuda(&eval,cuda_file);
         print_info(&eval, print_all);
     }
@@ -60,6 +62,7 @@ fn compile_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
 fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let mut storage = Ram::default();
 
+    let start = SystemTime::now();
     let mut eval = Evaluator::new(
         Mode::GenConstraints,
         storage.new_signals().unwrap(),
@@ -68,6 +71,7 @@ fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     if let Err(err) = eval.eval_file(".", &filename) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
+        info!("Compile time: {:?}",SystemTime::now().duration_since(start).unwrap());
         generate_cuda(&eval,cuda_file);
         print_info(&eval, print_all);
     }

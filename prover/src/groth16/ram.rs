@@ -5,6 +5,7 @@ use circom2_compiler::{
 };
 
 use std::fs::File;
+use std::time::SystemTime;
 use super::error::{Error,Result};
 
 use circom2_compiler::storage::{Constraints, Signals};
@@ -23,10 +24,12 @@ pub fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_pat
     );
     info!("Compiling circuit...");
 
+    let start = SystemTime::now();
     if let Err(err) = eval.eval_file(".", &circuit_path) {
         dump_error(&eval, &format!("{:?}", err));
         return Err(Error::from(err));
     }
+    info!("Compilation time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     print_info(&eval,false);
     info!("Running setup");
@@ -52,26 +55,26 @@ pub fn prove_ram(circuit_path: &str,proving_key_path: &str, inputs: Vec<(String,
         ram.new_constraints()?,
     );
 
-    info!("Checking constraints...");
 
+    let start = SystemTime::now();
+    for (signal,value) in inputs {
+        ev_witness.set_deferred_value(signal, Value::from(value));
+    }
+    ev_witness.eval_file(".", &circuit_path)?;
+    info!("Witness generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
+
+    info!("Checking constraints...");
     if ev_witness.constraints.len()? > 0 {
         return Err(Error::Unexpected("Constrains generated in witnes".to_string()));
     }
 
     info!("Checking signals...");
-
     for n in 1..ev_witness.signals.len()? {
         let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
         if signal.value.is_none() {
             return Err(Error::Unexpected(format!("signal '{}' value is not defined",signal.full_name.0)));
         }  
     }
-
-    for (signal,value) in inputs {
-        ev_witness.set_deferred_value(signal, Value::from(value));
-    }
-
-    ev_witness.eval_file(".", &circuit_path)?;
 
     // Create proof
     info!("Creating and self-verifying proof...");
@@ -85,8 +88,6 @@ pub fn prove_ram(circuit_path: &str,proving_key_path: &str, inputs: Vec<(String,
         pk,
         &mut proof
     )?;
-
-    info!("Proof generated and self-verified");
 
     Ok(String::from_utf8_lossy(&proof).to_string())
 }

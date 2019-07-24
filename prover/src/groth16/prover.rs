@@ -3,6 +3,7 @@ use circom2_compiler::evaluator::{Evaluator,check_constrains_eval_zero};
 use circom2_compiler::storage;
 use circom2_compiler::storage::{Constraints, Signals,count_public_inputs,is_public_input};
 
+use std::time::SystemTime;
 use std::io::{Read, Write};
 use std::marker::PhantomData;
 
@@ -114,8 +115,12 @@ pub fn setup<S: Signals, C: Constraints, WP: Write, WV: Write>(
     };
 
     // perform setup
+    let start = SystemTime::now();
     let params = generate_random_parameters(circuit, rng)?;
+    info!("Setup time: {:?}",SystemTime::now().duration_since(start).unwrap());
+    let start = SystemTime::now();
     format::write_pk(out_pk, &eval.constraints, &params)?;
+    info!("Proving key write time: {:?}",SystemTime::now().duration_since(start).unwrap());
     
     let inputs_len = count_public_inputs(&eval.signals)?; 
     ethereum::generate_solidity(&params.vk,inputs_len, &mut out_vk)?;
@@ -130,11 +135,15 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
 ) -> Result<Vec<(String,FS)>> {
 
     let rng = &mut thread_rng();
-
+    
+    let start = SystemTime::now();
     let (constraints, params) = format::read_pk(in_pk)?;
+    info!("Proving key read time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
+    let start = SystemTime::now();
     check_constrains_eval_zero(&constraints,&signals)
         .expect("check_constrains_eval_zero failed");
+    info!("Constraint check time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     let circuit = CircomCircuit::<Bn256> {
         signals: &signals,
@@ -143,8 +152,12 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
     };
 
     // Create proof
+    let start = SystemTime::now();
     let proof = create_random_proof(circuit, &params, rng).expect("cannot create proof");
+    info!("Proof generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
+    // Self-verify and generate public inputs
+    let start = SystemTime::now();
     let mut public_inputs = Vec::new();
     for i in 0..signals.len()? {
         let signal = signals.get_by_id(i)?.unwrap();
@@ -155,7 +168,6 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
         }
     }
 
-    // Self-verify
     let vk = prepare_verifying_key(&params.vk);
     let verify_public_inputs = public_inputs
         .iter()
@@ -165,6 +177,7 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
 
     verify_proof(&vk, &proof, &verify_public_inputs)?;
     format::write_input_and_proof(public_inputs.clone(), proof, out_proof)?;
+    info!("Proof verification time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     Ok(public_inputs)
 }
