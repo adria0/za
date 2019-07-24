@@ -100,6 +100,7 @@ There are few differences between this implementation and the official circom:
   - `&&`
   - `||`
 - Removed `++`, `--` and `:?`
+- Matrix access is only accessible with `[x][y]` (not with `[x,y]`) 
 - End statement semicolons are mandatory
 - Loops/conditionals statements must be inside blocks `{ }`
 - Added `dbg!` function to trace variables, signals and components
