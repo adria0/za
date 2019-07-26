@@ -9,5 +9,5 @@ members = [
 ]
 
 exclude = [
-    "jsbinding/native"
+    "binding/js/native"
 ]
