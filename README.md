@@ -74,13 +74,48 @@ this will run the tests found in the circuit and all the tests found in the incl
 
 ### Javascript bindings
 
-to compile the javascript bindings, go to the `jsbinding/` folder and run:
+to compile the javascript bindings, go to the `binding/js` folder and run:
 
 - `npm i`
 - `npm run install`
 - `npm test`
 
-check the test located in `jsbinding/test/test.js`
+check the test located in `binding/js/test/test.js`
+
+### Flutter bindings
+
+The code is based on https://github.com/mimirblockchainsolutions/flutter-rust-middleware 
+
+#### Prerequisites
+
+- [Rust](https://www.rust-lang.org)
+- [Flutter](https://github.com/flutter/flutter)
+- [cargo-lipo](https://github.com/TimNN/cargo-lipo)
+- [Android Studio](https://developer.android.com/studio/)
+- [NDK](https://developer.android.com/ndk/)
+- [Xcode](https://developer.apple.com/xcode/)
+
+Export vars
+
+- `export ANDROID_HOME=/Users/$USER/Library/Android/sdk`
+- `export NDK_HOME=$ANDROID_HOME/ndk-bundle`
+
+Then, you need to run the ndk script to build your compile targets from the root folder of the project
+
+`./ndk.sh`
+
+
+#### Build
+
+- Go to `binding/flutter/cargo` and run `./build.sh`
+- Go to `binding/flutter` and run
+    - `flutter build ios` or
+    - `flutter build apk`
+
+#### Test
+
+- Go to `binding/flutter` and run `flutter run`
+
 
 ### Differences between official circom version
 
