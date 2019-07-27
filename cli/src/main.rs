@@ -170,6 +170,10 @@ enum Command {
         #[structopt(long = "skipcompile")]
         skipcompile: bool,
 
+        /// Prefix of the tests to execute
+        #[structopt(long = "prefix")]
+        prefix: Option<String>,
+
     },
 }
 
@@ -199,10 +203,11 @@ fn main() {
             circom2_prover::groth16::setup_ram(&circuit,&pk,&verifier)
                 .expect("unable to create proof");
         }
-        Command::Test { circuit, debug, outputwitness, skipcompile } => {
+        Command::Test { circuit, debug, outputwitness, skipcompile, prefix } => {
             let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+            let prefix = prefix.unwrap_or("".to_string());
             let ram = Ram::default();
-            match tester::run_embeeded_tests(".", &circuit, ram, debug, skipcompile, outputwitness) {
+            match tester::run_embeeded_tests(".", &circuit, ram, debug, skipcompile, outputwitness, &prefix) {
                 Ok(Some((eval, err))) => dump_error(&eval, &err),
                 Err(err) => warn!("Error: {:?}", err),
                 _ => {}

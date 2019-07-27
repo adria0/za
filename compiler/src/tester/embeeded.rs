@@ -15,6 +15,7 @@ pub fn run_embeeded_tests<F, S, C>(
     debug : bool,
     skip_compile: bool,
     output_witness: bool,
+    test_prefix : &str,
 ) -> Result<Option<(Evaluator<S, C>, String)>>
 where
     S: Signals,
@@ -30,16 +31,17 @@ where
     match eval.eval_file(&path, &filename) {
         Ok(scan_scope) => {
 
-        let tests = scan_scope
-            .vars
-            .borrow()
-            .iter()
-            .filter_map(|(k, v)| match v {
-                ScopeValue::Template { attrs, .. } if attrs.has_tag_test() => Some(k),
-                _ => None,
-            })
-            .map(|f| f.to_string())
-            .collect::<Vec<_>>();
+            let tests = scan_scope
+                .vars
+                .borrow()
+                .iter()
+                .filter_map(|(k, v)| match v {
+                    ScopeValue::Template { attrs, .. } if attrs.has_tag_test() => Some(k),
+                    _ => None,
+                })
+                .map(|template_name| template_name.to_string())
+                .filter(|template_name| template_name.starts_with(test_prefix))
+                .collect::<Vec<_>>();
 
             for test_name in tests.iter() {
 

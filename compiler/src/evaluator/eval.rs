@@ -1482,6 +1482,13 @@ where
     fn dbg_print(&mut self, scope: &Scope, expr: &ExpressionP) -> Result<()> {
         let mut processed = false;
 
+        if let ExpressionP::Variable { name: var, meta, .. } = &expr {
+            if var.name == "CTX" {
+                println!("CTX => {} {}:{}",self.current_component, self.current_file, meta.start);
+                return Ok(())
+            } 
+        }
+
         if let ExpressionP::Variable { name: var, .. } = &expr {
             let full_name = self.expand_selectors(scope, var, None)?;
 
@@ -1497,6 +1504,7 @@ where
                         })
                         .collect::<Vec<_>>()
                         .join(",");
+                    
                     println!(
                         "{} ⇨ pending_inputs {{{}}} ",
                         &full_name, pending_inputs_str
