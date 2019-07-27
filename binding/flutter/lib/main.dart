@@ -13,6 +13,8 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'snarkcircuit.dart';
+import 'snarkprovingkey.dart';
 
 // command class lets us pass any method and parameter to the rust backend
 class Command {
@@ -37,6 +39,7 @@ class MiddleWare {
           }
       );
 
+      print("---result is "+call+"---");
       // decode the output
       Map<String, dynamic> result = json.decode(call);
       // store the output string to return to the frontend
@@ -57,7 +60,7 @@ class PlatformChannel extends StatefulWidget {
 
 class _PlatformChannelState extends State<PlatformChannel> {
 
-  String _middleware = 'Call a method.';
+  String _middleware = 'Snark it!';
 
   Future<String> get _localPath async {
     final directory = await getApplicationDocumentsDirectory();
@@ -67,62 +70,35 @@ class _PlatformChannelState extends State<PlatformChannel> {
   Future<void> middleware() async {
     final path = await _localPath;
     
-    final circuit= """
-      template T() {
-        signal private input p;
-        signal private input q;
-        signal output r;
-
-        r <== p * q;
-
-      }
-      component main = T();    
-    """;
-
-    final provingKey = """
-      AAAAAQAAAD2jYWGBggKIGvAAAAAaQ+H1kxp5uXCRGigz6EgagYFYXRq4UEW2GuExoCkaMGROcmFi
-      gYIDgQFhY4GCAYEBKgtD9jYprN9CM62PUEEqit73YPJX6SatQKinaLR02Skn+RnC8P+1LhP6aau7
-      5hzaXIJNssWVReBRIN6bTb6KbCNevP6aqPTVroCD53Q6eWXufGWbgPMiWpN3+GI5/AtxFCsQgEqF
-      TV/fWk/skU71xR5Tsjh5h90UvLYvMQHvqvkBAJUImDa+WBpiiNVoFd/IZuUn8UAwN0Mj1ctavwIC
-      hSCCkPqkqXRVmEGmh4+KRF0nIby4zTExGECakWDGmNrsEKsJOAlClDXZt4NnmL/Efe0jwdx/rFAR
-      zwBphfLhdekPPj8y6VlbjKzHyqEWaN+YD8PCUPN3Rfco7G2JxKo5ry0TFcYIqcv4igX5wum2+x7Q
-      J0+puApZ2+BV0gK42x3aKyaKPHB0A4epOFLfhxCLa/KUo0sw/p5o/oKWCM+8ZI4VTihhn0f3dEEk
-      UVYWSTu0SrH++B3Yx29peM+nMF99tSwdYFkxCctRFUH1smSFcx0tYmp5ROlC3HK24ABhWb3qFcbW
-      6blLFqqwsqufd/eG6s8ShFx10vtiA14qzdZd7TYhEao/93WpgpLSJrzagUAgDddoSLOgFpZRyd06
-      TzVnxANg9XigpnTt5YveJ2gbf2+NfzzscyNgRzRgfLJzPl3BKFVHMGQd0MV135dfMXVi+gHzpQMc
-      R3c+2u3hqykhnjQHLldHFQPli/07uk0oPYN+FoFUK7exMOobW1CNnK7yQinHTWYExLknOM3hGovW
-      WK64dgKNPaGDBmz5TbMa36J0AAAAAiR3vFGwIXXfmongSIHuweSfnpDGRU8JRljK4ldTYiuwJg58
-      M8scYrDi6g8zj7aVdxatQpCFQ7G0gDnwXEsAQU4TiURJNwELu5X6AVgWYJtdmD08aKjntck5qTJT
-      Ha4KuSPyq8loY+WGKwwPj1QbBMExrx5L2WNnopunLrooiadmAAAAAxkRjkjpfZE9Ik9i2aimIAYc
-      sMLbIxqp9o/5MEg4kEeGAQlY/pYQrSLWoFb2/bnzc+D57Pej6CBnG2oxwS9AsewvYgckumLGxrOp
-      hvoHHYVNv0koEN4hgTGT9TkHsesT2QmN+KndJvK40mkVVfNAYYSYHOVd+W2u7KFArEXDohSWB3rq
-      c8Wt0nJORHEMou+HJFoMxHqgaG9I3SnCVYoXT9oLsvo+1/COyzbj2YMHJSoa2SEn0XvJR9MrW8Ad
-      YI/nSgAAAAItHeCqq1NKHpPXqWX7Q8Khje4dI0JgVGvN4hgunNuUlSGZrwwG2XkG9bjVAba0Fk/H
-      dqoQ+2RHNk1yvu7qgPdjAOGHXZP/49pjuw3OF41c/A65GrNJvTpTfHnKUjATWl4khIiyZXkdwERC
-      gvUsVmYijxtzJYhEFFbPbmRzSDZWywAAAAMGb+PMuanJCG9A0CKYr37LlyyVmeQwk5fzMeY64juX
-      rSeVzhbrHRBsDMqYD8mInAl/hqU60CMapVHE4K1/kDDNFz8VGEllhI7hareM+4StFDxebgeWLQsK
-      0q85LZ6EN/wPxbHJR1PWTI1e7BJ/Uj2h2DYYm/SNludpatLZWpNVLgiANtUS9gV93dmDYdP4kTN2
-      YuipAc0PoAMygnxcvdnCCnsiTQmVbTyk21Edot6W79dOrEFCEjDojBv3vK+52bEAAAABCIA21RL2
-      BX3d2YNh0/iRM3Zi6KkBzQ+gAzKCfFy92cIl6Swl15wy7RN09JjeosFtwDK+UCZfmaSwBJRaKMMj
-      lgAAAAEStw1JugBAkvP8nKkQkg3aYQFz/6619vYGqhzLWzsncS8biLTuAnjAhYvWQojvQK0zG+VG
-      4l1EtX2w/eQp620NMA92zFMAZEffCVHKqJzQ884b78cWz5VPTPhgdgvZgJMrv+TIJdnA8gFUqCIU
-      E7Ajkt/cMOj/OaMd0i8389BxwQ==    
-    """.replaceAll("\n", "").replaceAll(" ", "");    
-
-    final input = """{ "p" : "3", "q" : "7" }""";
+    final input = """
+    {
+    "privateKey" : "3876493977147089964395646989418653640709890493868463039177063670701706079087",
+    "votingId" : "1",
+    "nullifier" : "3642967737206797788953266792789642811467066441527044263456672813575084154491",
+    "censusRoot" :"19335063285569462410966731541261274523671078966610109902395268519183816138000",
+    "censusSiblings" : ["0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"],
+    "censusIdx" : "1337",
+    "voteSigS":"1506558731080100151400643495683521762973142364485982380016443632063521613779",
+    "voteSigR8x":"18137411472623093392316389329188709228585113201501107240811900197785235422996",
+    "voteSigR8y":"3319823053651665777987773445125343092037295151949542813138094827788048737351",
+    "voteValue":"2"
+   }    
+   """;
 
     final circuitPath = '$path/circuit.circom';
     final provingKeyPath = '$path/proving.key';
 
     final circuitFile =  File(circuitPath);
-    circuitFile.writeAsStringSync(circuit);
-
+    circuitFile.writeAsStringSync(snarkCircuit);
+    print("---write circuit---");
     final provingKeyFile =  File(provingKeyPath);
-    provingKeyFile.writeAsBytesSync(base64Decode(provingKey));
+    provingKeyFile.writeAsBytesSync(base64Decode(snarkProvingKey.replaceAll("\n", "").replaceAll(" ", "")));
+    print("---write proving key---");
 
     String middleware =  await MiddleWare.execute(
         new Command('prove',  [circuitPath, provingKeyPath, input] )
     );
+    print("---done---");
 
     setState(() {
        _middleware = middleware;
