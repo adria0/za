@@ -47,16 +47,24 @@ pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> 
 
     // nPubInputs : -------------------------------------- 32 bits
     file.write_u32::<LittleEndian>(input_signals_count).unwrap();
+    info!("CUDA nPubInputs {}",(input_signals_count) / 4);
 
     // nOutputs   : -------------------------------------- 32 bits
     file.write_u32::<LittleEndian>(0).unwrap();
+    info!("CUDA nOutputs {}",0);
 
     // nVars      : -------------------------------------- 32 bits
     file.write_u32::<LittleEndian>(signals.len()? as u32)
         .unwrap();
+    info!("CUDA nVars {}",(signals.len()? as u32));
 
     // nConstraints : Number of constraints--------------- 32 bits
+    info!("CUDA nConstraints {}",(constraints.len()? as u32));
     file.write_u32::<LittleEndian>(constraints.len()? as u32)
+        .unwrap();
+
+    // format : 0 ---------------------------------------- 32 bits
+    file.write_u32::<LittleEndian>(0)
         .unwrap();
 
     // R1CSA_nWords : R1CSA size in 32 bit words --------- 32 bits
@@ -127,20 +135,24 @@ pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> 
     file.seek(SeekFrom::Start(offset_r1cs_a))?;
     file.write_u32::<LittleEndian>((offset_start_b - offset_start_a) / 4)
         .unwrap();
+    info!("CUDA R1CS.a len {}",(offset_start_b - offset_start_a) / 4);
 
     // Write R1CS.b len
     file.seek(SeekFrom::Start(offset_r1cs_b))?;
     file.write_u32::<LittleEndian>((offset_start_c - offset_start_b) / 4)
         .unwrap();
+    info!("CUDA R1CS.b len {}",(offset_start_c - offset_start_b) / 4);
 
     // Write R1CS.c len
     file.seek(SeekFrom::Start(offset_r1cs_c))?;
     file.write_u32::<LittleEndian>((offset_end - offset_start_c) / 4)
         .unwrap();
+    info!("CUDA R1CS.c len {}",(offset_end - offset_start_c) / 4);
 
     // Write nWords
     file.seek(SeekFrom::Start(offset_words))?;
     file.write_u32::<LittleEndian>(offset_end / 4).unwrap();
+    info!("CUDA WORDS len {}",(offset_end) / 4);
 
     Ok(())
 }
