@@ -90,15 +90,22 @@ class _PlatformChannelState extends State<PlatformChannel> {
 
     final circuitFile =  File(circuitPath);
     circuitFile.writeAsStringSync(snarkCircuit);
-    print("---write circuit---");
+
+    setState(() {
+       _middleware ="Writing circuit and proving key...";
+    });
+
     final provingKeyFile =  File(provingKeyPath);
     provingKeyFile.writeAsBytesSync(base64Decode(snarkProvingKey.replaceAll("\n", "").replaceAll(" ", "")));
-    print("---write proving key---");
+
+    setState(() {
+       _middleware ="Generating proof...";
+    });
+
 
     String middleware =  await MiddleWare.execute(
         new Command('prove',  [circuitPath, provingKeyPath, input] )
     );
-    print("---done---");
 
     setState(() {
        _middleware = middleware;
@@ -118,7 +125,7 @@ class _PlatformChannelState extends State<PlatformChannel> {
               new Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: new RaisedButton(
-                  child: const Text('Call'),
+                  child: const Text('Vote'),
                   onPressed: () => middleware(),
                 ),
               ),
