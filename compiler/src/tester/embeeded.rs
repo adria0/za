@@ -1,9 +1,9 @@
 use std::fs::File;
-use std::io::Write;
 
 use super::error::{Error,Result};
 use super::report::dump_error;
 
+use crate::algebra::FS;
 use crate::evaluator::{Evaluator, Mode, ScopeValue};
 use crate::storage::{Constraints, Signals, StorageFactory};
 use crate::evaluator::{check_constrains_eval_zero};
@@ -61,12 +61,14 @@ where
                 }
 
                 if output_witness {
-                    let mut witness_file = File::create(format!("./{}.witness",test_name))?;
-                    witness_file.write_all(format!("1\n").as_bytes())?;
-                    for n in 1..ev_witness.signals.len()? {
+                    let mut witness_file = File::create(format!("./{}.binwitness",test_name))?;
+                    let witness_len = ev_witness.signals.len()?;
+                    FS::from(witness_len as u64).write_256_fixed_big_endian_word32(&mut witness_file)?;
+                    FS::from(1).write_256_fixed_big_endian_word32(&mut witness_file)?;
+                    for n in 1..witness_len {
                         let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
-                        let value_str = format!("{}\n",signal.value.clone().unwrap().try_into_fs().unwrap().0.to_string());
-                        witness_file.write_all(value_str.as_bytes())?;
+                        let value = signal.value.clone().unwrap().try_into_fs().unwrap();
+                        value.write_256_fixed_big_endian_word32(&mut witness_file)?;
                     }  
                 }
 

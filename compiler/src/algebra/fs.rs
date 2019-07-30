@@ -5,6 +5,7 @@ use num_traits::cast::ToPrimitive;
 use num_traits::identities::{One, Zero};
 use std::cmp::Ordering;
 use std::fmt;
+use std::io::Write;
 use std::ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr};
 
 use super::error::{Error, Result};
@@ -29,6 +30,7 @@ lazy_static! {
     .unwrap();
     pub static ref ONE: BigUint = BigUint::parse_bytes(b"1", 10).unwrap();
     pub static ref ZERO: BigUint = BigUint::parse_bytes(b"0", 10).unwrap();
+    pub static ref MASK32: BigUint = BigUint::parse_bytes(b"ffff",16).unwrap();
 }
 
 
@@ -107,6 +109,18 @@ impl FS {
     pub fn intdiv(&self, rhs: &FS) -> FS {
         FS::from(&self.0 / &rhs.0)
     }
+    pub fn write_256_fixed_big_endian_word32<W:Write>(&self,writer: &mut W) -> Result<()> {
+
+        let mut bytes = self.0.to_bytes_be();
+        while bytes.len() < 32 {
+            bytes.insert(0, 0);
+        }
+        for n in (0..8).rev() {
+            writer.write_all(&bytes[n*4..(n+1)*4])?;
+        }
+
+        Ok(())
+    }  
 }
 
 impl PartialEq for FS {
@@ -419,5 +433,24 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_serialize_w32_wordorder() -> Result<()> {
+        let mut buff = Vec::new();
+        FS::from(BigUint::parse_bytes(b"1111111f2222222f3333333f4444444f5555555f6666666f7777777f8888888f", 16).unwrap())
+            .write_256_fixed_big_endian_word32(&mut buff).unwrap();
+        assert_eq!("8888888f7777777f6666666f5555555f4444444f3333333f2222222f1111111f",hex::encode(buff));
+        Ok(())
+    }
+
+    #[test]
+    fn test_serialize_w32_padding() -> Result<()> {
+        let mut buff = Vec::new();
+        FS::from(BigUint::parse_bytes(b"1", 10).unwrap())
+            .write_256_fixed_big_endian_word32(&mut buff).unwrap();
+        assert_eq!("0000000100000000000000000000000000000000000000000000000000000000",hex::encode(buff));
+        Ok(())
+    }
+
 
 }
