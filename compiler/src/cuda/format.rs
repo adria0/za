@@ -1,6 +1,6 @@
 use circom2_parser::ast::SignalType;
-use circom2_compiler::algebra::{LC, QEQ};
-use circom2_compiler::storage::{Constraints, Signals,Result};
+use crate::algebra::{LC, QEQ};
+use crate::storage::{Constraints, Signals,Result};
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};

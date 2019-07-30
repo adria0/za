@@ -35,7 +35,7 @@ const DEFAULT_SOLIDITY_VERIFIER : &str = "verifier.sol";
 fn generate_cuda<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
         let start = SystemTime::now();
-        circom2_prover::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
+        circom2_compiler::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
         info!("Cuda generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
     }
 }

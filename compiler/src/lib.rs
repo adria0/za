@@ -22,3 +22,4 @@ pub mod algebra;
 pub mod evaluator;
 pub mod storage;
 pub mod tester;
+pub mod cuda;

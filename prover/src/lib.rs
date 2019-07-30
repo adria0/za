@@ -10,4 +10,3 @@ extern crate log;
 extern crate serde_derive;
 
 pub mod groth16;
-pub mod cuda;
