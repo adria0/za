@@ -7,13 +7,19 @@ use circom2_compiler::{
 use std::fs::File;
 use std::time::SystemTime;
 use super::error::{Error,Result};
+use super::ethereum::generate_solidity;
+use super::format::JsonVerifyingKey;
 
 use circom2_compiler::storage::{Constraints, Signals};
 use circom2_compiler::storage::{Ram, StorageFactory};
 use circom2_compiler::tester::dump_error;
 
+pub enum VerifierType {
+    Solidity,
+    JSON,
+}
 
-pub fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_path: &str) -> Result<()> {
+pub fn setup_ram(circuit_path: &str, proving_key_path: &str, verifier_type: VerifierType) -> Result<String> {
 
     let mut storage = Ram::default();
 
@@ -34,14 +40,19 @@ pub fn setup_ram(circuit_path: &str, proving_key_path: &str, verificator_key_pat
     print_info(&eval,false);
     info!("Running setup");
 
-    let (pk,vk) = (
-        File::create(proving_key_path)?,
-        File::create(verificator_key_path)?
-    );
-
-    super::setup(&eval, pk, vk)?;
-
-    Ok(())
+    let pk = File::create(proving_key_path)?;
+    let (vk, inputs) = super::setup(&eval, pk)?;
+    
+    match verifier_type {
+        VerifierType::Solidity => {
+            let mut buffer : Vec<u8> = Vec::new();
+            generate_solidity(&vk,&inputs,&mut buffer)?;
+            Ok(String::from_utf8(buffer).unwrap())
+        }
+        VerifierType::JSON => {
+            JsonVerifyingKey::build(&vk).with_inputs(inputs).to_json()
+        }
+    }
 }
 
 pub fn prove_ram(circuit_path: &str,proving_key_path: &str, inputs: Vec<(String,FS)>) -> Result<String> {

@@ -25,18 +25,20 @@ fn verbose(mut cx: FunctionContext) -> JsResult<JsUndefined> {
    Ok(cx.undefined())
 }
 
-fn setup_sync(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-
+fn setup_sync(mut cx: FunctionContext) -> JsResult<JsString> {
     let circuit_path = cx.argument::<JsString>(0)?.value();
     let pk_path = cx.argument::<JsString>(1)?.value();
-    let sol_path = cx.argument::<JsString>(2)?.value();
+    
+    let verifier_type = match cx.argument::<JsString>(2)?.value().as_ref() {
+        "json" => circom2_prover::groth16::VerifierType::JSON,
+        "solidity" => circom2_prover::groth16::VerifierType::Solidity,
+        _ => return  cx.throw_error(format!("invalid verifier")),
+    };
 
-    if let Err(err) = circom2_prover::groth16::setup_ram(&circuit_path,&pk_path,&sol_path) {
-        cx.throw_error(format!("{:?}",err))
-    } else {
-        Ok(cx.undefined())
+    match circom2_prover::groth16::setup_ram(&circuit_path,&pk_path,verifier_type) {
+        Ok(verifier) => Ok(cx.string(verifier)),
+        Err(err) => cx.throw_error(format!("{:?}",err)),
     }
-
 }
 
 fn prove_sync(mut cx: FunctionContext) -> JsResult<JsString> {

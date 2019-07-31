@@ -8,13 +8,13 @@ pub fn is_public_input(signal: &Signal) -> bool {
         && (signal.xtype == SignalType::Output || signal.xtype == SignalType::PublicInput)
 }
 
-pub fn count_public_inputs<S:Signals>(signals:&S) -> Result<usize> {
-    let mut count = 0;;
+pub fn public_inputs<S:Signals>(signals:&S) -> Result<Vec<String>> {
+    let mut inputs = Vec::new();
     for i in 1..signals.len()? {
         let signal = signals.get_by_id(i)?.unwrap();
         if is_public_input(&signal) {
-            count += 1;
+            inputs.push(signal.full_name.to_string());
         }
     }
-    Ok(count)
+    Ok(inputs)
 }

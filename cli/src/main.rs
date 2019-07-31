@@ -30,7 +30,11 @@ const DEFAULT_CIRCUIT : &str = "circuit.circom";
 const DEFAULT_PROVING_KEY : &str = "proving.key";
 const DEFAULT_INPUT : &str = "input.json";
 const DEFAULT_PROOF : &str = "proof.json";
-const DEFAULT_SOLIDITY_VERIFIER : &str = "verifier.sol";
+const DEFAULT_VERIFIER_SOLIDITY : &str = "verifier.sol";
+const DEFAULT_VERIFIER_JSON : &str = "verifier.json";
+const VERIFIER_TYPE_SOLIDITY : &str = "solidity";
+const VERIFIER_TYPE_JSON : &str = "json";
+const DEFAULT_VERIFIER_TYPE : &str = VERIFIER_TYPE_SOLIDITY;
 
 fn generate_cuda<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
@@ -96,6 +100,17 @@ struct Opt {
     cfg: String,
 }
 
+#[derive(StructOpt,Debug)]
+enum VerifierType {
+    #[structopt(name = "json")]
+    /// JSON with validation params 
+    JSON{},
+
+    #[structopt(name = "solidity")]
+    /// Solidity smartcontract
+    Solidity{},
+}
+
 #[derive(StructOpt)]
 enum Command {
     #[structopt(name = "compile")]
@@ -125,13 +140,18 @@ enum Command {
         circuit: Option<String>,
 
         #[structopt(long = "pk")]
-        /// Proving key file, defaults to prover.key
+        /// Proving key output file, defaults to prover.key
         pk: Option<String>,
 
         #[structopt(long = "verifier")]
-        /// Solidity verifier
-        verifier: Option<String>,
+        /// Verifier output file 
+        verifier_file: Option<String>,
+
+        #[structopt(long = "verifiertype")]
+        /// Verifier type, solidity (default) or json 
+        verifier_type: Option<String>,
     },
+
     #[structopt(name = "prove")]
     /// Compile & generate trusted setup
     Prove {
@@ -151,6 +171,7 @@ enum Command {
         /// Proof file, defaults to proof.json
         proof: Option<String>,
     },
+
     #[structopt(name = "test")]
     /// Run embeeded circuit tests
     Test {
@@ -196,12 +217,28 @@ fn main() {
                 compile_ram(&circuit,print,cuda)
             }
         }
-        Command::Setup { circuit, pk, verifier } => {
+        Command::Setup { circuit, pk, verifier_file, verifier_type } => {
             let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
             let pk = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
-            let verifier = verifier.unwrap_or(DEFAULT_SOLIDITY_VERIFIER.to_string());
-            circom2_prover::groth16::setup_ram(&circuit,&pk,&verifier)
+            let verifier_type = match verifier_type.unwrap_or(DEFAULT_VERIFIER_TYPE.to_string()).as_ref() {
+                VERIFIER_TYPE_JSON => circom2_prover::groth16::VerifierType::JSON,
+                VERIFIER_TYPE_SOLIDITY => circom2_prover::groth16::VerifierType::Solidity,
+                _ => panic!("unknown verifier type")
+            };
+            let verifier_file = verifier_file.unwrap_or(
+                match verifier_type {
+                    circom2_prover::groth16::VerifierType::Solidity => DEFAULT_VERIFIER_SOLIDITY,
+                    circom2_prover::groth16::VerifierType::JSON => DEFAULT_VERIFIER_JSON,
+                }.to_string()
+            );
+            let verifier = circom2_prover::groth16::setup_ram(&circuit,&pk,verifier_type)
                 .expect("unable to create proof");
+
+            File::create(verifier_file)
+                .expect("cannot create verifier file")
+                .write_all(verifier.as_bytes())
+                .expect("cannot write verifier file");
+
         }
         Command::Test { circuit, debug, outputwitness, skipcompile, prefix } => {
             let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());

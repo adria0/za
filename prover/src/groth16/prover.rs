@@ -1,7 +1,7 @@
 use circom2_compiler::algebra::FS;
 use circom2_compiler::evaluator::{Evaluator,check_constrains_eval_zero};
 use circom2_compiler::storage;
-use circom2_compiler::storage::{Constraints, Signals,count_public_inputs,is_public_input};
+use circom2_compiler::storage::{Constraints, Signals,public_inputs,is_public_input};
 
 use std::time::SystemTime;
 use std::io::{Read, Write};
@@ -21,8 +21,6 @@ use rand::thread_rng;
 
 use super::error::Result;
 use super::format::*;
-use super::ethereum;
-use super::format;
 
 const BELLMAN_VERBOSE : &str = "BELLMAN_VERBOSE";
 
@@ -102,11 +100,10 @@ impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
     }
 }
 
-pub fn setup<S: Signals, C: Constraints, WP: Write, WV: Write>(
+pub fn setup<S: Signals, C: Constraints, W: Write>(
     eval: &Evaluator<S, C>,
-    out_pk: WP,
-    mut out_vk: WV,
-) -> Result<()> {
+    out_pk: W,
+) -> Result<(bellman::groth16::VerifyingKey<Bn256>,Vec<String>)> {
     let rng = &mut thread_rng();
     let circuit = CircomCircuit::<Bn256> {
         signals: &eval.signals,
@@ -119,13 +116,12 @@ pub fn setup<S: Signals, C: Constraints, WP: Write, WV: Write>(
     let params = generate_random_parameters(circuit, rng)?;
     info!("Setup time: {:?}",SystemTime::now().duration_since(start).unwrap());
     let start = SystemTime::now();
-    format::write_pk(out_pk, &eval.constraints, &params)?;
+    write_pk(out_pk, &eval.constraints, &params)?;
     info!("Proving key write time: {:?}",SystemTime::now().duration_since(start).unwrap());
     
-    let inputs_len = count_public_inputs(&eval.signals)?; 
-    ethereum::generate_solidity(&params.vk,inputs_len, &mut out_vk)?;
+    let inputs = public_inputs(&eval.signals)?; 
 
-    Ok(())
+    Ok((params.vk,inputs))
 }
 
 pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
@@ -137,7 +133,7 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
     let rng = &mut thread_rng();
     
     let start = SystemTime::now();
-    let (constraints, params) = format::read_pk(in_pk)?;
+    let (constraints, params) = read_pk(in_pk)?;
     info!("Proving key read time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     let start = SystemTime::now();
@@ -176,7 +172,7 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
         .collect::<Vec<_>>();
 
     verify_proof(&vk, &proof, &verify_public_inputs)?;
-    format::write_input_and_proof(public_inputs.clone(), proof, out_proof)?;
+    write_input_and_proof(public_inputs.clone(), proof, out_proof)?;
     info!("Proof verification time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     Ok(public_inputs)
@@ -309,11 +305,8 @@ mod test {
 
         // setup -----------------------------------------------------
 
-        let (pk, vk) = (
-            File::create("/tmp/pk").unwrap(),
-            File::create("/tmp/ver.sol").unwrap(),
-        );
-        setup(&ev_r1cs, pk, vk).expect("cannot setup");
+        let pk = File::create("/tmp/pk").unwrap();
+        let (_,_) = setup(&ev_r1cs, pk).expect("cannot setup");
 
         // Compute witness -------------------------------------------
         let mut ram = Ram::default();

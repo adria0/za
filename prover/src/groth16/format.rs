@@ -47,7 +47,7 @@ lazy_static! {
     static ref FR_REGEX: Regex = Regex::new(r"Fr\((?P<x>0[xX][0-9a-fA-F]{64})\)").unwrap();
 }
 
-fn parse_g1(e: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> (String, String) {
+pub fn parse_g1(e: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> (String, String) {
     let raw_e = e.to_string();
 
     let captures = G1_REGEX.captures(&raw_e).unwrap();
@@ -58,7 +58,7 @@ fn parse_g1(e: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> (String, Strin
     )
 }
 
-fn parse_g2(e: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> (String, String, String, String) {
+pub fn parse_g2(e: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> (String, String, String, String) {
     let raw_e = e.to_string();
 
     let captures = G2_REGEX.captures(&raw_e).unwrap();
@@ -206,3 +206,44 @@ pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {
     Ok(result)
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct JsonVerifyingKey {
+    pub(crate) alpha  : [String;2],
+    pub(crate) beta   : [[String; 2]; 2],
+    pub(crate) gamma  : [[String; 2]; 2],
+    pub(crate) delta  : [[String; 2]; 2],
+    pub(crate) ic     : Vec<[String;2]>,
+    pub(crate) inputs : Vec<String>,
+} 
+
+impl JsonVerifyingKey {
+    pub fn build(vk : &bellman::groth16::VerifyingKey<Bn256>) -> JsonVerifyingKey {
+        let alpha_g1 = parse_g1(&vk.alpha_g1);
+        let beta_g2 = parse_g2(&vk.beta_g2);
+        let gamma_g2 = parse_g2(&vk.gamma_g2);
+        let delta_g2 = parse_g2(&vk.delta_g2);
+        let ic : Vec<[String;2]>= vk.ic.iter().map(|e| { 
+            let (x,y) = parse_g1(e);
+            [x,y]
+        }).collect();
+        
+        JsonVerifyingKey {
+            alpha : [alpha_g1.0,alpha_g1.1],
+            beta  : [[beta_g2.1,beta_g2.3],[beta_g2.0,beta_g2.2]],
+            gamma : [[gamma_g2.1,gamma_g2.3],[gamma_g2.0,gamma_g2.2]],
+            delta : [[delta_g2.1,delta_g2.3],[delta_g2.0,delta_g2.2]],
+            ic,
+            inputs : Vec::new(),
+        }
+    }  
+    pub fn with_inputs(self: JsonVerifyingKey, inputs: Vec<String>) -> JsonVerifyingKey {
+        JsonVerifyingKey {
+            inputs,
+            ..self
+        }
+    }
+
+    pub fn to_json(&self) -> Result<String> {
+        Ok(serde_json::to_string(&self)?)
+    }
+}

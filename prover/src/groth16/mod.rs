@@ -6,5 +6,5 @@ mod ram;
 
 pub use error::{Error,Result};
 pub use prover::{generate_verified_proof,setup,bellman_verbose};
-pub use ram::{prove_ram,setup_ram};
+pub use ram::{prove_ram,setup_ram, VerifierType};
 pub use format::flatten_json;

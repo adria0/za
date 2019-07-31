@@ -5,7 +5,6 @@ describe("Basic test", function () {
 
     const circuit_path = "/tmp/circuit.circom"; 
     const pk_path = "/tmp/proving.key"; 
-    const sol_path = "/tmp/verification.sol"; 
 
     it("Test simple circuit", async () => {
 
@@ -23,7 +22,7 @@ describe("Basic test", function () {
       fs.writeFileSync(circuit_path,circuit);
       
       circom2js.verbose(true)
-      circom2js.setupSync(circuit_path,pk_path,sol_path);
+      console.log(circom2js.setupSync(circuit_path,pk_path,"json"));
       
       all_inputs = { p:2, q:3 }
       proof_and_public_inputs = circom2js.proveSync(circuit_path,pk_path,JSON.stringify(all_inputs))
