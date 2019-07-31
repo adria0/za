@@ -63,12 +63,12 @@ where
                 if output_witness {
                     let mut witness_file = File::create(format!("./{}.binwitness",test_name))?;
                     let witness_len = ev_witness.signals.len()?;
-                    FS::from(witness_len as u64).write_256_fixed_big_endian_word32(&mut witness_file)?;
-                    FS::from(1).write_256_fixed_big_endian_word32(&mut witness_file)?;
+                    FS::from(witness_len as u64).write_256_w32(&mut witness_file)?;
+                    FS::from(1).write_256_w32(&mut witness_file)?;
                     for n in 1..witness_len {
                         let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
                         let value = signal.value.clone().unwrap().try_into_fs().unwrap();
-                        value.write_256_fixed_big_endian_word32(&mut witness_file)?;
+                        value.write_256_w32(&mut witness_file)?;
                     }  
                 }
 

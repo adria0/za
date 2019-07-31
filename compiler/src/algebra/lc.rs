@@ -2,7 +2,6 @@ use std::fmt;
 use std::iter;
 use std::ops::{Add, Mul, Neg};
 
-use super::SIGNAL_ONE;
 use super::traits::AlgZero;
 use super::types::*;
 
@@ -55,6 +54,18 @@ impl Default for LC {
     }
 }
 
+impl fmt::Display for LC {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.format(|s| format!("s{}", s)))
+    }
+}
+
+impl fmt::Debug for LC {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
+        write!(fmt, "{}", self.to_string())
+    }
+}
+
 impl AlgZero for LC {
     fn zero() -> Self {
         LC(vec![])
@@ -67,12 +78,6 @@ impl AlgZero for LC {
 impl<'a> From<&'a FS> for LC {
     fn from(fs: &'a FS) -> Self {
         LC(vec![(SIGNAL_ONE, fs.clone())])
-    }
-}
-
-impl fmt::Debug for LC {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
-        write!(fmt, "{}", self.format(|s| format!("s{}", s)))
     }
 }
 
@@ -149,11 +154,6 @@ impl<'a> Mul<&'a LC> for &'a LC {
 #[cfg(test)]
 mod test {
     use super::*;
-    use num_bigint::ToBigUint;
-
-    fn u32_to_fs(n: u32) -> FS {
-        FS::from(n.to_biguint().unwrap())
-    }
 
     #[test]
     fn test_lc_set_get_rm() {
@@ -161,26 +161,26 @@ mod test {
         let s1 = 1 as SignalId;
         let s2 = 2 as SignalId;
 
-        assert_eq!("0", format!("{:?}", lc));
+        assert_eq!("0", lc.to_string());
         assert!(lc.get(s1).is_none());
 
-        lc.set(s1, |_| u32_to_fs(2));
-        assert_eq!("2s1", format!("{:?}", lc));
+        lc.set(s1, |_| FS::from(2));
+        assert_eq!("2s1", lc.to_string());
 
-        lc.set(s1, |_| u32_to_fs(3));
-        assert_eq!("3s1", format!("{:?}", lc));
+        lc.set(s1, |_| FS::from(3));
+        assert_eq!("3s1", lc.to_string());
 
-        lc.set(s2, |_| u32_to_fs(2));
-        assert_eq!("3s1+2s2", format!("{:?}", lc));
+        lc.set(s2, |_| FS::from(2));
+        assert_eq!("3s1+2s2", lc.to_string());
 
-        assert_eq!("3", format!("{:?}", lc.get(s1).unwrap()));
-        assert_eq!("2", format!("{:?}", lc.get(s2).unwrap()));
+        assert_eq!("3", lc.get(s1).unwrap().to_string() );
+        assert_eq!("2", lc.get(s2).unwrap().to_string() );
 
         lc.rm(s1);
-        assert_eq!("2s2", format!("{:?}", lc));
+        assert_eq!("2s2", lc.to_string() );
 
         lc.rm(s2);
-        assert_eq!("0", format!("{:?}", lc));
+        assert_eq!("0", lc.to_string() );
     }
 
     #[test]
@@ -190,10 +190,10 @@ mod test {
         let s1 = 1 as SignalId;
 
         let lc_1s1 = &LC::from_signal(s1, FS::one());
-        assert_eq!("1s1+2s0", format!("{:?}", &(lc_1s1 + one) + one));
+        assert_eq!("1s1+2s0", (&(lc_1s1 + one) + one).to_string());
 
         let lc_1s1_4one = &(lc_1s1 + two);
-        assert_eq!("2s1+4s0", format!("{:?}", lc_1s1_4one * two));
+        assert_eq!("2s1+4s0", (lc_1s1_4one * two).to_string() );
     }
 
     #[test]
@@ -204,12 +204,12 @@ mod test {
         let lc_1s2 = &LC::from_signal(s2, FS::one());
 
         let lc_n1s1_1s2 = &(&(-lc_1s1) + lc_1s2);
-        assert_eq!("-1s1+1s2", format!("{:?}", lc_n1s1_1s2));
+        assert_eq!("-1s1+1s2", lc_n1s1_1s2.to_string());
         let lc_1s1_n1s2 = &-lc_n1s1_1s2;
-        assert_eq!("1s1-1s2", format!("{:?}", lc_1s1_n1s2));
+        assert_eq!("1s1-1s2", lc_1s1_n1s2.to_string());
 
         let lc_zero = lc_n1s1_1s2 + lc_1s1_n1s2;
-        assert_eq!("0", format!("{:?}", lc_zero));
+        assert_eq!("0", lc_zero.to_string() );
     }
 
     #[test]
@@ -219,12 +219,12 @@ mod test {
         let lc_1s1 = &LC::from_signal(s1, FS::one());
         let lc_1s2 = &LC::from_signal(s2, FS::one());
 
-        assert_eq!("1s1", format!("{:?}", lc_1s1));
-        assert_eq!("2s1", format!("{:?}", lc_1s1 + lc_1s1));
+        assert_eq!("1s1", lc_1s1.to_string() );
+        assert_eq!("2s1", (lc_1s1 + lc_1s1).to_string());
         let lc_2s1_1s2 = &(lc_1s1 + lc_1s1) + lc_1s2;
 
-        assert_eq!("2s1+1s2", format!("{:?}", &lc_2s1_1s2));
-        assert_eq!("[2s1+1s2]*[1s2]+[ ]", format!("{:?}", &lc_2s1_1s2 * lc_1s2));
+        assert_eq!("2s1+1s2", lc_2s1_1s2.to_string());
+        assert_eq!("[2s1+1s2]*[1s2]+[ ]", (&lc_2s1_1s2 * lc_1s2).to_string());
     }
 
 }

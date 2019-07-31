@@ -3,6 +3,7 @@ use num_traits;
 use num_traits::cast::FromPrimitive;
 use num_traits::cast::ToPrimitive;
 use num_traits::identities::{One, Zero};
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::io::Write;
@@ -12,25 +13,23 @@ use super::error::{Error, Result};
 use super::traits::AlgZero;
 use super::types::*;
 
-lazy_static! {
-    pub static ref BABYJUB_FIELD_UINT: BigUint = BigUint::parse_bytes(
-        b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
-        10
-    )
-    .unwrap();
-    pub static ref BABYJUB_FIELD_UINT_NEG: BigUint = BigUint::parse_bytes(
-        b"10944121435919637611123202872628637544274182200208017171849102093287904247808",
-        10
-    )
-    .unwrap();
-    pub static ref BABYJUB_FIELD_INT: BigInt = BigInt::parse_bytes(
-        b"21888242871839275222246405745257275088548364400416034343698204186575808495617",
-        10
-    )
-    .unwrap();
-    pub static ref ONE: BigUint = BigUint::parse_bytes(b"1", 10).unwrap();
-    pub static ref ZERO: BigUint = BigUint::parse_bytes(b"0", 10).unwrap();
-    pub static ref MASK32: BigUint = BigUint::parse_bytes(b"ffff",16).unwrap();
+const BABYJUB_FIELD : &'static str = "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+
+lazy_static! {    
+    static ref BABYJUB_FIELD_UINT: BigUint
+        = BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap();
+
+    static ref BABYJUB_FIELD_INT: BigInt
+        = BigInt::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap();
+
+    static ref BABYJUB_FIELD_UINT_NEG: BigUint
+        = (BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap() - BigUint::one()) / BigUint::from(2u32);
+
+    static ref ZERO: BigUint = BigUint::zero();
+
+    static ref ONE: BigUint = BigUint::one();
+
+    static ref MASK32: BigUint = BigUint::parse_bytes(b"ffff",16).unwrap();
 }
 
 
@@ -58,18 +57,30 @@ impl FS {
                 )
         }
     }
-
+    
     pub fn zero() -> Self {
-        FS(ZERO.clone())
+        FS(BigUint::zero())
     }
     pub fn one() -> Self {
-        FS(ONE.clone())
+        FS(BigUint::one())
+    }
+    pub fn to_bytes_le(&self) -> Vec<u8> {
+        self.0.to_bytes_le()
+    }
+    pub fn to_repr(&self) -> BigUint {
+        self.0.clone()
+    }
+    pub fn into_repr(self) -> BigUint {
+        self.0
     }
     pub fn is_one(&self) -> bool {
         self.0.cmp(&ONE) == Ordering::Equal
     }
     pub fn is_neg(&self) -> bool {
         self.0.cmp(&BABYJUB_FIELD_UINT_NEG as &BigUint) == Ordering::Greater
+    }
+    pub fn try_to_u64(&self) -> Option<u64> {
+        self.0.to_u64()
     }
     pub fn format(&self, plus_sign_at_start: bool) -> String {
         if self.is_neg() {
@@ -109,7 +120,7 @@ impl FS {
     pub fn intdiv(&self, rhs: &FS) -> FS {
         FS::from(&self.0 / &rhs.0)
     }
-    pub fn write_256_fixed_big_endian_word32<W:Write>(&self,writer: &mut W) -> Result<()> {
+    pub fn write_256_w32<W:Write>(&self,writer: &mut W) -> Result<()> {
 
         let mut bytes = self.0.to_bytes_be();
         while bytes.len() < 32 {
@@ -121,6 +132,12 @@ impl FS {
 
         Ok(())
     }  
+}
+
+impl fmt::Display for FS {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_str_radix(10))
+    }
 }
 
 impl PartialEq for FS {
@@ -160,7 +177,6 @@ impl From<u64> for FS {
         FS::from(BigUint::from_u64(n).unwrap())
     }
 }
-
 
 impl From<BigInt> for FS {
     fn from(n: BigInt) -> Self {
@@ -365,11 +381,6 @@ pub fn normalize(a: &BigInt, n: &BigInt) -> BigInt {
 mod test {
     use super::super::Result;
     use super::*;
-    use num_bigint::ToBigUint;
-
-    fn u32_to_fs(n: u32) -> FS {
-        FS::from(n.to_biguint().unwrap())
-    }
 
     #[test]
     fn test_fs_fs_add_mul() {
@@ -378,10 +389,10 @@ mod test {
         let three = &(&one + &one) + &one;
         let six = &three * &two;
 
-        assert_eq!("1", format!("{:?}", one));
-        assert_eq!("2", format!("{:?}", two));
-        assert_eq!("3", format!("{:?}", three));
-        assert_eq!("6", format!("{:?}", six));
+        assert_eq!("1", one.to_string());
+        assert_eq!("2", two.to_string());
+        assert_eq!("3", three.to_string());
+        assert_eq!("6", six.to_string());
     }
 
     #[test]
@@ -399,37 +410,37 @@ mod test {
         let mut three = one + one;
         three += one;
 
-        assert_eq!("3", format!("{:?}", three));
+        assert_eq!("3", three.to_string());
     }
 
     #[test]
     fn test_fs_mod() -> Result<()> {
-        let one = &u32_to_fs(1012) % &u32_to_fs(1000);
-        assert_eq!("12", format!("{:?}", one?));
+        let one = &FS::from(1012) % &FS::from(1000);
+        assert_eq!("12", one?.to_string());
         Ok(())
     }
 
     #[test]
     fn test_fs_shl() -> Result<()> {
-        let forty = &u32_to_fs(10) << &u32_to_fs(2);
-        assert_eq!("40", format!("{:?}", forty?));
+        let forty = &FS::from(10) << &FS::from(2);
+        assert_eq!("40", forty?.to_string());
 
         Ok(())
     }
 
     #[test]
     fn test_fs_shr() -> Result<()> {
-        let twenty = &u32_to_fs(40) >> &u32_to_fs(1);
-        assert_eq!("20", format!("{:?}", twenty?));
+        let twenty = &FS::from(40) >> &FS::from(1);
+        assert_eq!("20", twenty?.to_string());
 
         Ok(())
     }
 
     #[test]
     fn test_div() -> Result<()> {
-        let div = &u32_to_fs(1) / &u32_to_fs(2);
-        let mul = &u32_to_fs(6) * &div?;
-        assert_eq!("3", format!("{:?}", mul));
+        let div = &FS::from(1) / &FS::from(2);
+        let mul = &FS::from(6) * &div?;
+        assert_eq!("3", mul.to_string());
 
         Ok(())
     }
@@ -438,7 +449,7 @@ mod test {
     fn test_serialize_w32_wordorder() -> Result<()> {
         let mut buff = Vec::new();
         FS::from(BigUint::parse_bytes(b"1111111f2222222f3333333f4444444f5555555f6666666f7777777f8888888f", 16).unwrap())
-            .write_256_fixed_big_endian_word32(&mut buff).unwrap();
+            .write_256_w32(&mut buff).unwrap();
         assert_eq!("8888888f7777777f6666666f5555555f4444444f3333333f2222222f1111111f",hex::encode(buff));
         Ok(())
     }
@@ -446,11 +457,9 @@ mod test {
     #[test]
     fn test_serialize_w32_padding() -> Result<()> {
         let mut buff = Vec::new();
-        FS::from(BigUint::parse_bytes(b"1", 10).unwrap())
-            .write_256_fixed_big_endian_word32(&mut buff).unwrap();
+        FS::from(FS::from(1))
+            .write_256_w32(&mut buff).unwrap();
         assert_eq!("0000000100000000000000000000000000000000000000000000000000000000",hex::encode(buff));
         Ok(())
     }
-
-
 }

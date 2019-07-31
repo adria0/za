@@ -107,7 +107,7 @@ pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> 
                 file.write_u32::<LittleEndian>(*signal_id as u32).unwrap();
             }
             for (_, mult) in lc.iter() {
-                let le = mult.0.to_bytes_le();
+                let le = mult.to_bytes_le();
                 file.write_all(&le)?;
                 if le.len() < 32 {
                     file.write_all(&zeroes[le.len()..32])?;

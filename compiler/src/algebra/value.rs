@@ -91,15 +91,20 @@ impl From<QEQ> for Value {
     }
 }
 
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match &self {
+            Value::FieldScalar(fs) => fs.to_string(),
+            Value::LinearCombination(lc) => lc.to_string(),
+            Value::QuadraticEquation(qeq) => qeq.to_string(),
+        };
+        write!(f, "{}",value)
+    }
+}
+
 impl fmt::Debug for Value {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
-        use Value::*;
-        match &self {
-            FieldScalar(a) => write!(fmt, "{:?}", a)?,
-            LinearCombination(a) => write!(fmt, "{:?}", a)?,
-            QuadraticEquation(a) => write!(fmt, "{:?}", a)?,
-        }
-        Ok(())
+        write!(fmt, "{}", self.to_string())
     }
 }
 
@@ -171,7 +176,7 @@ pub fn eval_infix(lhv: &Value, op: ast::Opcode, rhv: &Value) -> Result<Value> {
         (Pow, FieldScalar(lhv), FieldScalar(rhv)) => Ok(FieldScalar(lhv.pow(rhv))),
 
         _ => Err(Error::InvalidOperation(format!(
-            "Cannot apply operator {:?} on {:?} over {:?}",
+            "Cannot apply operator {:?} on {} over {}",
             op, lhv, rhv
         ))),
     }
@@ -187,7 +192,7 @@ pub fn eval_prefix(op: ast::Opcode, rhv: &Value) -> Result<Value> {
         (Sub, QuadraticEquation(rhv)) => Ok(QuadraticEquation(-rhv)),
 
         _ => Err(Error::InvalidOperation(format!(
-            "Cannot apply operator {:?} on {:?}",
+            "Cannot apply operator {:?} on {}",
             op, rhv
         ))),
     }

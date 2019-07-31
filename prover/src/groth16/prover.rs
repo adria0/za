@@ -167,8 +167,8 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
     let vk = prepare_verifying_key(&params.vk);
     let verify_public_inputs = public_inputs
         .iter()
-        .map(|(_,n)| Fr::from_str(&(n.0.to_string()))
-            .expect(&format!("cannot parse fe {}",&n.0.to_string())))
+        .map(|(_,n)| Fr::from_str(&(n.to_string()))
+            .expect(&format!("cannot parse fe {}",&n.to_string())))
         .collect::<Vec<_>>();
 
     verify_proof(&vk, &proof, &verify_public_inputs)?;

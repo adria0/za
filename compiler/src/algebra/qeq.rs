@@ -1,5 +1,5 @@
-use std::fmt;
 use std::ops::{Add, Mul, Neg};
+use std::fmt;
 
 use super::traits::AlgZero;
 use super::types::*;
@@ -33,9 +33,15 @@ impl AlgZero for QEQ {
     }
 }
 
+impl fmt::Display for QEQ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.format(|s| format!("s{}", s)))
+    }
+}
+
 impl fmt::Debug for QEQ {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> std::result::Result<(), fmt::Error> {
-        write!(fmt, "{}", self.format(|s| format!("s{}", s)))
+        write!(fmt, "{}", self.to_string())
     }
 }
 
@@ -126,8 +132,8 @@ mod test {
         let lc_1s2 = &LC::from_signal(s2, FS::one());
         let lc_1s1_1s2_one = &(lc_1s1 * lc_1s2) + one;
 
-        assert_eq!("[1s1]*[1s2]+[1s0]", format!("{:?}", lc_1s1_1s2_one));
-        assert_eq!("[2s1]*[1s2]+[2s0]", format!("{:?}", &lc_1s1_1s2_one * two));
+        assert_eq!("[1s1]*[1s2]+[1s0]", lc_1s1_1s2_one.to_string() );
+        assert_eq!("[2s1]*[1s2]+[2s0]", (&lc_1s1_1s2_one * two).to_string() );
     }
 
     #[test]
@@ -136,7 +142,7 @@ mod test {
         let lc_1s1 = &LC::from_signal(s1, FS::one());
         let qeq = &(&(&(lc_1s1 + lc_1s1) * lc_1s1) + lc_1s1);
         let neq_qeq = &-qeq;
-        assert_eq!("[2s1]*[1s1]+[1s1]", format!("{:?}", -neq_qeq));
+        assert_eq!("[2s1]*[1s1]+[1s1]", (-neq_qeq).to_string() );
     }
 
 }

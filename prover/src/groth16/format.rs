@@ -91,7 +91,7 @@ pub fn value_to_bellman_fr<E: Engine>(value: &Value) -> E::Fr {
 }
 
 pub fn fe_to_bellman_fr<E: Engine>(fe: &FS) -> E::Fr {
-    E::Fr::from_str(&fe.0.to_str_radix(10)).unwrap()
+    E::Fr::from_str(&fe.to_string()).unwrap()
 }
 
 pub fn lc_to_bellman<E: Engine>(
@@ -121,7 +121,7 @@ pub fn write_input_and_proof<W: Write>(
         [c.0, c.1],
         public_input
             .into_iter()
-            .map(|(_, v)| v.0.to_string())
+            .map(|(_, v)| v.to_string())
             .collect::<Vec<_>>(),
     ))?;
 

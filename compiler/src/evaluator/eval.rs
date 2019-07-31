@@ -48,7 +48,6 @@ impl Mode {
     }
 }
 
-#[derive(Debug)]
 pub struct Evaluator<S, C>
 where
     S: Signals,
@@ -560,7 +559,7 @@ where
                         match &**sel {
                             SelectorP::Index { pos, .. } => {
                                 indexes
-                                    .push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                                    .push(self.eval_expression_p(scope, pos)?.try_into_u64()? as usize);
                             }
                             _ => {
                                 return Err(Error::InvalidSelector(format!(
@@ -604,7 +603,7 @@ where
         rhe: &ExpressionP,
     ) -> Result<ReturnValue> {
         let mut internal = || {
-            let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
+            let right = self.eval_expression_p(&scope, &rhe)?.try_into_algebra()?;
             Ok(ReturnValue::Algebra(
                 self.alg_eval_prefix(meta, scope, op, &right)?,
             ))
@@ -632,18 +631,18 @@ where
             match op {
                 Add | Sub | Mul | Div | IntDiv | Mod | ShiftL | ShiftR | BitAnd | BitOr
                 | BitXor | Pow => {
-                    let left = left.into_algebra()?;
-                    let right = right.into_algebra()?;
+                    let left = left.try_into_algebra()?;
+                    let right = right.try_into_algebra()?;
                     Ok(ReturnValue::Algebra(
                         self.alg_eval_infix(meta, scope, &left, op, &right)?,
                     ))
                 }
-                BoolAnd => Ok(Bool(left.into_bool()? && right.into_bool()?)),
-                BoolOr => Ok(Bool(left.into_bool()? || right.into_bool()?)),
-                Greater => Ok(Bool(left.into_fs()?.0 > right.into_fs()?.0)),
-                GreaterEq => Ok(Bool(left.into_fs()?.0 >= right.into_fs()?.0)),
-                Lesser => Ok(Bool(left.into_fs()?.0 < right.into_fs()?.0)),
-                LesserEq => Ok(Bool(left.into_fs()?.0 <= right.into_fs()?.0)),
+                BoolAnd => Ok(Bool(left.try_into_bool()? && right.try_into_bool()?)),
+                BoolOr => Ok(Bool(left.try_into_bool()? || right.try_into_bool()?)),
+                Greater => Ok(Bool(left.try_into_fs()? > right.try_into_fs()?)),
+                GreaterEq => Ok(Bool(left.try_into_fs()? >= right.try_into_fs()?)),
+                Lesser => Ok(Bool(left.try_into_fs()? < right.try_into_fs()?)),
+                LesserEq => Ok(Bool(left.try_into_fs()? <= right.try_into_fs()?)),
                 Eq => match (&left, &right) {
                     (Bool(l), Bool(r)) => Ok(Bool(l == r)),
                     (Algebra(FieldScalar(l)), Algebra(FieldScalar(r))) => Ok(Bool(l == r)),
@@ -960,11 +959,11 @@ where
             }
 
             // check for variables
-            let right = self.eval_expression_p(&scope, &expr)?.into_algebra()?;
+            let right = self.eval_expression_p(&scope, &expr)?.try_into_algebra()?;
             let value = if op == Opcode::Assig {
                 right
             } else {
-                let left = self.eval_variable(meta, scope, var)?.into_algebra()?;
+                let left = self.eval_variable(meta, scope, var)?.try_into_algebra()?;
                 use Opcode::*;
                 match op {
                     Assig => right,
@@ -1172,8 +1171,8 @@ where
     ) -> Result<()> {
         self.trace(meta, || format!("eval_signal_eq {:?} {:?}", lhe, rhe));
         let mut internal = || {
-            let left = self.eval_expression_p(&scope, &lhe)?.into_algebra()?;
-            let right = self.eval_expression_p(&scope, &rhe)?.into_algebra()?;
+            let left = self.eval_expression_p(&scope, &lhe)?.try_into_algebra()?;
+            let right = self.eval_expression_p(&scope, &rhe)?.try_into_algebra()?;
             let constrain = self.alg_eval_infix(meta, scope, &left, Opcode::Sub, &right)?;
 
             if self.mode == Mode::GenWitness {
@@ -1377,7 +1376,7 @@ where
         let mut sizes: Vec<u64> = Vec::new();
         for selector in var.sels.iter() {
             if let SelectorP::Index { pos, .. } = &**selector {
-                sizes.push(self.eval_expression_p(scope, &*pos)?.into_u64()?);
+                sizes.push(self.eval_expression_p(scope, &*pos)?.try_into_u64()?);
             } else {
                 return Err(Error::InvalidType(format!("selectors for {}", &var.name)));
             }
@@ -1407,7 +1406,7 @@ where
 
             match &**selector {
                 SelectorP::Index { pos, .. } => {
-                    let index = self.eval_expression_p(scope, &*pos)?.into_u64()?;
+                    let index = self.eval_expression_p(scope, &*pos)?.try_into_u64()?;
                     v_sel.push_str(&format!("[{}]", index));
                 }
                 SelectorP::Pin { name, .. } => {
@@ -1423,7 +1422,7 @@ where
         for sel in sels {
             match &**sel {
                 SelectorP::Index { pos, .. } => {
-                    indexes.push(self.eval_expression_p(scope, pos)?.into_u64()? as usize);
+                    indexes.push(self.eval_expression_p(scope, pos)?.try_into_u64()? as usize);
                 }
                 _ => {
                     return Err(Error::InvalidSelector(format!(

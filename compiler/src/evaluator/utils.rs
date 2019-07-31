@@ -47,7 +47,7 @@ pub fn format_algebra<S:Signals>(signals: &S, a: &algebra::Value) -> String {
     let sname = |id| signals.get_by_id(id).and_then(qname).unwrap();
 
     match a {
-        algebra::Value::FieldScalar(fe) => fe.0.to_str_radix(10),
+        algebra::Value::FieldScalar(fe) => fe.to_string(),
         algebra::Value::LinearCombination(lc) => lc.format(sname),
         algebra::Value::QuadraticEquation(qeq) => qeq.format(sname),
     }

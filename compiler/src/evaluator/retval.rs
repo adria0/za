@@ -1,5 +1,3 @@
-use num_traits::cast::ToPrimitive;
-
 use super::algebra;
 use super::algebra::{SignalId, FS};
 use super::error::*;
@@ -34,7 +32,7 @@ impl ReturnValue {
     pub fn from_signal_id(id: SignalId) -> Result<ReturnValue> {
         Ok(ReturnValue::Algebra(algebra::Value::from_signal(id)))
     }
-    pub fn into_algebra(self) -> Result<algebra::Value> {
+    pub fn try_into_algebra(self) -> Result<algebra::Value> {
         match self {
             ReturnValue::Algebra(a) => Ok(a),
             _ => Err(Error::InvalidType(format!(
@@ -43,7 +41,7 @@ impl ReturnValue {
             ))),
         }
     }
-    pub fn to_signal(&self) -> Result<SignalId> {
+    pub fn try_to_signal(&self) -> Result<SignalId> {
         if let ReturnValue::Algebra(a) = self {
             if let Some(signal) = a.try_to_signal() {
                 return Ok(signal);
@@ -54,7 +52,7 @@ impl ReturnValue {
             self
         )))
     }
-    pub fn into_bool(self) -> Result<bool> {
+    pub fn try_into_bool(self) -> Result<bool> {
         match self {
             ReturnValue::Bool(b) => Ok(b),
             _ => Err(Error::InvalidType(format!(
@@ -63,7 +61,7 @@ impl ReturnValue {
             ))),
         }
     }
-    pub fn into_fs(self) -> Result<FS> {
+    pub fn try_into_fs(self) -> Result<FS> {
         match self {
             ReturnValue::Algebra(algebra::Value::FieldScalar(fs)) => Ok(fs),
             _ => Err(Error::InvalidType(format!(
@@ -72,9 +70,9 @@ impl ReturnValue {
             ))),
         }
     }
-    pub fn into_u64(self) -> Result<u64> {
-        let fs = self.into_fs()?;
-        if let Some(n) = fs.0.to_u64() {
+    pub fn try_into_u64(self) -> Result<u64> {
+        let fs = self.try_into_fs()?;
+        if let Some(n) = fs.try_to_u64() {
             Ok(n)
         } else {
             Err(Error::CannotConvertToU64(fs))
