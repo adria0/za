@@ -609,7 +609,7 @@ mod test {
 
     #[test]
     fn test_witness_simple_fail_unknown_value() -> Result<()> {
-        eval_witness(
+        assert_eq!(true, eval_witness(
             "
             template t0() {
                 signal t0in;
@@ -618,13 +618,13 @@ mod test {
             component main = t0();
         ",
         )
-        .is_err();
+        .is_err());
         Ok(())
     }
 
     #[test]
     fn test_witness_simple_fail_bad_value() -> Result<()> {
-        eval_witness(
+        assert_eq!(true,eval_witness(
             "
             template t0() {
                 signal t0in;
@@ -634,7 +634,7 @@ mod test {
             component main = t0();
         ",
         )
-        .is_err();
+        .is_err());
         Ok(())
     }
 
@@ -658,7 +658,7 @@ mod test {
 
     #[test]
     fn test_witness_fail_simple_lazy_init() -> Result<()> {
-        eval_witness(
+        assert_eq!(true,eval_witness(
             "
             template t1() {
                 signal input a;
@@ -670,8 +670,7 @@ mod test {
             }
             component main = t0();
         ",
-        )
-        .is_err();
+        ).is_err());
         Ok(())
     }
 
