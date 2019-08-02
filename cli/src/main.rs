@@ -117,7 +117,7 @@ enum Command {
     /// Only compile the circuit
     Compile {
         #[structopt(long = "circuit")]
-        /// Circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.circom
         circuit: Option<String>,
 
         #[structopt(long = "disk")]
@@ -136,15 +136,15 @@ enum Command {
     /// Compile & generate trusted setup
     Setup {
         #[structopt(long = "circuit")]
-        /// Circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.circom
         circuit: Option<String>,
 
         #[structopt(long = "pk")]
-        /// Proving key output file, defaults to prover.key
+        /// Output proving key output file, defaults to prover.key
         pk: Option<String>,
 
         #[structopt(long = "verifier")]
-        /// Verifier output file 
+        /// Output verifier file 
         verifier_file: Option<String>,
 
         #[structopt(long = "verifiertype")]
@@ -153,22 +153,22 @@ enum Command {
     },
 
     #[structopt(name = "prove")]
-    /// Compile & generate trusted setup
+    /// Generate a proof
     Prove {
         #[structopt(long = "circuit")]
-        /// Circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.circom
         circuit: Option<String>,
 
         #[structopt(long = "pk")]
-        /// Proving key file, defaults to prover.key
+        /// Input proving key file, defaults to prover.key
         pk: Option<String>,
 
         #[structopt(long = "input")]
-        /// Public inputs file, defaults to input.json
+        /// Input inputs file, defaults to input.json
         input: Option<String>,
 
         #[structopt(long = "proof")]
-        /// Proof file, defaults to proof.json
+        /// Ouput proof file, defaults to proof.json
         proof: Option<String>,
     },
 
@@ -176,14 +176,14 @@ enum Command {
     /// Run embeeded circuit tests
     Test {
         #[structopt(long = "circuit")]
-        /// Circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.circom
         circuit: Option<String>,
 
         #[structopt(long = "debug")]
         /// Turn on debugging
         debug: bool,
 
-        /// Dump witness
+        /// Genetate binary witness file 
         #[structopt(long = "outputwitness")]
         outputwitness: bool,
 
