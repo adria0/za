@@ -1,5 +1,6 @@
 const circom2js = require("../lib/index.js");
 const fs = require("fs");
+const assert = require("chai").assert;
 
 describe("Basic test", function () {
 
@@ -22,13 +23,13 @@ describe("Basic test", function () {
       fs.writeFileSync(circuit_path,circuit);
       
       circom2js.verbose(true)
-      console.log(circom2js.setupSync(circuit_path,pk_path,"json"));
+      const verifyingKey = circom2js.setupSync(circuit_path,pk_path,"json");
       
       all_inputs = { p:2, q:3 }
-      proof_and_public_inputs = circom2js.proveSync(circuit_path,pk_path,JSON.stringify(all_inputs))
-      proof_and_public_inputs = JSON.parse(proof_and_public_inputs)
+      proof_and_public_inputs = circom2js.proveSync(circuit_path,pk_path,JSON.stringify(all_inputs));
       
-      console.log(proof_and_public_inputs);
+      const success = circom2js.verifySync(verifyingKey,proof_and_public_inputs);
+      assert.equal(success,true);
 
     });
 });

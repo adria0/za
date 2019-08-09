@@ -62,9 +62,23 @@ fn prove_sync(mut cx: FunctionContext) -> JsResult<JsString> {
     }
 }
 
+fn verify_sync(mut cx: FunctionContext) -> JsResult<JsBoolean> {
+    let circuit_path = cx.argument::<JsString>(0)?.value();
+    let proof_with_inputs = cx.argument::<JsString>(1)?.value();
+    match circom2_prover::groth16::verify_ram(&circuit_path,&proof_with_inputs) {
+        Ok(ok) => {
+            Ok(cx.boolean(ok))
+        }
+        Err(err) => {
+            cx.throw_error(format!("{:?}",err))
+        } 
+    }
+}
+
 register_module!(mut cx, {
     cx.export_function("proveSync", prove_sync)?;
     cx.export_function("setupSync", setup_sync)?;
+    cx.export_function("verifySync", verify_sync)?;
     cx.export_function("verbose", verbose)?;
     Ok(())
 });
