@@ -1,7 +1,6 @@
 extern crate rand;
 
 use pairing::bn256::Bn256;
-use regex::Regex;
 
 use circom2_compiler::algebra::{Value, FS, LC, QEQ};
 use circom2_compiler::storage::Constraints;
@@ -15,7 +14,7 @@ use std::io::{Read, Write};
 
 use bellman::groth16::{Parameters, Proof};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use ff::PrimeField;
+use ff_ce::PrimeField;
 use pairing::Engine;
 
 use error::{Error, Result};
@@ -24,73 +23,150 @@ use serde_json;
 
 use super::error;
 
+type G1JsonStruct = [String;2];
+type G2JsonStruct = [[String;2];2];
+
+fn str_to_fq(s:&str) -> Result<pairing::bn256::Fq> {
+    let fsstr = FS::parse(&s)?.to_string();
+    Ok(pairing::bn256::Fq::from_str(&fsstr).unwrap())
+}
+
+fn g1_jstruct_to_bellman(g1: &G1JsonStruct) -> Result<<Bn256 as bellman::pairing::Engine>::G1Affine> {        
+    let (x,y) = ( str_to_fq(&g1[0])?, str_to_fq(&g1[1])? );
+    let p = <Bn256 as bellman::pairing::Engine>::G1Affine::try_from_coordinates(x,y);
+    Ok(p.ok_or_else(|| Error::BadFormat(format!("bad coordinates ({},{})",x,y)))?)
+}
+
+fn g1_bellman_to_jstruct(g1: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> Result<G1JsonStruct> {
+    let invalid_point_error = || Error::BadFormat("invalid point".to_string());
+    let (x,y) = g1.try_to_coordinates().ok_or_else(invalid_point_error)?;
+    Ok([x.into_repr().to_string(), y.into_repr().to_string()])
+}
+
+fn g2_jstruct_to_bellman(g2: &G2JsonStruct) -> Result<<Bn256 as bellman::pairing::Engine>::G2Affine> {
+    let x = pairing::bn256::Fq2 { c0 : str_to_fq(&g2[0][0])? , c1 : str_to_fq(&g2[0][1])? };
+    let y = pairing::bn256::Fq2 { c0 : str_to_fq(&g2[1][0])? , c1 : str_to_fq(&g2[1][1])? };
+    let p = <Bn256 as bellman::pairing::Engine>::G2Affine::try_from_coordinates(x,y);
+    Ok(p.ok_or_else(|| Error::BadFormat(format!("bad coordinates ({},{})",x,y)))?)
+}
+
+fn g2_bellman_to_jstruct(g2: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> Result<G2JsonStruct> {
+    let invalid_point_error = || Error::BadFormat("invalid point".to_string());
+    let (x,y) = g2.try_to_coordinates().ok_or_else(invalid_point_error)?;
+    Ok([[x.c0.into_repr().to_string(),x.c1.into_repr().to_string()],
+        [y.c0.into_repr().to_string(),y.c1.into_repr().to_string()]])
+}
+
 #[derive(Serialize, Deserialize)]
-struct JsonInputAndProof([String; 2],[[String; 2]; 2],[String; 2],Vec<String>);
+pub struct JsonProofAndInput(G1JsonStruct,G2JsonStruct,G1JsonStruct,Vec<String>);
 
-/*
-Taken from Thibaut Schaeffer's ZoKrates
-https://github.com/Zokrates/ZoKrates/commit/20790b72fff3b48a518dd7b910f7e005612faf95
-*/
+impl JsonProofAndInput {
+    pub fn from_bellman(proof: Proof<Bn256>, public_input: Vec<(String, FS)>) -> Result<Self> {
+        Ok(JsonProofAndInput(
+            g1_bellman_to_jstruct(&proof.a)?,
+            g2_bellman_to_jstruct(&proof.b)?,
+            g1_bellman_to_jstruct(&proof.c)?,
+            public_input
+                .into_iter()
+                .map(|(_, v)| v.to_string())
+                .collect::<Vec<_>>(),
+        ))
+    }
 
-lazy_static! {
-    static ref G2_REGEX: Regex = Regex::new(r"G2\(x=Fq2\(Fq\((?P<x0>0[xX][0-9a-fA-F]{64})\) \+ Fq\((?P<x1>0[xX][0-9a-fA-F]{64})\) \* u\), y=Fq2\(Fq\((?P<y0>0[xX][0-9a-fA-F]{64})\) \+ Fq\((?P<y1>0[xX][0-9a-fA-F]{64})\) \* u\)\)").unwrap();
+    pub fn to_bellman(json : &str) -> Result<(Proof<Bn256>,Vec<pairing::bn256::Fr>)> {
+        let JsonProofAndInput(a,b,c,inputs) = serde_json::from_str(json)?;
+        let proof = Proof {
+            a : g1_jstruct_to_bellman(&a)?,
+            b : g2_jstruct_to_bellman(&b)?,
+            c : g1_jstruct_to_bellman(&c)?,
+        };
+        
+        let err_bad_format = || Error::BadFormat("bad format".to_string());
+        let parsed_inputs  = inputs.iter().map(
+            |s| pairing::bn256::Fr::from_str(s).ok_or_else(err_bad_format)
+        ).collect::<Result<Vec<_>>>()?;
+        
+        Ok((proof,parsed_inputs))
+    }
+
+    pub fn write<W:Write>(&self, out: &mut W) -> Result<()>{
+        let json = serde_json::to_string(self)?;
+        out.write(json.as_bytes())?;
+        Ok(())
+    }
 }
 
-lazy_static! {
-    static ref G1_REGEX: Regex = Regex::new(
-        r"G1\(x=Fq\((?P<x>0[xX][0-9a-fA-F]{64})\), y=Fq\((?P<y>0[xX][0-9a-fA-F]{64})\)\)"
-    )
-    .unwrap();
-}
+#[derive(Serialize, Deserialize)]
+pub struct JsonVerifyingKey {
+    pub(crate) alpha_g1  : G1JsonStruct,
+    pub(crate) beta_g1   : G1JsonStruct,
+    pub(crate) beta_g2   : G2JsonStruct,
+    pub(crate) delta_g1  : G1JsonStruct,
+    pub(crate) delta_g2  : G2JsonStruct,
+    pub(crate) gamma_g2  : G2JsonStruct,
+    pub(crate) ic        : Vec<G1JsonStruct>,
+    pub(crate) input_names : Vec<String>,
+} 
 
-lazy_static! {
-    static ref FR_REGEX: Regex = Regex::new(r"Fr\((?P<x>0[xX][0-9a-fA-F]{64})\)").unwrap();
-}
+impl JsonVerifyingKey {
 
-pub fn parse_g1(e: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> (String, String) {
-    let raw_e = e.to_string();
+    pub fn from_bellman(vk : &bellman::groth16::VerifyingKey<Bn256>) -> Result<Self> {
 
-    let captures = G1_REGEX.captures(&raw_e).unwrap();
+        let ic = vk.ic.iter().map(g1_bellman_to_jstruct).collect::<Result<Vec<_>>>()?;
 
-    (
-        captures.name(&"x").unwrap().as_str().to_string(),
-        captures.name(&"y").unwrap().as_str().to_string(),
-    )
-}
+        Ok(JsonVerifyingKey {
+            alpha_g1 : g1_bellman_to_jstruct(&vk.alpha_g1)? ,
+            beta_g1  : g1_bellman_to_jstruct(&vk.beta_g1)? ,
+            beta_g2  : g2_bellman_to_jstruct(&vk.beta_g2)? ,
+            delta_g1 : g1_bellman_to_jstruct(&vk.delta_g1)? ,
+            delta_g2 : g2_bellman_to_jstruct(&vk.delta_g2)? ,
+            gamma_g2 : g2_bellman_to_jstruct(&vk.gamma_g2)? ,
+            ic,       
+            input_names : Vec::new()
+        })
 
-pub fn parse_g2(e: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> (String, String, String, String) {
-    let raw_e = e.to_string();
+    }
 
-    let captures = G2_REGEX.captures(&raw_e).unwrap();
+    pub fn with_input_names(self, input_names : Vec<String>) -> JsonVerifyingKey {
+        JsonVerifyingKey {
+            input_names,
+            ..self
+        }
+    }
 
-    (
-        captures.name(&"x1").unwrap().as_str().to_string(),
-        captures.name(&"x0").unwrap().as_str().to_string(),
-        captures.name(&"y1").unwrap().as_str().to_string(),
-        captures.name(&"y0").unwrap().as_str().to_string(),
-    )
-}
+    pub fn to_bellman(&self) ->  Result<bellman::groth16::VerifyingKey<Bn256>> {
 
-pub fn parse_g1_hex(e: &<Bn256 as bellman::pairing::Engine>::G1Affine) -> String {
-    let parsed = parse_g1(e);
+        let ic = self.ic.iter().map(g1_jstruct_to_bellman).collect::<Result<Vec<_>>>()?;
 
-    format!("{}, {}", parsed.0, parsed.1)
-}
+        Ok(bellman::groth16::VerifyingKey {
+            alpha_g1 : g1_jstruct_to_bellman(&self.alpha_g1)? ,
+            beta_g1  : g1_jstruct_to_bellman(&self.beta_g1)? ,
+            beta_g2  : g2_jstruct_to_bellman(&self.beta_g2)? ,
+            delta_g1 : g1_jstruct_to_bellman(&self.delta_g1)? ,
+            delta_g2 : g2_jstruct_to_bellman(&self.delta_g2)? ,
+            gamma_g2 : g2_jstruct_to_bellman(&self.gamma_g2)? ,
+            ic       : ic,
+        })
 
-pub fn parse_g2_hex(e: &<Bn256 as bellman::pairing::Engine>::G2Affine) -> String {
-    let parsed = parse_g2(e);
+    }
 
-    format!("[{}, {}], [{}, {}]", parsed.0, parsed.1, parsed.2, parsed.3,)
+    pub fn from_json(json : &str) -> Result<JsonVerifyingKey> {
+        Ok(serde_json::from_str(json)?)
+    }
+
+    pub fn to_json(&self) -> Result<String> {
+        Ok(serde_json::to_string(&self)?)
+    }
 }
 
 pub fn value_to_bellman_fr<E: Engine>(value: &Value) -> E::Fr {
     match value {
-        Value::FieldScalar(fs) => fe_to_bellman_fr::<E>(fs),
+        Value::FieldScalar(fs) => fs_to_bellman_fr::<E>(fs),
         _ => panic!("Invalid signal value"),
     }
 }
 
-pub fn fe_to_bellman_fr<E: Engine>(fe: &FS) -> E::Fr {
+pub fn fs_to_bellman_fr<E: Engine>(fe: &FS) -> E::Fr {
     E::Fr::from_str(&fe.to_string()).unwrap()
 }
 
@@ -101,33 +177,11 @@ pub fn lc_to_bellman<E: Engine>(
 ) -> LinearCombination<E> {
     use std::ops::Add;
     for (s, v) in &lc.0 {
-        base = base.add((fe_to_bellman_fr::<E>(&v), signals[*s]));
+        base = base.add((fs_to_bellman_fr::<E>(&v), signals[*s]));
     }
     base
 }
 
-pub fn write_input_and_proof<W: Write>(
-    public_input: Vec<(String, FS)>,
-    proof: Proof<Bn256>,
-    out: &mut W,
-) -> Result<()> {
-    let a = parse_g1(&proof.a);
-    let b = parse_g2(&proof.b);
-    let c = parse_g1(&proof.c);
-
-    let json = serde_json::to_string(&JsonInputAndProof(
-        [a.0, a.1],
-        [[b.0, b.1], [b.2, b.3]],
-        [c.0, c.1],
-        public_input
-            .into_iter()
-            .map(|(_, v)| v.to_string())
-            .collect::<Vec<_>>(),
-    ))?;
-
-    out.write(json.as_bytes())?;
-    Ok(())
-}
 
 pub fn write_pk<W: Write, C: Constraints>(
     mut pk: W,
@@ -206,44 +260,3 @@ pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {
     Ok(result)
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct JsonVerifyingKey {
-    pub(crate) alpha  : [String;2],
-    pub(crate) beta   : [[String; 2]; 2],
-    pub(crate) gamma  : [[String; 2]; 2],
-    pub(crate) delta  : [[String; 2]; 2],
-    pub(crate) ic     : Vec<[String;2]>,
-    pub(crate) inputs : Vec<String>,
-} 
-
-impl JsonVerifyingKey {
-    pub fn build(vk : &bellman::groth16::VerifyingKey<Bn256>) -> JsonVerifyingKey {
-        let alpha_g1 = parse_g1(&vk.alpha_g1);
-        let beta_g2 = parse_g2(&vk.beta_g2);
-        let gamma_g2 = parse_g2(&vk.gamma_g2);
-        let delta_g2 = parse_g2(&vk.delta_g2);
-        let ic : Vec<[String;2]>= vk.ic.iter().map(|e| { 
-            let (x,y) = parse_g1(e);
-            [x,y]
-        }).collect();
-        
-        JsonVerifyingKey {
-            alpha : [alpha_g1.0,alpha_g1.1],
-            beta  : [[beta_g2.1,beta_g2.3],[beta_g2.0,beta_g2.2]],
-            gamma : [[gamma_g2.1,gamma_g2.3],[gamma_g2.0,gamma_g2.2]],
-            delta : [[delta_g2.1,delta_g2.3],[delta_g2.0,delta_g2.2]],
-            ic,
-            inputs : Vec::new(),
-        }
-    }  
-    pub fn with_inputs(self: JsonVerifyingKey, inputs: Vec<String>) -> JsonVerifyingKey {
-        JsonVerifyingKey {
-            inputs,
-            ..self
-        }
-    }
-
-    pub fn to_json(&self) -> Result<String> {
-        Ok(serde_json::to_string(&self)?)
-    }
-}

@@ -15,7 +15,7 @@ use bellman::groth16::{
     create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof
 };
 
-use ff::PrimeField;
+use ff_ce::PrimeField;
 
 use rand::thread_rng;
 
@@ -172,7 +172,7 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
         .collect::<Vec<_>>();
 
     verify_proof(&vk, &proof, &verify_public_inputs)?;
-    write_input_and_proof(public_inputs.clone(), proof, out_proof)?;
+    JsonProofAndInput::from_bellman(proof, public_inputs.clone())?.write(out_proof)?;
     info!("Proof verification time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
     Ok(public_inputs)

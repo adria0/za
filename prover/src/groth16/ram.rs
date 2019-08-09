@@ -8,11 +8,16 @@ use std::fs::File;
 use std::time::SystemTime;
 use super::error::{Error,Result};
 use super::ethereum::generate_solidity;
-use super::format::JsonVerifyingKey;
+use super::format::{JsonVerifyingKey,JsonProofAndInput};
 
 use circom2_compiler::storage::{Constraints, Signals};
 use circom2_compiler::storage::{Ram, StorageFactory};
 use circom2_compiler::tester::dump_error;
+
+use bellman::groth16::{
+    prepare_verifying_key,
+    verify_proof
+};
 
 pub enum VerifierType {
     Solidity,
@@ -50,7 +55,7 @@ pub fn setup_ram(circuit_path: &str, proving_key_path: &str, verifier_type: Veri
             Ok(String::from_utf8(buffer).unwrap())
         }
         VerifierType::JSON => {
-            JsonVerifyingKey::build(&vk).with_inputs(inputs).to_json()
+            JsonVerifyingKey::from_bellman(&vk)?.with_input_names(inputs).to_json()
         }
     }
 }
@@ -101,4 +106,17 @@ pub fn prove_ram(circuit_path: &str,proving_key_path: &str, inputs: Vec<(String,
     )?;
 
     Ok(String::from_utf8_lossy(&proof).to_string())
+}
+
+pub fn verify_ram(json_verifying_key: &str, proof_and_public_input: &str) -> Result<bool> {
+
+    info!("Reading vk...");
+    let vk = JsonVerifyingKey::from_json(json_verifying_key)?.to_bellman()?;
+    info!("Preparing vk...");
+    let vk = prepare_verifying_key(&vk);
+    info!("Preparing jsonproof...");
+    let (proof,public_inputs) = JsonProofAndInput::to_bellman(proof_and_public_input)?;
+
+    info!("Verifying proof...");
+    Ok(verify_proof(&vk, &proof, &public_inputs)?)
 }
