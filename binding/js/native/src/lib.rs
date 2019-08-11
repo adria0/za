@@ -63,9 +63,9 @@ fn prove_sync(mut cx: FunctionContext) -> JsResult<JsString> {
 }
 
 fn verify_sync(mut cx: FunctionContext) -> JsResult<JsBoolean> {
-    let circuit_path = cx.argument::<JsString>(0)?.value();
+    let verifying_key = cx.argument::<JsString>(0)?.value();
     let proof_with_inputs = cx.argument::<JsString>(1)?.value();
-    match circom2_prover::groth16::verify_ram(&circuit_path,&proof_with_inputs) {
+    match circom2_prover::groth16::verify_ram(&verifying_key,&proof_with_inputs) {
         Ok(ok) => {
             Ok(cx.boolean(ok))
         }

@@ -23,12 +23,12 @@ describe("Basic test", function () {
       fs.writeFileSync(circuit_path,circuit);
       
       circom2js.verbose(true)
-      const verifyingKey = circom2js.setupSync(circuit_path,pk_path,"json");
+      const verifying_key = circom2js.setupSync(circuit_path,pk_path,"json");
       
       all_inputs = { p:2, q:3 }
       proof_and_public_inputs = circom2js.proveSync(circuit_path,pk_path,JSON.stringify(all_inputs));
       
-      const success = circom2js.verifySync(verifyingKey,proof_and_public_inputs);
+      const success = circom2js.verifySync(verifying_key,proof_and_public_inputs);
       assert.equal(success,true);
 
     });
