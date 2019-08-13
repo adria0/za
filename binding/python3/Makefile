@@ -10,4 +10,3 @@ $(SO_LIB):
 test: $(SO_LIB)
 	cp $(SO_LIB) test
 	(cd test && python3 test.py)
-
