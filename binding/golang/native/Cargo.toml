@@ -1,0 +1,12 @@
+[package]
+name = "circom2go"
+version = "0.0.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+libc = "0.2.61"
+stderrlog = "0.4.1"
+circom2-prover = { path = "../../../prover" }
+circom2-compiler = { path = "../../../compiler" }
