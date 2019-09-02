@@ -32,10 +32,11 @@ include "../gates.circom";
 include "../bitify.circom";
 include "../comparators.circom";
 include "../switcher.circom";
+
+include "smthash_mimc.circom";
 include "smtlevins.circom";
 include "smtverifierlevel.circom";
 include "smtverifiersm.circom";
-include "smthash.circom";
 
 template SMTVerifier(nLevels) {
     signal input enabled;

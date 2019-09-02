@@ -141,21 +141,23 @@ template MiMC7(nrounds) {
 
 template MultiMiMC7(nInputs, nRounds) {
     signal input in[nInputs];
+    signal input k;
     signal output out;
+    signal r[nInputs +1];
 
     component mims[nInputs];
+
+    r[0] <== k;
     for (var i=0; i<nInputs; i+=1) {
         mims[i] = MiMC7(nRounds);
-        if (i==0) {
-            mims[i].x_in <== 15021630795539610737508582392395901278341266317943626182700664337106830745361;
-        } else {
-            mims[i].x_in <== mims[i-1].out;
-        }
-        mims[i].k <== in[i];
+        mims[i].x_in <== in[i];
+        mims[i].k <== r[i];
+        r[i+1] <== r[i] + in[i] + mims[i].out;
     }
 
-    out <== mims[nInputs-1].out;
+    out <== r[nInputs];
 }
+
 
 #[test]
 template test_mimc7() {

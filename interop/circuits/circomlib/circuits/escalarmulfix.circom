@@ -27,8 +27,23 @@ include "babyjub.circom";
         out4 = 4*base
 
     The result should be compensated.
-*/
+ */
 
+/*
+
+    The scalar is s = a0 + a1*2^3 + a2*2^6 + ...... + a81*2^243
+    First We calculate Q = B + 2^3*B + 2^6*B + ......... + 2^246*B
+
+    Then we calculate S1 = 2*2^246*B + (1 + a0)*B + (2^3 + a1)*B + .....+ (2^243 + a81)*B
+
+    And Finaly we compute the result: RES = SQ - Q
+
+    As you can see the input of the adders cannot be equal nor zero, except for the last
+    substraction that it's done in montgomery.
+
+    A good way to see it is that the accumulator input of the adder >= 2^247*B and the other input
+    is the output of the windows that it's going to be <= 2^246*B
+ */
 template WindowMulFix() {
     signal input in[3];
     signal input base[2];
@@ -123,7 +138,7 @@ template WindowMulFix() {
         base: the base point in edwards format
         out:  The result
         dbl: Point in Edwards to be linked to the next segment.
-*/
+ */
 
 template SegmentMulFix(nWindows) {
     signal input e[nWindows*3];
@@ -141,61 +156,66 @@ template SegmentMulFix(nWindows) {
     e2m.in[1] <== base[1];
 
     component windows[nWindows];
-    component adders[nWindows-1];
-    component cadders[nWindows-1];
+    component adders[nWindows];
+    component cadders[nWindows];
+
+    // In the last step we add an extra doubler so that numbers do not match.
+    component dblLast = MontgomeryDouble();
+
     for (i=0; i<nWindows; i+=1) {
         windows[i] = WindowMulFix();
-        for (j=0; j<3; j+=1) {
-            windows[i].in[j] <== e[3*i+j];
-        }
+        cadders[i] = MontgomeryAdd();
         if (i==0) {
             windows[i].base[0] <== e2m.out[0];
             windows[i].base[1] <== e2m.out[1];
+            cadders[i].in1[0] <== e2m.out[0];
+            cadders[i].in1[1] <== e2m.out[1];
         } else {
             windows[i].base[0] <== windows[i-1].out8[0];
             windows[i].base[1] <== windows[i-1].out8[1];
-
-            adders[i-1] = MontgomeryAdd();
-            cadders[i-1] = MontgomeryAdd();
-            if (i==1) {
-                adders[i-1].in1[0] <== windows[0].out[0];
-                adders[i-1].in1[1] <== windows[0].out[1];
-                cadders[i-1].in1[0] <== e2m.out[0];
-                cadders[i-1].in1[1] <== e2m.out[1];
-            } else {
-                adders[i-1].in1[0] <== adders[i-2].out[0];
-                adders[i-1].in1[1] <== adders[i-2].out[1];
-                cadders[i-1].in1[0] <== cadders[i-2].out[0];
-                cadders[i-1].in1[1] <== cadders[i-2].out[1];
-            }
-            adders[i-1].in2[0] <== windows[i].out[0];
-            adders[i-1].in2[1] <== windows[i].out[1];
-            cadders[i-1].in2[0] <== windows[i-1].out8[0];
-            cadders[i-1].in2[1] <== windows[i-1].out8[1];
+            cadders[i].in1[0] <== cadders[i-1].out[0];
+            cadders[i].in1[1] <== cadders[i-1].out[1];
         }
+        for (j=0; j<3; j+=1) {
+            windows[i].in[j] <== e[3*i+j];
+        }
+        if (i<nWindows-1) {
+            cadders[i].in2[0] <== windows[i].out8[0];
+            cadders[i].in2[1] <== windows[i].out8[1];
+        } else {
+            dblLast.in[0] <== windows[i].out8[0];
+            dblLast.in[1] <== windows[i].out8[1];
+            cadders[i].in2[0] <== dblLast.out[0];
+            cadders[i].in2[1] <== dblLast.out[1];
+        }
+    }
+
+    for (i=0; i<nWindows; i+=1) {
+        adders[i] = MontgomeryAdd();
+        if (i==0) {
+            adders[i].in1[0] <== dblLast.out[0];
+            adders[i].in1[1] <== dblLast.out[1];
+        } else {
+            adders[i].in1[0] <== adders[i-1].out[0];
+            adders[i].in1[1] <== adders[i-1].out[1];
+        }
+        adders[i].in2[0] <== windows[i].out[0];
+        adders[i].in2[1] <== windows[i].out[1];
     }
 
     component m2e = Montgomery2Edwards();
     component cm2e = Montgomery2Edwards();
 
-    if (nWindows > 1) {
-        m2e.in[0] <== adders[nWindows-2].out[0];
-        m2e.in[1] <== adders[nWindows-2].out[1];
-        cm2e.in[0] <== cadders[nWindows-2].out[0];
-        cm2e.in[1] <== cadders[nWindows-2].out[1];
-    } else {
-        m2e.in[0] <== windows[0].out[0];
-        m2e.in[1] <== windows[0].out[1];
-        cm2e.in[0] <== e2m.out[0];
-        cm2e.in[1] <== e2m.out[1];
-    }
+    m2e.in[0] <== adders[nWindows-1].out[0];
+    m2e.in[1] <== adders[nWindows-1].out[1];
+    cm2e.in[0] <== cadders[nWindows-1].out[0];
+    cm2e.in[1] <== cadders[nWindows-1].out[1];
 
     component cAdd = BabyAdd();
     cAdd.x1 <== m2e.out[0];
     cAdd.y1 <== m2e.out[1];
     cAdd.x2 <== -cm2e.out[0];
     cAdd.y2 <== cm2e.out[1];
-
 
     cAdd.xout ==> out[0];
     cAdd.yout ==> out[1];
@@ -210,13 +230,12 @@ This component multiplies a escalar times a fixed point BASE (twisted edwards fo
     Signals
         e: The escalar in binary format
         out: The output point in twisted edwards
-*/
-
+ */
 template EscalarMulFix(n, BASE) {
     signal input e[n];              // Input in binary format
     signal output out[2];           // Point (Twisted format)
 
-    var nsegments = (n-1)\249 +1;
+    var nsegments = (n-1)\246 +1;       // 249 probably would work. But I'm not sure and for security I keep 246
     var nlastsegment = n - (nsegments-1)*249;
 
     component segments[nsegments];
@@ -236,7 +255,6 @@ template EscalarMulFix(n, BASE) {
         } else {
             nseg = nlastsegment;
         }
-
         nWindows = ((nseg - 1)\3)+1;
 
         segments[s] = SegmentMulFix(nWindows);

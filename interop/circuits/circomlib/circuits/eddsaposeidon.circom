@@ -18,72 +18,49 @@
 */
 
 include "compconstant.circom";
-include "pointbits.circom";
-include "pedersen.circom";
+include "poseidon.circom";
+include "bitify.circom";
 include "escalarmulany.circom";
 include "escalarmulfix.circom";
 
-template EdDSAVerifier(n) {
-    signal input msg[n];
+template EdDSAPoseidonVerifier() {
+    signal input enabled;
+    signal input Ax;
+    signal input Ay;
 
-    signal input A[256];
-    signal input R8[256];
-    signal input S[256];
+    signal input S;
+    signal input R8x;
+    signal input R8y;
 
-    signal Ax;
-    signal Ay;
-
-    signal R8x;
-    signal R8y;
+    signal input M;
 
     var i;
 
 // Ensure S<Subgroup Order
 
+    component snum2bits = Num2Bits(253);
+    snum2bits.in <== S;
+
     component  compConstant = CompConstant(2736030358979909402780800718157159386076813972158567259200215660948447373040);
 
-    for (i=0; i<254; i+=1) {
-        S[i] ==> compConstant.in[i];
+    for (i=0; i<253; i+=1) {
+        snum2bits.out[i] ==> compConstant.in[i];
     }
+    compConstant.in[253] <== 0;
     compConstant.out === 0;
-    S[254] === 0;
-    S[255] === 0;
-
-// Convert A to Field elements (And verify A)
-
-    component bits2pointA = Bits2Point_Strict();
-
-    for (i=0; i<256; i+=1) {
-        bits2pointA.in[i] <== A[i];
-    }
-    Ax <== bits2pointA.out[0];
-    Ay <== bits2pointA.out[1];
-
-// Convert R8 to Field elements (And verify R8)
-
-    component bits2pointR8 = Bits2Point_Strict();
-
-    for (i=0; i<256; i+=1) {
-        bits2pointR8.in[i] <== R8[i];
-    }
-    R8x <== bits2pointR8.out[0];
-    R8y <== bits2pointR8.out[1];
 
 // Calculate the h = H(R,A, msg)
 
-    component hash = Pedersen(512+n);
+    component hash = Poseidon(5, 6, 8, 57);
 
-    for (i=0; i<256; i+=1) {
-        hash.in[i] <== R8[i];
-        hash.in[256+i] <== A[i];
-    }
-    for (i=0; i<n; i+=1) {
-        hash.in[512+i] <== msg[i];
-    }
+    hash.inputs[0] <== R8x;
+    hash.inputs[1] <== R8y;
+    hash.inputs[2] <== Ax;
+    hash.inputs[3] <== Ay;
+    hash.inputs[4] <== M;
 
-    component point2bitsH = Point2Bits_Strict();
-    point2bitsH.in[0] <== hash.out[0];
-    point2bitsH.in[1] <== hash.out[1];
+    component h2bits = Num2Bits_strict();
+    h2bits.in <== hash.out;
 
 // Calculate second part of the right side:  right2 = h*8*A
 
@@ -104,9 +81,9 @@ template EdDSAVerifier(n) {
     isZero.in <== dbl3.x;
     isZero.out === 0;
 
-    component mulAny = EscalarMulAny(256);
-    for (i=0; i<256; i+=1) {
-        mulAny.e[i] <== point2bitsH.out[i];
+    component mulAny = EscalarMulAny(254);
+    for (i=0; i<254; i+=1) {
+        mulAny.e[i] <== h2bits.out[i];
     }
     mulAny.p[0] <== dbl3.xout;
     mulAny.p[1] <== dbl3.yout;
@@ -126,13 +103,34 @@ template EdDSAVerifier(n) {
         5299619240641551281634865583518297030282874472190772894086521144482721001553,
         16950150798460657717958625567821834550301663161624707787222815936182638968203
     ];
-    component mulFix = EscalarMulFix(256, BASE8);
-    for (i=0; i<256; i+=1) {
-        mulFix.e[i] <== S[i];
+    component mulFix = EscalarMulFix(253, BASE8);
+    for (i=0; i<253; i+=1) {
+        mulFix.e[i] <== snum2bits.out[i];
     }
 
-// Do the comparation left == right
+// Do the comparation left == right if enabled;
 
-    mulFix.out[0] === addRight.xout;
-    mulFix.out[1] === addRight.yout;
+    component eqCheckX = ForceEqualIfEnabled();
+    eqCheckX.enabled <== enabled;
+    eqCheckX.in[0] <== mulFix.out[0];
+    eqCheckX.in[1] <== addRight.xout;
+
+    component eqCheckY = ForceEqualIfEnabled();
+    eqCheckY.enabled <== enabled;
+    eqCheckY.in[0] <== mulFix.out[1];
+    eqCheckY.in[1] <== addRight.yout;
+}
+
+#[test]
+template test_eddsaposeidon_verifier() {
+    component main = EdDSAPoseidonVerifier();
+    #[w] {
+        main.enabled <== 1;
+        main.Ax <== 13277427435165878497778222415993513565335242147425444199013288855685581939618;
+        main.Ay <== 13622229784656158136036771217484571176836296686641868549125388198837476602820;
+        main.R8x <== 11220723668893468001994760120794694848178115379170651044669708829805665054484;
+        main.R8y <== 2367470421002446880004241260470975644531657398480773647535134774673409612366;
+        main.S <== 1307100909096544936550139783786226891472336052773077686618468233418583414320;
+        main.M <== 1234;
+    }
 }
