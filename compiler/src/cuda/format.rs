@@ -5,7 +5,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 
-pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> Result<()> {
+pub fn export_r1cs(path: &str, constraints: &dyn Constraints, signals: &dyn Signals) -> Result<()> {
 
     // find the number of public inputs, by now should be ordered 
     //   in the following way:
@@ -41,45 +41,45 @@ pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> 
 
     let mut file = File::create(&path)?;
 
-    // nWords : File size in 32 bit workds --------------- 32 bits
+    // nWords : File size in 32 bit workds --------------- 64 bits
     let offset_words = file.seek(SeekFrom::Current(0))?;
-    file.write_u32::<LittleEndian>(0).unwrap();
+    file.write_u64::<LittleEndian>(0).unwrap();
 
-    // nPubInputs : -------------------------------------- 32 bits
-    file.write_u32::<LittleEndian>(input_signals_count).unwrap();
+    // nPubInputs : -------------------------------------- 64 bits
+    file.write_u64::<LittleEndian>(input_signals_count).unwrap();
     info!("CUDA nPubInputs {}",(input_signals_count) / 4);
 
-    // nOutputs   : -------------------------------------- 32 bits
-    file.write_u32::<LittleEndian>(0).unwrap();
+    // nOutputs   : -------------------------------------- 64 bits
+    file.write_u64::<LittleEndian>(0).unwrap();
     info!("CUDA nOutputs {}",0);
 
-    // nVars      : -------------------------------------- 32 bits
-    file.write_u32::<LittleEndian>(signals.len()? as u32)
+    // nVars      : -------------------------------------- 64 bits
+    file.write_u64::<LittleEndian>(signals.len()? as u64)
         .unwrap();
-    info!("CUDA nVars {}",(signals.len()? as u32));
+    info!("CUDA nVars {}",(signals.len()? as u64));
 
-    // nConstraints : Number of constraints--------------- 32 bits
-    info!("CUDA nConstraints {}",(constraints.len()? as u32));
-    file.write_u32::<LittleEndian>(constraints.len()? as u32)
-        .unwrap();
-
-    // format : 0 ---------------------------------------- 32 bits
-    file.write_u32::<LittleEndian>(0)
+    // nConstraints : Number of constraints--------------- 64 bits
+    info!("CUDA nConstraints {}",(constraints.len()? as u64));
+    file.write_u64::<LittleEndian>(constraints.len()? as u64)
         .unwrap();
 
-    // R1CSA_nWords : R1CSA size in 32 bit words --------- 32 bits
+    // format : 0 ---------------------------------------- 64 bits
+    file.write_u64::<LittleEndian>(0)
+        .unwrap();
+
+    // R1CSA_nWords : R1CSA size in 32 bit words --------- 64 bits
     let offset_r1cs_a = file.seek(SeekFrom::Current(0))?;
-    file.write_u32::<LittleEndian>(0).unwrap();
+    file.write_u64::<LittleEndian>(0).unwrap();
 
-    // R1CSB_nWords : R1CSB size in 32 bit words --------- 32 bits
+    // R1CSB_nWords : R1CSB size in 32 bit words --------- 64 bits
     let offset_r1cs_b = file.seek(SeekFrom::Current(0))?;
-    file.write_u32::<LittleEndian>(0).unwrap();
+    file.write_u64::<LittleEndian>(0).unwrap();
 
-    // R1CSC_nWords : R1CSC size in 32 bit words --------- 32 bits
+    // R1CSC_nWords : R1CSC size in 32 bit words --------- 64 bits
     let offset_r1cs_c = file.seek(SeekFrom::Current(0))?;
-    file.write_u32::<LittleEndian>(0).unwrap();
+    file.write_u64::<LittleEndian>(0).unwrap();
 
-    fn write_lc(file: &mut File, constraints: &Constraints, lc_of: &Fn(QEQ) -> LC) -> Result<()> {
+    fn write_lc(file: &mut File, constraints: &dyn Constraints, lc_of: &dyn Fn(QEQ) -> LC) -> Result<()> {
         let zeroes = vec![0; 32];
         let constraints_len = constraints.len()?;
 
@@ -118,40 +118,40 @@ pub fn export_r1cs(path: &str, constraints: &Constraints, signals: &Signals) -> 
     }
 
     // Write R1CS.a
-    let offset_start_a = file.seek(SeekFrom::Current(0))? as u32;
+    let offset_start_a = file.seek(SeekFrom::Current(0))? as u64;
     write_lc(&mut file, constraints, &|qeq| qeq.a)?;
 
     // Write R1CS.b
-    let offset_start_b = file.seek(SeekFrom::Current(0))? as u32;
+    let offset_start_b = file.seek(SeekFrom::Current(0))? as u64;
     write_lc(&mut file, constraints, &|qeq| qeq.b)?;
 
     // Write -R1CS.c
-    let offset_start_c = file.seek(SeekFrom::Current(0))? as u32;
+    let offset_start_c = file.seek(SeekFrom::Current(0))? as u64;
     write_lc(&mut file, constraints, &|qeq| -&(qeq.c))?;
 
-    let offset_end = file.seek(SeekFrom::End(0))? as u32;
+    let offset_end = file.seek(SeekFrom::End(0))? as u64;
 
     // Write R1CS.a len
     file.seek(SeekFrom::Start(offset_r1cs_a))?;
-    file.write_u32::<LittleEndian>((offset_start_b - offset_start_a) / 4)
+    file.write_u64::<LittleEndian>((offset_start_b - offset_start_a) / 4)
         .unwrap();
     info!("CUDA R1CS.a len {}",(offset_start_b - offset_start_a) / 4);
 
     // Write R1CS.b len
     file.seek(SeekFrom::Start(offset_r1cs_b))?;
-    file.write_u32::<LittleEndian>((offset_start_c - offset_start_b) / 4)
+    file.write_u64::<LittleEndian>((offset_start_c - offset_start_b) / 4)
         .unwrap();
     info!("CUDA R1CS.b len {}",(offset_start_c - offset_start_b) / 4);
 
     // Write R1CS.c len
     file.seek(SeekFrom::Start(offset_r1cs_c))?;
-    file.write_u32::<LittleEndian>((offset_end - offset_start_c) / 4)
+    file.write_u64::<LittleEndian>((offset_end - offset_start_c) / 4)
         .unwrap();
     info!("CUDA R1CS.c len {}",(offset_end - offset_start_c) / 4);
 
     // Write nWords
     file.seek(SeekFrom::Start(offset_words))?;
-    file.write_u32::<LittleEndian>(offset_end / 4).unwrap();
+    file.write_u64::<LittleEndian>(offset_end / 4).unwrap();
     info!("CUDA WORDS len {}",(offset_end) / 4);
 
     Ok(())
