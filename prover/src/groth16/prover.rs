@@ -34,8 +34,8 @@ pub fn bellman_verbose(verbose : bool) {
 
 
 pub struct CircomCircuit<'a, E: Engine> {
-    constraints: &'a Constraints,
-    signals: &'a Signals,
+    constraints: &'a dyn Constraints,
+    signals: &'a dyn Signals,
     phantom: PhantomData<E>,
 }
 
