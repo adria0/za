@@ -3,10 +3,10 @@ mod test {
     use super::super::error::Result;
     use super::super::scope::Scope;
     use crate::algebra;
+    use crate::evaluator::check_constrains_eval_zero;
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::storage::{Constraints, Signals};
     use crate::storage::{Ram, RamConstraints, RamSignals, StorageFactory};
-    use crate::evaluator::check_constrains_eval_zero;
 
     fn constrain_eq<'a, S: Signals, C: Constraints>(
         eval: &Evaluator<S, C>,
@@ -66,9 +66,10 @@ mod test {
     }
 
     fn eval_witness(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval_witness, scope_witness) = eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
+        let (eval_witness, scope_witness) =
+            eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
         assert_eq!(eval_witness.constraints.len()?, 0);
-            
+
         Ok((eval_witness, scope_witness))
     }
 
@@ -80,8 +81,8 @@ mod test {
         assert_eq!(eval.constraints.len()?, 0);
 
         let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![], Ram::default())?;
-        
-        check_constrains_eval_zero(&eval_constraint.constraints,&eval.signals)?;
+
+        check_constrains_eval_zero(&eval_constraint.constraints, &eval.signals)?;
 
         Ok((eval, scope))
     }
@@ -609,23 +610,28 @@ mod test {
 
     #[test]
     fn test_witness_simple_fail_unknown_value() -> Result<()> {
-        assert_eq!(true, eval_witness(
-            "
+        assert_eq!(
+            true,
+            eval_witness(
+                "
             template t0() {
                 signal t0in;
                 t0in === 5;
             }
             component main = t0();
         ",
-        )
-        .is_err());
+            )
+            .is_err()
+        );
         Ok(())
     }
 
     #[test]
     fn test_witness_simple_fail_bad_value() -> Result<()> {
-        assert_eq!(true,eval_witness(
-            "
+        assert_eq!(
+            true,
+            eval_witness(
+                "
             template t0() {
                 signal t0in;
                 t0in <-- 2;
@@ -633,8 +639,9 @@ mod test {
             }
             component main = t0();
         ",
-        )
-        .is_err());
+            )
+            .is_err()
+        );
         Ok(())
     }
 
@@ -658,8 +665,10 @@ mod test {
 
     #[test]
     fn test_witness_fail_simple_lazy_init() -> Result<()> {
-        assert_eq!(true,eval_witness(
-            "
+        assert_eq!(
+            true,
+            eval_witness(
+                "
             template t1() {
                 signal input a;
                 a === 3;
@@ -670,7 +679,9 @@ mod test {
             }
             component main = t0();
         ",
-        ).is_err());
+            )
+            .is_err()
+        );
         Ok(())
     }
 
@@ -765,5 +776,4 @@ mod test {
         .for_each(|(n, s)| assert_eq!(1 + n, eval.signals.get_by_name(s).unwrap().unwrap().id));
         Ok(())
     }
-
 }

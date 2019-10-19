@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
+use itertools::sorted;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use itertools::sorted;
 
 use circom2_parser::ast::{Attributes, StatementP};
 
@@ -75,15 +75,15 @@ impl<'a> Scope<'a> {
             return_value: RefCell::new(None),
             vars: RefCell::new(HashMap::new()),
         }
-    } 
+    }
     pub fn deep_clone(&self) -> Self {
         Self {
-            start : self.start,
-            prev  : self.prev.clone(),
-            pos   : self.pos.clone(),
+            start: self.start,
+            prev: self.prev.clone(),
+            pos: self.pos.clone(),
             return_value: self.return_value.clone(),
             vars: self.vars.clone(),
-        }    
+        }
     }
 
     pub fn root(&self) -> &Scope {

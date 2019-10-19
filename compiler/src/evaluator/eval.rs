@@ -269,19 +269,17 @@ where
     ) -> Result<()> {
         self.trace(meta, || format!("eval_internal_call {}", name));
 
-        let mut internal = || {
-            match name {
-                "dbg_signals" => Ok(self.dbg_dump_signals()?),
-                "dbg" => {
-                    print!("DBG ");
-                    for param in params {
-                        self.dbg_print(&scope, param)?;
-                    }
-                    println!();
-                    Ok(())
-                },
-                _ => Err(Error::NotFound(format!("internal funcion {}!", name)))
+        let mut internal = || match name {
+            "dbg_signals" => Ok(self.dbg_dump_signals()?),
+            "dbg" => {
+                print!("DBG ");
+                for param in params {
+                    self.dbg_print(&scope, param)?;
+                }
+                println!();
+                Ok(())
             }
+            _ => Err(Error::NotFound(format!("internal funcion {}!", name))),
         };
 
         let res = internal();
@@ -559,7 +557,8 @@ where
                         match &**sel {
                             SelectorP::Index { pos, .. } => {
                                 indexes
-                                    .push(self.eval_expression_p(scope, pos)?.try_into_u64()? as usize);
+                                    .push(self.eval_expression_p(scope, pos)?.try_into_u64()?
+                                        as usize);
                             }
                             _ => {
                                 return Err(Error::InvalidSelector(format!(
@@ -1481,11 +1480,17 @@ where
     fn dbg_print(&mut self, scope: &Scope, expr: &ExpressionP) -> Result<()> {
         let mut processed = false;
 
-        if let ExpressionP::Variable { name: var, meta, .. } = &expr {
+        if let ExpressionP::Variable {
+            name: var, meta, ..
+        } = &expr
+        {
             if var.name == "CTX" {
-                println!("CTX => {} {}:{}",self.current_component, self.current_file, meta.start);
-                return Ok(())
-            } 
+                println!(
+                    "CTX => {} {}:{}",
+                    self.current_component, self.current_file, meta.start
+                );
+                return Ok(());
+            }
         }
 
         if let ExpressionP::Variable { name: var, .. } = &expr {
@@ -1503,7 +1508,7 @@ where
                         })
                         .collect::<Vec<_>>()
                         .join(",");
-                    
+
                     println!(
                         "{} ⇨ pending_inputs {{{}}} ",
                         &full_name, pending_inputs_str

@@ -15,11 +15,12 @@ extern crate serde_cbor;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-extern crate rand;
 extern crate itertools;
+extern crate rand;
 
 pub mod algebra;
+pub mod cuda;
 pub mod evaluator;
+pub mod optimizer;
 pub mod storage;
 pub mod tester;
-pub mod cuda;

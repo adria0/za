@@ -13,25 +13,21 @@ use super::error::{Error, Result};
 use super::traits::AlgZero;
 use super::types::*;
 
-const BABYJUB_FIELD : &'static str = "21888242871839275222246405745257275088548364400416034343698204186575808495617";
+const BABYJUB_FIELD: &'static str =
+    "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
-lazy_static! {    
-    static ref BABYJUB_FIELD_UINT: BigUint
-        = BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap();
-
-    static ref BABYJUB_FIELD_INT: BigInt
-        = BigInt::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap();
-
-    static ref BABYJUB_FIELD_UINT_NEG: BigUint
-        = (BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(),10).unwrap() - BigUint::one()) / BigUint::from(2u32);
-
+lazy_static! {
+    static ref BABYJUB_FIELD_UINT: BigUint =
+        BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(), 10).unwrap();
+    static ref BABYJUB_FIELD_INT: BigInt =
+        BigInt::parse_bytes(BABYJUB_FIELD.as_bytes(), 10).unwrap();
+    static ref BABYJUB_FIELD_UINT_NEG: BigUint =
+        (BigUint::parse_bytes(BABYJUB_FIELD.as_bytes(), 10).unwrap() - BigUint::one())
+            / BigUint::from(2u32);
     static ref ZERO: BigUint = BigUint::zero();
-
     static ref ONE: BigUint = BigUint::one();
-
-    static ref MASK32: BigUint = BigUint::parse_bytes(b"ffff",16).unwrap();
+    static ref MASK32: BigUint = BigUint::parse_bytes(b"ffff", 16).unwrap();
 }
-
 
 // Field Scalar  ------------------------------------------------
 
@@ -44,20 +40,18 @@ impl FS {
     }
     pub fn parse(expr: &str) -> Result<Self> {
         if expr.starts_with("0x") {
-            BigUint::parse_bytes(&expr.as_bytes()[2..],16)
-                .map_or_else(
-                || Err(Error::InvalidFormat(format!("{} is not hexadecimal",expr))),
+            BigUint::parse_bytes(&expr.as_bytes()[2..], 16).map_or_else(
+                || Err(Error::InvalidFormat(format!("{} is not hexadecimal", expr))),
                 |v| Ok(FS(v)),
-                )
+            )
         } else {
-            BigUint::parse_bytes(expr.as_bytes(),10)
-                .map_or_else(
-                || Err(Error::InvalidFormat(format!("{} is not decimal",expr))),
+            BigUint::parse_bytes(expr.as_bytes(), 10).map_or_else(
+                || Err(Error::InvalidFormat(format!("{} is not decimal", expr))),
                 |v| Ok(FS(v)),
-                )
+            )
         }
     }
-    
+
     pub fn zero() -> Self {
         FS(BigUint::zero())
     }
@@ -120,18 +114,17 @@ impl FS {
     pub fn intdiv(&self, rhs: &FS) -> FS {
         FS::from(&self.0 / &rhs.0)
     }
-    pub fn write_256_w32<W:Write>(&self,writer: &mut W) -> Result<()> {
-
+    pub fn write_256_w32<W: Write>(&self, writer: &mut W) -> Result<()> {
         let mut bytes = self.0.to_bytes_be();
         while bytes.len() < 32 {
             bytes.insert(0, 0);
         }
         for n in (0..8).rev() {
-            writer.write_all(&bytes[n*4..(n+1)*4])?;
+            writer.write_all(&bytes[n * 4..(n + 1) * 4])?;
         }
 
         Ok(())
-    }  
+    }
 }
 
 impl fmt::Display for FS {
@@ -448,18 +441,30 @@ mod test {
     #[test]
     fn test_serialize_w32_wordorder() -> Result<()> {
         let mut buff = Vec::new();
-        FS::from(BigUint::parse_bytes(b"1111111f2222222f3333333f4444444f5555555f6666666f7777777f8888888f", 16).unwrap())
-            .write_256_w32(&mut buff).unwrap();
-        assert_eq!("8888888f7777777f6666666f5555555f4444444f3333333f2222222f1111111f",hex::encode(buff));
+        FS::from(
+            BigUint::parse_bytes(
+                b"1111111f2222222f3333333f4444444f5555555f6666666f7777777f8888888f",
+                16,
+            )
+            .unwrap(),
+        )
+        .write_256_w32(&mut buff)
+        .unwrap();
+        assert_eq!(
+            "8888888f7777777f6666666f5555555f4444444f3333333f2222222f1111111f",
+            hex::encode(buff)
+        );
         Ok(())
     }
 
     #[test]
     fn test_serialize_w32_padding() -> Result<()> {
         let mut buff = Vec::new();
-        FS::from(FS::from(1))
-            .write_256_w32(&mut buff).unwrap();
-        assert_eq!("0000000100000000000000000000000000000000000000000000000000000000",hex::encode(buff));
+        FS::from(FS::from(1)).write_256_w32(&mut buff).unwrap();
+        assert_eq!(
+            "0000000100000000000000000000000000000000000000000000000000000000",
+            hex::encode(buff)
+        );
         Ok(())
     }
 }

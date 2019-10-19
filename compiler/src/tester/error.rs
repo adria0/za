@@ -1,8 +1,8 @@
 use std::io;
 
-use crate::storage;
-use crate::evaluator;
 use crate::algebra;
+use crate::evaluator;
+use crate::storage;
 
 #[derive(Debug)]
 pub enum Error {
@@ -23,15 +23,14 @@ impl From<evaluator::Error> for Error {
     }
 }
 impl From<io::Error> for Error {
-    fn from(err : io::Error) -> Self {
+    fn from(err: io::Error) -> Self {
         Error::Io(err)
     }
 }
 impl From<algebra::Error> for Error {
-    fn from(err : algebra::Error) -> Self {
+    fn from(err: algebra::Error) -> Self {
         Error::Algebra(err)
     }
 }
-
 
 pub type Result<T> = std::result::Result<T, Error>;

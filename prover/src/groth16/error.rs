@@ -54,4 +54,3 @@ impl From<circom2_compiler::evaluator::Error> for Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-

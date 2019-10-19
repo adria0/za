@@ -1,7 +1,7 @@
-use pairing::bn256::Bn256;
 use bellman::groth16::VerifyingKey;
-use std::io::Write;
+use pairing::bn256::Bn256;
 use pairing::ff::PrimeField;
+use std::io::Write;
 
 use super::error::Result;
 
@@ -213,32 +213,41 @@ contract Verifier {
 }
 "#;
 
-pub fn generate_solidity<W : Write>(vk: &VerifyingKey<Bn256>, inputs: &[String], out: &mut W) -> Result<()> {
-
+pub fn generate_solidity<W: Write>(
+    vk: &VerifyingKey<Bn256>,
+    inputs: &[String],
+    out: &mut W,
+) -> Result<()> {
     let str_g1 = |g1: &<Bn256 as bellman::pairing::Engine>::G1Affine| {
-        let (x,y) = g1.try_to_coordinates().expect("non-infinite point expected");
-        format!("{},{}",x.into_repr(), y.into_repr())
-    }; 
+        let (x, y) = g1
+            .try_to_coordinates()
+            .expect("non-infinite point expected");
+        format!("{},{}", x.into_repr(), y.into_repr())
+    };
     let str_g2 = |g2: &<Bn256 as bellman::pairing::Engine>::G2Affine| {
-        let (x,y) = g2.try_to_coordinates().expect("non-infinite point expected");
-        format!("[{},{}],[{},{}]",x.c1.into_repr(), x.c0.into_repr(), y.c1.into_repr(), y.c0.into_repr())
-    }; 
+        let (x, y) = g2
+            .try_to_coordinates()
+            .expect("non-infinite point expected");
+        format!(
+            "[{},{}],[{},{}]",
+            x.c1.into_repr(),
+            x.c0.into_repr(),
+            y.c1.into_repr(),
+            y.c0.into_repr()
+        )
+    };
 
     let mut contract = String::from(CONTRACT_TEMPLATE);
-    contract = contract.replace("<%vk_a%>", &str_g1( &vk.alpha_g1 ));
-    contract = contract.replace("<%vk_b%>", &str_g2( &vk.beta_g2 ));
-    contract = contract.replace("<%vk_gamma%>", &str_g2( &vk.gamma_g2 ));
-    contract = contract.replace("<%vk_delta%>", &str_g2( &vk.delta_g2 ));
-    contract = contract.replace("<%vk_inputs_length%>", &format!("{}",inputs.len()));
-    contract = contract.replace("<%vk_inputs%>", &format!("{:?}",inputs));
-    contract = contract.replace(
-        "<%vk_gammaABC_length%>",
-        &format!("{}", &vk.ic.len()),
-    );
+    contract = contract.replace("<%vk_a%>", &str_g1(&vk.alpha_g1));
+    contract = contract.replace("<%vk_b%>", &str_g2(&vk.beta_g2));
+    contract = contract.replace("<%vk_gamma%>", &str_g2(&vk.gamma_g2));
+    contract = contract.replace("<%vk_delta%>", &str_g2(&vk.delta_g2));
+    contract = contract.replace("<%vk_inputs_length%>", &format!("{}", inputs.len()));
+    contract = contract.replace("<%vk_inputs%>", &format!("{:?}", inputs));
+    contract = contract.replace("<%vk_gammaABC_length%>", &format!("{}", &vk.ic.len()));
     contract = contract.replace(
         "<%vk_gammaABC_pts%>",
-            &vk
-            .ic
+        &vk.ic
             .iter()
             .enumerate()
             .map(|(i, x)| format!("vk.gammaABC[{}] = Pairing.G1Point({});", i, &str_g1(x)))

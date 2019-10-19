@@ -98,7 +98,7 @@ impl fmt::Display for Value {
             Value::LinearCombination(lc) => lc.to_string(),
             Value::QuadraticEquation(qeq) => qeq.to_string(),
         };
-        write!(f, "{}",value)
+        write!(f, "{}", value)
     }
 }
 

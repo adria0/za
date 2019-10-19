@@ -48,7 +48,7 @@ impl std::string::ToString for SignalName {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Signal {
     pub id: SignalId,
     pub xtype: SignalType,
@@ -77,7 +77,6 @@ pub trait Constraints {
     fn get(&self, i: usize) -> Result<QEQ>;
     fn get_debug(&self, i: usize) -> Option<String>;
     fn push(&mut self, qeq: QEQ, debug: Option<String>) -> Result<usize>;
-
 }
 
 pub trait StorageFactory<S: Signals, C: Constraints> {

@@ -1,10 +1,14 @@
-use std::ops::{Add, Mul, Neg};
 use std::fmt;
+use std::ops::{Add, Mul, Neg};
 
 use super::traits::AlgZero;
 use super::types::*;
 
 impl QEQ {
+    pub fn new(a: LC, b: LC, c: LC) -> Self {
+        QEQ { a, b, c }
+    }
+
     pub fn format<F>(&self, func: F) -> String
     where
         F: Fn(SignalId) -> String,
@@ -132,8 +136,8 @@ mod test {
         let lc_1s2 = &LC::from_signal(s2, FS::one());
         let lc_1s1_1s2_one = &(lc_1s1 * lc_1s2) + one;
 
-        assert_eq!("[1s1]*[1s2]+[1s0]", lc_1s1_1s2_one.to_string() );
-        assert_eq!("[2s1]*[1s2]+[2s0]", (&lc_1s1_1s2_one * two).to_string() );
+        assert_eq!("[1s1]*[1s2]+[1s0]", lc_1s1_1s2_one.to_string());
+        assert_eq!("[2s1]*[1s2]+[2s0]", (&lc_1s1_1s2_one * two).to_string());
     }
 
     #[test]
@@ -142,7 +146,6 @@ mod test {
         let lc_1s1 = &LC::from_signal(s1, FS::one());
         let qeq = &(&(&(lc_1s1 + lc_1s1) * lc_1s1) + lc_1s1);
         let neq_qeq = &-qeq;
-        assert_eq!("[2s1]*[1s1]+[1s1]", (-neq_qeq).to_string() );
+        assert_eq!("[2s1]*[1s1]+[1s1]", (-neq_qeq).to_string());
     }
-
 }

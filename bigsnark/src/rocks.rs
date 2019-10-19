@@ -1,10 +1,10 @@
-use circom2_parser::ast::SignalType;
 use circom2_compiler::algebra;
 use circom2_compiler::algebra::{SignalId, QEQ};
 use circom2_compiler::storage;
-use circom2_compiler::storage::{StorageFactory,Constraints, Signal, SignalName, Signals};
+use circom2_compiler::storage::{Constraints, Signal, SignalName, Signals, StorageFactory};
+use circom2_parser::ast::SignalType;
 
-use rocksdb::{DB};
+use rocksdb::DB;
 
 use std::rc::Rc;
 
@@ -35,8 +35,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[macro_export]
 macro_rules! map_err {
     ( $x:block ) => {
-        ({|| Ok($x) })()
-            .map_err(|err:Error| storage::Error::Inner(format!("{:?})",err)))
+        ({ || Ok($x) })().map_err(|err: Error| storage::Error::Inner(format!("{:?})", err)))
     };
 }
 
@@ -85,9 +84,8 @@ pub struct RocksSignals {
 
 impl RocksSignals {
     pub fn new(path: &str) -> storage::Result<Self> {
-        (||{
-            Ok(DB::open_default(path).map(|x| RocksSignals { db: x })?)
-        })().map_err(|err:Error| storage::Error::Inner(format!("{:?})",err)))
+        (|| Ok(DB::open_default(path).map(|x| RocksSignals { db: x })?))()
+            .map_err(|err: Error| storage::Error::Inner(format!("{:?})", err)))
     }
 }
 
@@ -97,10 +95,10 @@ pub struct RockConstraints {
 
 impl RockConstraints {
     pub fn new(path: &str) -> storage::Result<Self> {
-        map_err!{{
+        map_err! {{
             DB::open_default(path).map(|x| RockConstraints { db: x })?
         }}
-    }               
+    }
 }
 
 impl RocksSignals {
@@ -121,7 +119,7 @@ impl RocksSignals {
                 id: entry.id as usize,
                 xtype: entry.xtype,
                 full_name: SignalName::new(entry.full_name),
-                value: entry.value,
+                value: entry.value
             })))
         } else {
             Ok(None)
@@ -134,7 +132,7 @@ impl<'a> Signals for RocksSignals {
         Ok(self.len()? == 0)
     }
     fn len(&self) -> storage::Result<usize> {
-        map_err!{{
+        map_err! {{
             get_u64(&self.db, &[0])?.unwrap_or(0) as usize
         }}
     }
@@ -144,7 +142,7 @@ impl<'a> Signals for RocksSignals {
         xtype: SignalType,
         value: Option<algebra::Value>,
     ) -> storage::Result<SignalId> {
-        map_err!{{
+        map_err! {{
             let index = inc_u64(&mut self.db, &[0])? - 1;
             let index_bytes = u64_to_le(index as u64);
 
@@ -169,7 +167,7 @@ impl<'a> Signals for RocksSignals {
     }
 
     fn update(&mut self, id: SignalId, value: algebra::Value) -> storage::Result<()> {
-        map_err!{{
+        map_err! {{
             if let Some((index, mut entry)) = self.load(id)? {
                 entry.value = Some(value);
                 self.db
@@ -182,13 +180,13 @@ impl<'a> Signals for RocksSignals {
     }
 
     fn get_by_id(&self, id: SignalId) -> storage::Result<Option<Rc<Signal>>> {
-        map_err!{{
+        map_err! {{
             self._get_by_id(id)?
         }}
     }
 
     fn get_by_name(&self, full_name: &str) -> storage::Result<Option<Rc<Signal>>> {
-        map_err!{{
+        map_err! {{
             let mut key: Vec<u8> = vec![2];
             key.extend_from_slice(full_name.as_bytes());
             match self.db.get(&key)? {
@@ -199,7 +197,7 @@ impl<'a> Signals for RocksSignals {
     }
 
     fn to_string(&self, id: SignalId) -> storage::Result<String> {
-        map_err!{{
+        map_err! {{
             let (_, s) = self.load(id)?.unwrap();
             format!("{:?}:{:?}:{:?}", s.full_name, s.xtype, s.value)
         }}
@@ -211,12 +209,12 @@ impl<'a> Constraints for RockConstraints {
         Ok(self.len()? == 0)
     }
     fn len(&self) -> storage::Result<usize> {
-        map_err!{{
+        map_err! {{
             get_u64(&self.db, &[0])?.unwrap_or(0) as usize
         }}
     }
     fn get(&self, i: usize) -> storage::Result<QEQ> {
-        map_err!{{
+        map_err! {{
             let mut key: Vec<u8> = vec![1];
             key.extend_from_slice(&u64_to_le(i as u64));
             match self.db.get(&key)? {
@@ -229,7 +227,7 @@ impl<'a> Constraints for RockConstraints {
         None
     }
     fn push(&mut self, qeq: QEQ, _debug: Option<String>) -> storage::Result<usize> {
-        map_err!{{
+        map_err! {{
             let index = inc_u64(&mut self.db, &[0])? - 1;
             let mut key: Vec<u8> = vec![1];
             key.extend_from_slice(&u64_to_le(index as u64));
@@ -379,5 +377,4 @@ mod test {
 
         Ok(())
     }
-
 }

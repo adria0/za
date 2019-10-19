@@ -31,9 +31,6 @@ pub struct RamSignals {
     ids: Vec<Rc<Signal>>,
 }
 
-impl RamSignals {
-}
-
 impl Default for RamSignals {
     fn default() -> Self {
         let ids = Vec::new();
@@ -66,7 +63,7 @@ impl Signals for RamSignals {
 
     fn update(&mut self, id: SignalId, value: algebra::Value) -> Result<()> {
         let signal = &mut self.ids[id as usize];
-        if let Some(signal) =  Rc::get_mut(signal) {
+        if let Some(signal) = Rc::get_mut(signal) {
             signal.value = Some(value);
         } else {
             (*Rc::make_mut(signal)).value = Some(value);
@@ -94,7 +91,7 @@ impl Signals for RamSignals {
             id,
             xtype,
             full_name: full_name_rc.clone(),
-            value,
+            value
         };
 
         self.ids.push(Rc::new(signal));
@@ -118,7 +115,7 @@ impl Debug for RamSignals {
     }
 }
 
-pub struct RamConstraints(Vec<(QEQ,Option<String>)>);
+pub struct RamConstraints(Vec<(QEQ, Option<String>)>);
 
 impl Default for RamConstraints {
     fn default() -> Self {
@@ -140,7 +137,7 @@ impl Constraints for RamConstraints {
         self.0[i].1.clone()
     }
     fn push(&mut self, qeq: QEQ, debug: Option<String>) -> Result<usize> {
-        self.0.push((qeq,debug));
+        self.0.push((qeq, debug));
         Ok(self.0.len() - 1)
     }
 }

@@ -36,10 +36,10 @@ const VERIFIER_TYPE_SOLIDITY : &str = "solidity";
 const VERIFIER_TYPE_JSON : &str = "json";
 const DEFAULT_VERIFIER_TYPE : &str = VERIFIER_TYPE_SOLIDITY;
 
-fn generate_cuda<S:Signals,C:Constraints>(eval : &Evaluator<S,C>, cuda_file : Option<String>) {
+fn generate_cuda<S:Signals,C:Constraints>(constraints:&C, signals:&S, cuda_file : Option<String>) {
     if let Some(cuda_file) = cuda_file {
         let start = SystemTime::now();
-        circom2_compiler::cuda::export_r1cs(&cuda_file, &eval.constraints, &eval.signals).unwrap();
+        circom2_compiler::cuda::export_r1cs(&cuda_file, constraints, signals).unwrap();
         info!("Cuda generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
     }
 }
@@ -58,15 +58,17 @@ fn compile_rocks(filename: &str, print_all: bool, cuda_file: Option<String>) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
         info!("Compile time: {:?}",SystemTime::now().duration_since(start).unwrap());
-        generate_cuda(&eval,cuda_file);
-        print_info(&eval, print_all);
+        generate_cuda(&eval.constraints,&eval.signals,cuda_file);
+
+        let Evaluator{constraints,signals,..} = eval;
+        print_info("compile",&constraints,&signals, &[], print_all);
     }
 }
 
 fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     let mut storage = Ram::default();
 
-    let start = SystemTime::now();
+    let mut start = SystemTime::now();
     let mut eval = Evaluator::new(
         Mode::GenConstraints,
         storage.new_signals().unwrap(),
@@ -76,8 +78,20 @@ fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
         info!("Compile time: {:?}",SystemTime::now().duration_since(start).unwrap());
-        generate_cuda(&eval,cuda_file);
-        print_info(&eval, print_all);
+        start = SystemTime::now();
+
+        let Evaluator{constraints,signals,..} = eval;
+        print_info("compile", &constraints,&signals, &[], print_all);
+
+        let irreductible_signals = circom2_compiler::storage::main_component_inputs_ids(&signals).unwrap(); 
+        let (constraints, removed_signals) = circom2_compiler::optimizer::optimize(&constraints, &irreductible_signals);
+
+        info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
+
+        print_info("optimized", &constraints,&signals, &removed_signals, print_all);
+
+        generate_cuda(&constraints,&signals,cuda_file);
+
     }
 }
 

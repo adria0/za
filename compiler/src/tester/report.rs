@@ -1,6 +1,6 @@
 use crate::{
-    evaluator::{Evaluator},
-    storage::{Signals,Constraints},
+    evaluator::Evaluator,
+    storage::{Constraints, Signals},
 };
 
 #[cfg(not(target_os = "android"))]
@@ -13,16 +13,14 @@ pub fn dump_error<S: Signals, C: Constraints>(eval: &Evaluator<S, C>, err: &str)
     println!("failed: {}", err);
 
     if let Some(ctx) = &eval.last_error {
-
         println!("SCOPE DUMP ------------------------------------------------");
         println!("{}", ctx.scope);
 
         if ctx.file != "" {
-            println!("Located in {}:{}",ctx.file,ctx.meta.start );
+            println!("Located in {}:{}", ctx.file, ctx.meta.start);
         }
-    } 
+    }
 }
-
 
 #[cfg(not(target_os = "android"))]
 mod extended {
@@ -30,7 +28,10 @@ mod extended {
     use codespan_reporting::termcolor::{ColorChoice, StandardStream};
     use codespan_reporting::{emit, Diagnostic, Label, Severity};
 
-    pub fn dump_error_codespan<S: super::Signals, C: super::Constraints>(eval: &super::Evaluator<S, C>, err: &str) {
+    pub fn dump_error_codespan<S: super::Signals, C: super::Constraints>(
+        eval: &super::Evaluator<S, C>,
+        err: &str,
+    ) {
         let msg = format!("{}", err);
 
         if let Some(ctx) = &eval.last_error {
@@ -43,9 +44,9 @@ mod extended {
             println!("{}", ctx.scope);
 
             if ctx.file != "" {
-                println!("Located in {}:{}",ctx.file,ctx.meta.start );
+                println!("Located in {}:{}", ctx.file, ctx.meta.start);
 
-                let mut code_map : CodeMap<String> = CodeMap::new();
+                let mut code_map: CodeMap<String> = CodeMap::new();
                 code_map
                     .add_filemap_from_disk(&ctx.file)
                     .unwrap_or_else(|_| panic!("cannot read source file '{}'", &ctx.file));
@@ -56,10 +57,8 @@ mod extended {
                 let writer = StandardStream::stderr(ColorChoice::Always);
                 emit(&mut writer.lock(), &code_map, &error).unwrap();
             } else {
-                println!("No ctx.file located {}",ctx.file);
+                println!("No ctx.file located {}", ctx.file);
             }
-        } 
+        }
     }
-
 }
-
