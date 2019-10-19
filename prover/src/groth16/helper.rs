@@ -10,8 +10,7 @@ use super::format::{JsonProofAndInput, JsonVerifyingKey};
 use std::fs::File;
 use std::time::SystemTime;
 
-use circom2_compiler::storage::{Constraints, Signals};
-use circom2_compiler::storage::{Ram, StorageFactory};
+use circom2_compiler::types::{Constraints, Signals};
 use circom2_compiler::tester::dump_error;
 
 use bellman::groth16::{prepare_verifying_key, verify_proof};
@@ -21,17 +20,16 @@ pub enum VerifierType {
     JSON,
 }
 
-pub fn setup_ram(
+pub fn setup(
     circuit_path: &str,
     proving_key_path: &str,
     verifier_type: VerifierType,
 ) -> Result<String> {
-    let mut storage = Ram::default();
 
     let mut eval = Evaluator::new(
         Mode::GenConstraints,
-        storage.new_signals()?,
-        storage.new_constraints()?,
+        Signals::default(),
+        Constraints::default(),
     );
     info!("Compiling circuit...");
 
@@ -52,7 +50,7 @@ pub fn setup_ram(
 
     let start = SystemTime::now();
 
-    let irreductible_signals = circom2_compiler::storage::main_component_inputs_ids(&signals).unwrap(); 
+    let irreductible_signals = signals.main_input_ids(); 
     let (constraints, removed_signals) = circom2_compiler::optimizer::optimize(&constraints, &irreductible_signals);
 
     info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
@@ -80,16 +78,18 @@ pub fn setup_ram(
     }
 }
 
-pub fn prove_ram(
+pub fn prove(
     circuit_path: &str,
     proving_key_path: &str,
     inputs: Vec<(String, FS)>,
 ) -> Result<String> {
     info!("Generating witness...");
 
-    let mut ram = Ram::default();
-    let mut ev_witness =
-        Evaluator::new(Mode::GenWitness, ram.new_signals()?, ram.new_constraints()?);
+    let mut ev_witness = Evaluator::new(
+        Mode::GenWitness,
+        Signals::default(),
+        Constraints::default()
+    );
 
     let start = SystemTime::now();
     for (signal, value) in inputs {
@@ -102,15 +102,15 @@ pub fn prove_ram(
     );
 
     info!("Checking constraints...");
-    if ev_witness.constraints.len()? > 0 {
+    if ev_witness.constraints.len() > 0 {
         return Err(Error::Unexpected(
             "Constrains generated in witnes".to_string(),
         ));
     }
 
     info!("Checking signals...");
-    for n in 1..ev_witness.signals.len()? {
-        let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
+    for n in 1..ev_witness.signals.len() {
+        let signal = &*ev_witness.signals.get_by_id(n).unwrap();
         if signal.value.is_none() {
             return Err(Error::Unexpected(format!(
                 "signal '{}' value is not defined",
@@ -131,7 +131,7 @@ pub fn prove_ram(
     Ok(String::from_utf8_lossy(&proof).to_string())
 }
 
-pub fn verify_ram(json_verifying_key: &str, proof_and_public_input: &str) -> Result<bool> {
+pub fn verify(json_verifying_key: &str, proof_and_public_input: &str) -> Result<bool> {
     info!("Reading vk...");
     let vk = JsonVerifyingKey::from_json(json_verifying_key)?.to_bellman()?;
     info!("Preparing vk...");

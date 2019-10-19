@@ -5,16 +5,15 @@ mod test {
     use crate::algebra;
     use crate::evaluator::check_constrains_eval_zero;
     use crate::evaluator::eval::{Evaluator, Mode};
-    use crate::storage::{Constraints, Signals};
-    use crate::storage::{Ram, RamConstraints, RamSignals, StorageFactory};
+    use crate::types::{Constraints, Signals};
 
-    fn constrain_eq<'a, S: Signals, C: Constraints>(
-        eval: &Evaluator<S, C>,
+    fn constrain_eq<'a>(
+        eval: &Evaluator,
         index: usize,
         value: &str,
     ) {
         let name_of = |id| {
-            (*(eval.signals.get_by_id(id).unwrap().unwrap()))
+            (*(eval.signals.get_by_id(id).unwrap()))
                 .full_name
                 .clone()
         };
@@ -22,14 +21,13 @@ mod test {
         let formatted = eval
             .constraints
             .get(index)
-            .unwrap()
             .format(|id| format!("{:?}", name_of(id)));
 
         assert_eq!(formatted, value);
     }
-    fn signal_eq<'a, S: Signals, C: Constraints>(eval: &Evaluator<S, C>, name: &str, value: &str) {
-        if let Some(signal) = eval.signals.get_by_name(name).unwrap() {
-            assert_eq!(eval.signals.to_string(signal.id).unwrap(), value);
+    fn signal_eq(eval: &Evaluator, name: &str, value: &str) {
+        if let Some(signal) = eval.signals.get_by_name(name) {
+            assert_eq!(eval.signals.to_string(signal.id), value);
         } else {
             assert_eq!("None", value);
         }
@@ -38,19 +36,15 @@ mod test {
         assert_eq!(scope.get(name, |v| format!("{:?}", v)), value);
     }
 
-    fn eval_generic<F, S, C>(
+    fn eval_generic(
         mode: Mode,
         s: &str,
         deferred_values: Vec<(String, u64)>,
-        mut factory: F,
-    ) -> Result<(Evaluator<S, C>, Scope)>
-    where
-        F: StorageFactory<S, C>,
-        S: Signals,
-        C: Constraints,
+    ) -> Result<(Evaluator, Scope)>
     {
         let mut evaluator =
-            Evaluator::new(mode, factory.new_signals()?, factory.new_constraints()?);
+            Evaluator::new(mode, Signals::default(), Constraints::default());
+
         deferred_values
             .into_iter()
             .for_each(|(s, v)| evaluator.set_deferred_value(s, algebra::Value::from(v)));
@@ -60,15 +54,15 @@ mod test {
         Ok((evaluator, scope))
     }
 
-    fn eval_constraint(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval, scope) = eval_generic(Mode::GenConstraints, s, vec![], Ram::default())?;
+    fn eval_constraint(s: &str) -> Result<(Evaluator, Scope)> {
+        let (eval, scope) = eval_generic(Mode::GenConstraints, s, vec![])?;
         Ok((eval, scope))
     }
 
-    fn eval_witness(s: &str) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
+    fn eval_witness(s: &str) -> Result<(Evaluator, Scope)> {
         let (eval_witness, scope_witness) =
-            eval_generic(Mode::GenWitness, s, vec![], Ram::default())?;
-        assert_eq!(eval_witness.constraints.len()?, 0);
+            eval_generic(Mode::GenWitness, s, vec![])?;
+        assert_eq!(eval_witness.constraints.len(), 0);
 
         Ok((eval_witness, scope_witness))
     }
@@ -76,11 +70,11 @@ mod test {
     fn eval_witness_with_defer(
         s: &str,
         deferred_values: Vec<(String, u64)>,
-    ) -> Result<(Evaluator<RamSignals, RamConstraints>, Scope)> {
-        let (eval, scope) = eval_generic(Mode::GenWitness, s, deferred_values, Ram::default())?;
-        assert_eq!(eval.constraints.len()?, 0);
+    ) -> Result<(Evaluator, Scope)> {
+        let (eval, scope) = eval_generic(Mode::GenWitness, s, deferred_values)?;
+        assert_eq!(eval.constraints.len(), 0);
 
-        let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![], Ram::default())?;
+        let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![])?;
 
         check_constrains_eval_zero(&eval_constraint.constraints, &eval.signals)?;
 
@@ -773,7 +767,7 @@ mod test {
         ]
         .iter()
         .enumerate()
-        .for_each(|(n, s)| assert_eq!(1 + n, eval.signals.get_by_name(s).unwrap().unwrap().id));
+        .for_each(|(n, s)| assert_eq!(1 + n, eval.signals.get_by_name(s).unwrap().id));
         Ok(())
     }
 }

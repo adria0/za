@@ -1,22 +1,14 @@
 use std::io;
-
 use crate::algebra;
 use crate::evaluator;
-use crate::storage;
 
 #[derive(Debug)]
 pub enum Error {
-    Storage(storage::Error),
     Evaluator(evaluator::Error),
     Io(io::Error),
     Algebra(algebra::Error),
 }
 
-impl From<storage::Error> for Error {
-    fn from(err: storage::Error) -> Self {
-        Error::Storage(err)
-    }
-}
 impl From<evaluator::Error> for Error {
     fn from(err: evaluator::Error) -> Self {
         Error::Evaluator(err)

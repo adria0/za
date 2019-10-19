@@ -14,14 +14,14 @@ use hex;
 use itertools::Itertools;
 use num_bigint::BigInt;
 
-use super::algebra;
-use super::algebra::{AlgZero, SignalId};
+use crate::algebra;
+use crate::algebra::{AlgZero, SignalId};
+use crate::types::{Signals,Constraints};
+
 use super::error::*;
-use super::retval::*;
+use super::types::{List,ReturnValue};
 use super::scope::*;
-use super::types::*;
 use super::utils::*;
-use crate::storage::{Constraints, Signals};
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -48,11 +48,7 @@ impl Mode {
     }
 }
 
-pub struct Evaluator<S, C>
-where
-    S: Signals,
-    C: Constraints,
-{
+pub struct Evaluator {
     // the current file, component and function being processed
     pub current_file: String,
     pub current_component: String,
@@ -60,8 +56,8 @@ where
     pub debug_last_constraint: std::time::Instant,
 
     // collected signals, constraints and components
-    pub signals: S,
-    pub constraints: C,
+    pub signals: Signals,
+    pub constraints: Constraints,
 
     // processed includes
     pub processed_files: Vec<String>,
@@ -82,12 +78,8 @@ where
     pub debug: bool,
 }
 
-impl<S, C> Evaluator<S, C>
-where
-    S: Signals,
-    C: Constraints,
-{
-    pub fn new(mode: Mode, signals: S, constraints: C) -> Self {
+impl Evaluator {
+    pub fn new(mode: Mode, signals: Signals, constraints: Constraints) -> Self {
         Self {
             signals,
             constraints,
@@ -535,7 +527,7 @@ where
             // check if is a signal
             let name_sel = self.expand_selectors(scope, var, None)?;
             let name_sel_full = &self.expand_full_name(&name_sel);
-            if let Some(signal) = self.signals.get_by_name(&name_sel_full)? {
+            if let Some(signal) = self.signals.get_by_name(&name_sel_full) {
                 if let Some(algebra::Value::FieldScalar(value)) = &signal.value {
                     return Ok(ReturnValue::Algebra(algebra::Value::FieldScalar(
                         value.clone(),
@@ -831,13 +823,13 @@ where
 
         for signal_name in self.generate_selectors(scope, &var)? {
             let full_name = self.expand_full_name(&signal_name);
-            if self.signals.get_by_name(&full_name)?.is_some() {
+            if self.signals.get_by_name(&full_name).is_some() {
                 return Err(Error::AlreadyExists(format!("signal {}", full_name)));
             }
             if let Some(v) = self.deferred_signal_values.remove(&full_name) {
-                self.signals.insert(full_name, xtype, Some(v))?;
+                self.signals.insert(full_name, xtype, Some(v));
             } else {
-                let signal_id = self.signals.insert(full_name, xtype, None)?;
+                let signal_id = self.signals.insert(full_name, xtype, None);
                 pending_signals.push(signal_id);
             }
         }
@@ -1078,11 +1070,11 @@ where
                 self.trace(meta, || format!("eval_signal_left <-- {:?}", signal));
                 let signal_sel = self.expand_selectors(scope, signal, None)?;
                 let signal_full = self.expand_full_name(&signal_sel);
-                if let Some(signal_id) = self.signals.get_by_name(&signal_full)?.map(|s| s.id) {
+                if let Some(signal_id) = self.signals.get_by_name(&signal_full).map(|s| s.id) {
                     // set the signal valuesignal_elementsignal_element
                     let v = self.eval_expression_p(scope, expr)?;
                     if let ReturnValue::Algebra(a) = v {
-                        self.signals.update(signal_id, a)?;
+                        self.signals.update(signal_id, a);
                     } else {
                         return Err(Error::InvalidType(format!(
                             "Cannot assign {:?} to signal",
@@ -1203,9 +1195,9 @@ where
 
                 let count = if self.debug {
                     self.constraints
-                        .push(qeq, Some(format!("{}:{}", self.current_file, meta.start)))?
+                        .push(qeq, Some(format!("{}:{}", self.current_file, meta.start)))
                 } else {
-                    self.constraints.push(qeq, None)?
+                    self.constraints.push(qeq, None)
                 };
 
                 if count > 0 && count % 100_000 == 0 {
@@ -1471,8 +1463,8 @@ where
     }
 
     fn dbg_dump_signals(&self) -> Result<()> {
-        for n in 0..self.signals.len()? {
-            println!("{:?}", self.signals.get_by_id(n).unwrap().unwrap());
+        for n in 0..self.signals.len() {
+            println!("{:?}", self.signals.get_by_id(n).unwrap());
         }
         Ok(())
     }
@@ -1503,7 +1495,7 @@ where
                         .map(|signal| {
                             format!(
                                 "{:?}",
-                                self.signals.get_by_id(*signal).unwrap().unwrap().full_name
+                                self.signals.get_by_id(*signal).unwrap().full_name
                             )
                         })
                         .collect::<Vec<_>>()

@@ -3,10 +3,7 @@ extern crate rand;
 use pairing::bn256::Bn256;
 
 use circom2_compiler::algebra::{Value, FS, LC, QEQ, SignalId};
-use circom2_compiler::storage::Constraints;
-use circom2_compiler::storage::Ram;
-use circom2_compiler::storage::RamConstraints;
-use circom2_compiler::storage::StorageFactory;
+use circom2_compiler::types::{Constraints};
 
 use bellman::LinearCombination;
 
@@ -206,16 +203,16 @@ pub fn lc_to_bellman<E: Engine>(
     base
 }
 
-pub fn write_pk<W: Write, C: Constraints>(
+pub fn write_pk<W: Write>(
     mut pk: W,
-    constraints: &C,
+    constraints: &Constraints,
     ignore_signals: &[SignalId],
     params: &Parameters<Bn256>,
 ) -> Result<()> {
     // write constrains
-    pk.write_u32::<BigEndian>(constraints.len()? as u32)?;
-    for i in 0..constraints.len()? {
-        let qeq = to_vec(&constraints.get(i)?)?;
+    pk.write_u32::<BigEndian>(constraints.len() as u32)?;
+    for i in 0..constraints.len() {
+        let qeq = to_vec(&constraints.get(i))?;
         pk.write_u32::<BigEndian>(qeq.len() as u32)?;
         pk.write(&qeq)?;
     }
@@ -231,9 +228,9 @@ pub fn write_pk<W: Write, C: Constraints>(
     Ok(())
 }
 
-pub fn read_pk<R: Read>(mut pk: R) -> Result<(RamConstraints, Vec<SignalId>, Parameters<Bn256>)> {
+pub fn read_pk<R: Read>(mut pk: R) -> Result<(Constraints, Vec<SignalId>, Parameters<Bn256>)> {
     let mut buffer = Vec::with_capacity(1024);
-    let mut constraints = Ram::default().new_constraints()?;
+    let mut constraints = Constraints::default();
 
     // read constraints
     let count = pk.read_u32::<BigEndian>()?;
@@ -245,7 +242,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(RamConstraints, Vec<SignalId>, Par
         buffer.resize(len, 0u8);
         pk.read_exact(&mut buffer)?;
         let qeq = from_slice::<QEQ>(&buffer)?;
-        constraints.push(qeq, None)?;
+        constraints.push(qeq, None);
     }
 
     // read signal aliases

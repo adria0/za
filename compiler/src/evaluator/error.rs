@@ -1,5 +1,4 @@
 use crate::algebra;
-use crate::storage;
 
 #[derive(Debug)]
 pub enum Error {
@@ -17,14 +16,7 @@ pub enum Error {
     CannotTestConstrain(String),
     CannotCheckConstrain(String),
     CannotConvertToU64(algebra::FS),
-    Storage(storage::Error),
     Io(String, String),
-}
-
-impl From<storage::Error> for Error {
-    fn from(err: storage::Error) -> Self {
-        Error::Storage(err)
-    }
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

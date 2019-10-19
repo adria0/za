@@ -1,7 +1,6 @@
 use circom2_compiler::algebra::{FS,SignalId};
 use circom2_compiler::evaluator::{check_constrains_eval_zero, Evaluator};
-use circom2_compiler::storage;
-use circom2_compiler::storage::{is_public_input, public_inputs, Constraints, Signals};
+use circom2_compiler::types::{Constraints, Signals};
 
 use std::io::{Read, Write};
 use std::marker::PhantomData;
@@ -33,24 +32,15 @@ pub fn bellman_verbose(verbose: bool) {
 }
 
 pub struct CircomCircuit<'a, E: Engine> {
-    constraints: &'a dyn Constraints,
-    signals: &'a dyn Signals,
+    constraints: &'a Constraints,
+    signals: &'a Signals,
     ignore_signals: Vec<SignalId>,
     phantom: PhantomData<E>,
 }
 
-impl<'a, E: Engine> CircomCircuit<'a, E> {}
+impl<'a,E: Engine> CircomCircuit<'a, E> {}
 
-fn map_storage_error<V>(
-    e: std::result::Result<V, storage::Error>,
-) -> std::result::Result<V, SynthesisError> {
-    match e {
-        Ok(v) => Ok(v),
-        _ => Err(SynthesisError::Unsatisfiable),
-    }
-}
-
-impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
+impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
     fn synthesize<CS: ConstraintSystem<E>>(
         self,
         cs: &mut CS,
@@ -60,9 +50,9 @@ impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
 
         let mut ignore_it = self.ignore_signals.iter().peekable();
         // register signals
-        for n in 1..map_storage_error(self.signals.len())? {
+        for n in 1..self.signals.len() {
 
-            let s = map_storage_error(self.signals.get_by_id(n))?.unwrap();
+            let s = self.signals.get_by_id(n).unwrap();
 
             if let Some(ignore) = ignore_it.peek() {
                 if **ignore == n {
@@ -72,7 +62,7 @@ impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
                 }
             }
             
-            let signal = if is_public_input(&s) {
+            let signal = if s.is_main_public_input() {
                 cs.alloc_input(
                     || (*s.full_name.0).clone(),
                     || {
@@ -97,8 +87,8 @@ impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
         }
 
         // register constrains
-        for n in 0..map_storage_error(self.constraints.len())? {
-            let constraint = map_storage_error(self.constraints.get(n))?;
+        for n in 0..self.constraints.len() {
+            let constraint = self.constraints.get(n);
             let name = format!("c{}", n);
             cs.enforce(
                 || name,
@@ -111,8 +101,8 @@ impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
     }
 }
 
-pub fn setup<S: Signals, C: Constraints, W: Write>(
-    eval: &Evaluator<S, C>,
+pub fn setup<W: Write>(
+    eval: &Evaluator,
     ignore_signals : Vec<SignalId>,
     out_pk: W,
 ) -> Result<(bellman::groth16::VerifyingKey<Bn256>, Vec<String>)> {
@@ -136,15 +126,15 @@ pub fn setup<S: Signals, C: Constraints, W: Write>(
     info!(
         "Proving key write time: {:?}",
         SystemTime::now().duration_since(start).unwrap()
-    );
+    ); 
 
-    let inputs = public_inputs(&eval.signals)?;
+    let inputs = eval.signals.main_public_input_names();
 
     Ok((params.vk, inputs))
 }
 
-pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
-    signals: S,
+pub fn generate_verified_proof<R: Read, W: Write>(
+    signals: Signals,
     in_pk: R,
     out_proof: &mut W,
 ) -> Result<Vec<(String, FS)>> {
@@ -162,7 +152,7 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
     info!(
         "Constraint check time: {:?} for {} constraint",
         SystemTime::now().duration_since(start).unwrap(),
-        constraints.len().unwrap()
+        constraints.len()
     );
 
     let circuit = CircomCircuit::<Bn256> {
@@ -183,9 +173,9 @@ pub fn generate_verified_proof<S: Signals, R: Read, W: Write>(
     // Self-verify and generate public inputs
     let start = SystemTime::now();
     let mut public_inputs = Vec::new();
-    for i in 0..signals.len()? {
-        let signal = signals.get_by_id(i)?.unwrap();
-        if is_public_input(&signal) {
+    for i in 0..signals.len() {
+        let signal = signals.get_by_id(i).unwrap();
+        if signal.is_main_public_input() {
             let fs = (&*signal).clone().value.unwrap().try_into_fs().unwrap();
             let name = signal.full_name.0.to_string();
             public_inputs.push((name, fs));
@@ -219,8 +209,6 @@ mod test {
     };
     use circom2_compiler::algebra::Value;
     use circom2_compiler::evaluator::{Evaluator, Mode, Scope};
-    use circom2_compiler::storage::Ram;
-    use circom2_compiler::storage::StorageFactory;
     use pairing::bn256::{Bn256, Fr};
     use rand::thread_rng;
     use std::fs::File;
@@ -240,11 +228,10 @@ mod test {
             component main = t();
         ";
 
-        let mut ram = Ram::default();
         let mut ev_r1cs = Evaluator::new(
             Mode::GenConstraints,
-            ram.new_signals().unwrap(),
-            ram.new_constraints().unwrap(),
+            Signals::default(),
+            Constraints::default(),
         );
 
         ev_r1cs
@@ -270,11 +257,10 @@ mod test {
         let pvk = prepare_verifying_key(&params.vk);
 
         // Compute witness
-        let mut ram = Ram::default();
         let mut ev_witness = Evaluator::new(
             Mode::GenWitness,
-            ram.new_signals().unwrap(),
-            ram.new_constraints().unwrap(),
+            Signals::default(),
+            Constraints::default(),
         );
 
         ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));
@@ -326,11 +312,10 @@ mod test {
             component main = t();
         ";
 
-        let mut ram = Ram::default();
         let mut ev_r1cs = Evaluator::new(
             Mode::GenConstraints,
-            ram.new_signals().unwrap(),
-            ram.new_constraints().unwrap(),
+            Signals::default(),
+            Constraints::default(),
         );
         ev_r1cs
             .eval_inline(&mut Scope::new(true, None, "root".to_string()), circuit)
@@ -342,11 +327,10 @@ mod test {
         let (_, _) = setup(&ev_r1cs, Vec::new(), pk).expect("cannot setup");
 
         // Compute witness -------------------------------------------
-        let mut ram = Ram::default();
         let mut ev_witness = Evaluator::new(
             Mode::GenWitness,
-            ram.new_signals().unwrap(),
-            ram.new_constraints().unwrap(),
+            Signals::default(),
+            Constraints::default(),
         );
 
         ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));

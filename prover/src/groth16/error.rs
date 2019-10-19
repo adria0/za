@@ -2,7 +2,6 @@
 pub enum Error {
     Io(std::io::Error),
     Synthesis(bellman::SynthesisError),
-    Storage(circom2_compiler::storage::Error),
     Cbor(serde_cbor::error::Error),
     Algebra(circom2_compiler::algebra::Error),
     Evaluator(circom2_compiler::evaluator::Error),
@@ -20,12 +19,6 @@ impl From<std::io::Error> for Error {
 impl From<bellman::SynthesisError> for Error {
     fn from(err: bellman::SynthesisError) -> Self {
         Error::Synthesis(err)
-    }
-}
-
-impl From<circom2_compiler::storage::Error> for Error {
-    fn from(err: circom2_compiler::storage::Error) -> Self {
-        Error::Storage(err)
     }
 }
 

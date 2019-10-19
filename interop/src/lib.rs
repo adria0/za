@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod test {
-    use circom2_compiler::storage::Ram;
     use circom2_compiler::tester;
     use circom2_parser::parse;
     use std::fs::{read_dir, File};
@@ -29,7 +28,6 @@ mod test {
         match tester::run_embeeded_tests(
             "./circuits/circomlib",
             "all_tests.circom",
-            Ram::default(),
             false,
             false,
             false,

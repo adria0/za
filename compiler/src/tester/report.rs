@@ -1,15 +1,14 @@
 use crate::{
     evaluator::Evaluator,
-    storage::{Constraints, Signals},
 };
 
 #[cfg(not(target_os = "android"))]
-pub fn dump_error<S: Signals, C: Constraints>(eval: &Evaluator<S, C>, err: &str) {
+pub fn dump_error(eval: &Evaluator, err: &str) {
     extended::dump_error_codespan(eval, err)
 }
 
 #[cfg(target_os = "android")]
-pub fn dump_error<S: Signals, C: Constraints>(eval: &Evaluator<S, C>, err: &str) {
+pub fn dump_error(eval: &Evaluator, err: &str) {
     println!("failed: {}", err);
 
     if let Some(ctx) = &eval.last_error {
@@ -28,8 +27,8 @@ mod extended {
     use codespan_reporting::termcolor::{ColorChoice, StandardStream};
     use codespan_reporting::{emit, Diagnostic, Label, Severity};
 
-    pub fn dump_error_codespan<S: super::Signals, C: super::Constraints>(
-        eval: &super::Evaluator<S, C>,
+    pub fn dump_error_codespan(
+        eval: &super::Evaluator,
         err: &str,
     ) {
         let msg = format!("{}", err);

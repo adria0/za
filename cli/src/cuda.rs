@@ -1,11 +1,13 @@
-use crate::algebra::{LC, QEQ};
-use crate::storage::{Constraints, Result, Signals};
+use circom2_compiler::algebra::{LC, QEQ};
+use circom2_compiler::types::{Constraints, Signals};
+
 use byteorder::{LittleEndian, WriteBytesExt};
 use circom2_parser::ast::SignalType;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 
-pub fn export_r1cs<S:Signals,C:Constraints>(path: &str, constraints: &C, signals: &S) -> Result<()> {
+pub fn export(path: &str, constraints: &Constraints, signals: &Signals) -> std::io::Result<()> {
+    
     // find the number of public inputs, by now should be ordered
     //   in the following way:
     //
@@ -19,8 +21,8 @@ pub fn export_r1cs<S:Signals,C:Constraints>(path: &str, constraints: &C, signals
     let mut public_signal_count = 0;
     let mut private_signal_count = 0;
 
-    for n in 0..signals.len()? {
-        let s = signals.get_by_id(n)?.unwrap();
+    for n in 0..signals.len() {
+        let s = signals.get_by_id(n).unwrap();
         let component_len = s.full_name.0.chars().filter(|ch| *ch == '.').count();
         if component_len == 1 {
             match s.xtype {
@@ -53,13 +55,13 @@ pub fn export_r1cs<S:Signals,C:Constraints>(path: &str, constraints: &C, signals
     info!("CUDA nOutputs {}", 0);
 
     // nVars      : -------------------------------------- 64 bits
-    file.write_u64::<LittleEndian>(signals.len()? as u64)
+    file.write_u64::<LittleEndian>(signals.len() as u64)
         .unwrap();
-    info!("CUDA nVars {}", (signals.len()? as u64));
+    info!("CUDA nVars {}", (signals.len() as u64));
 
     // nConstraints : Number of constraints--------------- 64 bits
-    info!("CUDA nConstraints {}", (constraints.len()? as u64));
-    file.write_u64::<LittleEndian>(constraints.len()? as u64)
+    info!("CUDA nConstraints {}", (constraints.len() as u64));
+    file.write_u64::<LittleEndian>(constraints.len() as u64)
         .unwrap();
 
     // format : 0 ---------------------------------------- 64 bits
@@ -79,11 +81,11 @@ pub fn export_r1cs<S:Signals,C:Constraints>(path: &str, constraints: &C, signals
 
     fn write_lc(
         file: &mut File,
-        constraints: &dyn Constraints,
+        constraints: &Constraints,
         lc_of: &dyn Fn(QEQ) -> LC,
-    ) -> Result<()> {
+    ) -> std::io::Result<()>  {
         let zeroes = vec![0; 32];
-        let constraints_len = constraints.len()?;
+        let constraints_len = constraints.len();
 
         // N constraints  -------------------------------- 32 bits
         file.write_u32::<LittleEndian>(constraints_len as u32)
@@ -98,13 +100,13 @@ pub fn export_r1cs<S:Signals,C:Constraints>(path: &str, constraints: &C, signals
         // )
         let mut coeff_count = 0;
         for n in 0..constraints_len {
-            let lc = lc_of(constraints.get(n)?).0;
+            let lc = lc_of(constraints.get(n)).0;
             coeff_count += lc.len();
             file.write_u32::<LittleEndian>(coeff_count as u32).unwrap();
         }
 
         for n in 0..constraints_len {
-            let lc = lc_of(constraints.get(n)?).0;
+            let lc = lc_of(constraints.get(n)).0;
             for (signal_id, _) in lc.iter() {
                 file.write_u32::<LittleEndian>(*signal_id as u32).unwrap();
             }

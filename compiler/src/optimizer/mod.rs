@@ -1,9 +1,9 @@
+use std::collections::HashMap;
+
 use crate::algebra::AlgZero;
 use crate::algebra::SignalId;
 use crate::algebra::{FS, LC, QEQ, SIGNAL_ONE};
-use crate::storage::RamConstraints;
-use crate::storage::{Constraints, Signals};
-use std::collections::HashMap;
+use crate::types::Constraints;
 
 #[derive(Clone)]
 struct Change {
@@ -12,15 +12,15 @@ struct Change {
 }
 
 pub fn optimize(
-    constraints: &RamConstraints,
+    constraints: &Constraints,
     irreductible_signals: &[usize],
-) -> (RamConstraints, Vec<SignalId>) {
+) -> (Constraints, Vec<SignalId>) {
     let mut replaces = HashMap::<SignalId, Change>::new();
     let mut rmconstraints = Vec::new();
 
     // optimize constraints
-    for n_c in 0..constraints.len().unwrap() {
-        let mut cnstr = constraints.get(n_c).unwrap();
+    for n_c in 0..constraints.len() {
+        let mut cnstr = constraints.get(n_c);
 
         // Rewrite to only-C if possible
         //   rewrite [c1S1][c2SOne]+[c3s3] :> [][]+[c1s2S1+c3s3]
@@ -100,9 +100,8 @@ pub fn optimize(
     // so, now let's reduce the graph
     // TODO: optimize
 
-    let mut keys : Vec<SignalId> = replaces.keys().copied().collect();
+    let keys : Vec<SignalId> = replaces.keys().copied().collect();
     let mut any_processed = true;
-    let mut round = 0;
     while any_processed  {
         any_processed = false;
         keys.iter().for_each(|s| {
@@ -124,18 +123,18 @@ pub fn optimize(
                 any_processed = true;
             }
         });
-        round+=1;
     }
 
-    let mut opt_cons = crate::storage::RamConstraints::default();
+    // now update constraints
+    let mut opt_cons = Constraints::default();
     let mut rm_index = 0;
 
-    for n_c in 0..constraints.len().unwrap() {
+    for n_c in 0..constraints.len() {
         if rm_index < rmconstraints.len() && rmconstraints[rm_index] == n_c {
             rm_index += 1;
             continue;
         }
-        let mut con = constraints.get(n_c).unwrap();
+        let mut con = constraints.get(n_c);
         for lcelem in con.a.0.iter_mut() {
             if let Some(v) = replaces.get(&lcelem.0) {
                 *lcelem = (v.replace_s, &lcelem.1 * &v.replace_f);
@@ -166,7 +165,7 @@ pub fn optimize(
 
 #[test]
 fn test_optimize_eq() {
-    let mut cons = crate::storage::RamConstraints::default();
+    let mut cons = Constraints::default();
 
     let sin = 1 as SignalId;
     let st = 2 as SignalId;
@@ -194,10 +193,10 @@ fn test_optimize_eq() {
         &LC::from_signal(sout, FS::one()) + &LC::from_signal(sk, -&FS::one()),
     );
 
-    cons.push(qeq1, None).unwrap();
-    cons.push(qeq2, None).unwrap();
-    cons.push(qeq3, None).unwrap();
-    let (opt_cons, mut removed_signals) = optimize(&cons, &[sin, sout]);
+    cons.push(qeq1, None);
+    cons.push(qeq2, None);
+    cons.push(qeq3, None);
+    let (opt_cons, removed_signals) = optimize(&cons, &[sin, sout]);
 
     let qeq_optimized = QEQ::new(
         LC::zero(),
@@ -206,9 +205,9 @@ fn test_optimize_eq() {
     );
 
     assert_eq!([st, sk].to_vec(), removed_signals);
-    assert_eq!(1, opt_cons.len().unwrap());
+    assert_eq!(1, opt_cons.len());
     assert_eq!(
         format!("{:?}", qeq_optimized),
-        format!("{:?}", opt_cons.get(0).unwrap())
+        format!("{:?}", opt_cons.get(0))
     );
 }

@@ -6,26 +6,21 @@ use super::report::dump_error;
 use crate::algebra::FS;
 use crate::evaluator::check_constrains_eval_zero;
 use crate::evaluator::{Evaluator, Mode, ScopeValue};
-use crate::storage::{Constraints, Signals, StorageFactory};
+use crate::types::{Constraints, Signals};
 
-pub fn run_embeeded_tests<F, S, C>(
+pub fn run_embeeded_tests(
     path: &str,
     filename: &str,
-    mut factory: F,
     debug: bool,
     skip_compile: bool,
     output_witness: bool,
     test_prefix: &str,
-) -> Result<Option<(Evaluator<S, C>, String)>>
-where
-    S: Signals,
-    C: Constraints,
-    F: StorageFactory<S, C>,
+) -> Result<Option<(Evaluator, String)>>
 {
     let mut eval = Evaluator::new(
         Mode::Collect,
-        factory.new_signals()?,
-        factory.new_constraints()?,
+        Signals::default(),
+        Constraints::default(),
     );
 
     match eval.eval_file(&path, &filename) {
@@ -49,8 +44,8 @@ where
                 println!("➡ Generating witness");
                 let mut ev_witness = Evaluator::new(
                     Mode::GenWitness,
-                    factory.new_signals()?,
-                    factory.new_constraints()?,
+                    Signals::default(),
+                    Constraints::default(),
                 );
                 ev_witness.debug = debug;
                 if let Err(err) = ev_witness.eval_template(&mut scan_scope.deep_clone(), &test_name)
@@ -61,11 +56,11 @@ where
 
                 if output_witness {
                     let mut witness_file = File::create(format!("./{}.binwitness", test_name))?;
-                    let witness_len = ev_witness.signals.len()?;
+                    let witness_len = ev_witness.signals.len();
                     FS::from(witness_len as u64).write_256_w32(&mut witness_file)?;
                     FS::from(1).write_256_w32(&mut witness_file)?;
                     for n in 1..witness_len {
-                        let signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
+                        let signal = &*ev_witness.signals.get_by_id(n).unwrap();
                         let value = signal.value.clone().unwrap().try_into_fs().unwrap();
                         value.write_256_w32(&mut witness_file)?;
                     }
@@ -76,8 +71,8 @@ where
                     println!("  ➡ Generating constraints");
                     let mut ev_constraints = Evaluator::new(
                         Mode::GenConstraints,
-                        factory.new_signals()?,
-                        factory.new_constraints()?,
+                        Signals::default(),
+                        Constraints::default(),
                     );
                     ev_constraints.debug = debug;
                     if let Err(err) =
@@ -88,8 +83,8 @@ where
                     }
 
                     // Sanity check that the generated constrains are the same
-                    let wi_count = ev_witness.signals.len()?;
-                    let cn_count = ev_constraints.signals.len()?;
+                    let wi_count = ev_witness.signals.len();
+                    let cn_count = ev_constraints.signals.len();
                     let ckeck_up_to = if wi_count < cn_count {
                         wi_count
                     } else {
@@ -97,8 +92,8 @@ where
                     };
 
                     for n in 1..ckeck_up_to {
-                        let wi_signal = &*ev_witness.signals.get_by_id(n).unwrap().unwrap();
-                        let cn_signal = &*ev_constraints.signals.get_by_id(n).unwrap().unwrap();
+                        let wi_signal = &*ev_witness.signals.get_by_id(n).unwrap();
+                        let cn_signal = &*ev_constraints.signals.get_by_id(n).unwrap();
                         if wi_signal.full_name.0 != cn_signal.full_name.0 {
                             panic!(
                                 "constrain & witness signals differ #cn(len={})={},#wi(len={})={}",
@@ -107,7 +102,7 @@ where
                         }
                     }
 
-                    if ev_constraints.signals.len()? != ev_witness.signals.len()? {
+                    if ev_constraints.signals.len() != ev_witness.signals.len() {
                         panic!(
                             "constrain & witness signals differ #cn(len={}),#wi(len={})",
                             cn_count, wi_count
@@ -117,7 +112,7 @@ where
                     // Test constraints
                     println!(
                         "➡  Testing {} constraints evals to zero",
-                        ev_constraints.constraints.len()?
+                        ev_constraints.constraints.len()
                     );
                     check_constrains_eval_zero(&ev_constraints.constraints, &ev_witness.signals)?;
                 }

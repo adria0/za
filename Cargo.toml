@@ -3,7 +3,6 @@ members = [
     "cli",
     "parser",   
     "compiler",
-    "bigsnark",
     "interop",
     "prover"
 ]

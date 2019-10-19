@@ -9,7 +9,6 @@ use circom2_parser::ast::{Attributes, StatementP};
 
 use super::algebra;
 use super::error::*;
-use super::retval::*;
 use super::types::*;
 
 #[derive(Debug, Clone)]

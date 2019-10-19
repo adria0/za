@@ -1,20 +1,19 @@
 use super::algebra;
 use super::algebra::{AlgZero, Value, SignalId};
 use super::error::*;
-use crate::evaluator::Evaluator;
-use crate::storage::{Constraints, Signal, Signals};
-use std::rc::Rc;
 
-pub fn check_constrains_eval_zero<C: Constraints, S: Signals>(
-    constraints: &C,
-    signals: &S,
+use crate::types::{Constraints, Signals};
+
+pub fn check_constrains_eval_zero(
+    constraints: &Constraints,
+    signals: &Signals,
 ) -> Result<()> {
     let eval_lc = |lc: &algebra::LC| {
         lc.0.iter().fold(Ok(algebra::FS::zero()), |acc, (s, v)| {
             let s_val = if *s == 0 {
                 algebra::FS::one()
             } else {
-                let s_val = &*signals.get_by_id(*s).unwrap().unwrap();
+                let s_val = &*signals.get_by_id(*s).unwrap();
                 match &s_val.value {
                     Some(algebra::Value::FieldScalar(fs)) => fs.clone(),
                     _ => {
@@ -29,8 +28,8 @@ pub fn check_constrains_eval_zero<C: Constraints, S: Signals>(
         })
     };
 
-    for n in 0..constraints.len().unwrap() {
-        let qeq = constraints.get(n).unwrap();
+    for n in 0..constraints.len() {
+        let qeq = constraints.get(n);
         let a = eval_lc(&qeq.a)?;
         let b = eval_lc(&qeq.b)?;
         let c = eval_lc(&qeq.c)?;
@@ -53,11 +52,9 @@ pub fn check_constrains_eval_zero<C: Constraints, S: Signals>(
     Ok(())
 }
 
-pub fn format_algebra<S: Signals>(signals: &S, a: &algebra::Value) -> String {
-    let qname =
-        |s: Option<Rc<Signal>>| Ok(s.map_or("unknown".to_string(), |s| s.full_name.to_string()));
-    let sname = |id| signals.get_by_id(id).and_then(qname).unwrap();
+pub fn format_algebra(signals: &Signals, a: &algebra::Value) -> String {
 
+    let sname = |id| signals.get_by_id(id).map_or("unwnown".to_string(), |s| s.full_name.to_string());
     match a {
         algebra::Value::FieldScalar(fe) => fe.to_string(),
         algebra::Value::LinearCombination(lc) => lc.format(sname),
@@ -65,17 +62,17 @@ pub fn format_algebra<S: Signals>(signals: &S, a: &algebra::Value) -> String {
     }
 }
 
-pub fn print_info<S: Signals, C: Constraints>(title: &str, constraints: &C, signals:&S, ignore_signals: &[SignalId], print_all: bool) {
+pub fn print_info(title: &str, constraints: &Constraints, signals:&Signals, ignore_signals: &[SignalId], print_all: bool) {
     info!(
         "[{}] {} signals, {} constraints",
         title,
-        signals.len().unwrap() - ignore_signals.len(),
-        constraints.len().unwrap()
+        signals.len() - ignore_signals.len(),
+        constraints.len()
     );
     if print_all {
         info!("signals -------------------------");
         let mut ignore_it = ignore_signals.iter().peekable();
-        for n in 0..signals.len().unwrap() {
+        for n in 0..signals.len() {
             if let Some(i) = ignore_it.peek() {
                 if n == **i {
                     ignore_it.next();
@@ -85,8 +82,8 @@ pub fn print_info<S: Signals, C: Constraints>(title: &str, constraints: &C, sign
             info!("{}: {:?}", n, signals.get_by_id(n).unwrap());
         }
         info!("constrains ----------------------");
-        for n in 0..constraints.len().unwrap() {
-            let constrain = Value::QuadraticEquation(constraints.get(n).unwrap());
+        for n in 0..constraints.len() {
+            let constrain = Value::QuadraticEquation(constraints.get(n));
             info!("{}:  {}=0", n, format_algebra(signals, &constrain));
         }
     }
