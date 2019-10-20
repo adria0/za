@@ -7,6 +7,7 @@ pub enum Error {
     Evaluator(evaluator::Error),
     Io(io::Error),
     Algebra(algebra::Error),
+    Unexpected(String),
 }
 
 impl From<evaluator::Error> for Error {

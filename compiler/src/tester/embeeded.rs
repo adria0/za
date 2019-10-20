@@ -4,7 +4,6 @@ use super::error::{Error, Result};
 use super::report::dump_error;
 
 use crate::algebra::FS;
-use crate::evaluator::check_constrains_eval_zero;
 use crate::evaluator::{Evaluator, Mode, ScopeValue};
 use crate::types::{Constraints, Signals};
 
@@ -114,7 +113,7 @@ pub fn run_embeeded_tests(
                         "➡  Testing {} constraints evals to zero",
                         ev_constraints.constraints.len()
                     );
-                    check_constrains_eval_zero(&ev_constraints.constraints, &ev_witness.signals)?;
+                    ev_constraints.constraints.satisfies_with_signals(&ev_witness.signals).map_err(Error::Unexpected)?;
                 }
             }
         }

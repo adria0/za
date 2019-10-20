@@ -17,6 +17,7 @@ pub enum Error {
     CannotCheckConstrain(String),
     CannotConvertToU64(algebra::FS),
     Io(String, String),
+    Unexpected(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,6 +1,5 @@
 use circom2_compiler::{
     algebra::{Value, FS},
-    evaluator::print_info,
     evaluator::{Evaluator, Mode},
 };
 
@@ -10,7 +9,7 @@ use super::format::{JsonProofAndInput, JsonVerifyingKey};
 use std::fs::File;
 use std::time::SystemTime;
 
-use circom2_compiler::types::{Constraints, Signals};
+use circom2_compiler::types::{Constraints, Signals, print_info};
 use circom2_compiler::tester::dump_error;
 
 use bellman::groth16::{prepare_verifying_key, verify_proof};

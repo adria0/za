@@ -169,6 +169,15 @@ impl Signals  {
         let s = &self.ids[id as usize];
         format!("{:?}:{:?}:{:?}", s.full_name, s.xtype, s.value)
     }
+
+    pub fn format(&self, a: &algebra::Value) -> String {
+        let sname = |id| self.get_by_id(id).map_or("unwnown".to_string(), |s| s.full_name.to_string());
+        match a {
+            algebra::Value::FieldScalar(fe) => fe.to_string(),
+            algebra::Value::LinearCombination(lc) => lc.format(sname),
+            algebra::Value::QuadraticEquation(qeq) => qeq.format(sname),
+        }
+    }
 }
 
 impl Debug for Signals {

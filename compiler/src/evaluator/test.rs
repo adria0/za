@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod test {
-    use super::super::error::Result;
+    use super::super::error::{Error,Result};
     use super::super::scope::Scope;
     use crate::algebra;
-    use crate::evaluator::check_constrains_eval_zero;
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::types::{Constraints, Signals};
 
@@ -76,7 +75,7 @@ mod test {
 
         let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![])?;
 
-        check_constrains_eval_zero(&eval_constraint.constraints, &eval.signals)?;
+        eval_constraint.constraints.satisfies_with_signals(&eval.signals).map_err(Error::Unexpected)?;
 
         Ok((eval, scope))
     }

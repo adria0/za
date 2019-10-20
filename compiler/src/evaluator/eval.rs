@@ -21,7 +21,6 @@ use crate::types::{Signals,Constraints};
 use super::error::*;
 use super::types::{List,ReturnValue};
 use super::scope::*;
-use super::utils::*;
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -1201,8 +1200,8 @@ impl Evaluator {
                             "{:?}==={:?} => {}==={}",
                             lhe,
                             rhe,
-                            format_algebra(&self.signals, &left),
-                            format_algebra(&self.signals, &right)
+                            self.signals.format(&left),
+                            self.signals.format(&right)
                         )));
                     }
                 }
@@ -1212,8 +1211,8 @@ impl Evaluator {
                     algebra::Value::FieldScalar(_) => {
                         return Err(Error::CannotGenerateConstrain(format!(
                             "{}==={}",
-                            format_algebra(&self.signals, &left),
-                            format_algebra(&self.signals, &right)
+                            self.signals.format(&left),
+                            self.signals.format(&right)
                         )));
                     }
                     _ => constrain.into_qeq(),
@@ -1542,7 +1541,7 @@ impl Evaluator {
             let value = self.eval_expression_p(scope, expr)?;
             print!("{:?} ⇨ ", expr);
             match value {
-                ReturnValue::Algebra(value) => print!("{} ", format_algebra(&self.signals, &value)),
+                ReturnValue::Algebra(value) => print!("{} ", self.signals.format(&value)),
                 _ => print!("{:?} ", value),
             }
         }

@@ -16,9 +16,8 @@ use circom2_compiler::{
     evaluator::{Evaluator,Mode},
     tester
 };
-use circom2_compiler::types::{Constraints, Signals};
+use circom2_compiler::types::{Constraints, Signals,print_info};
 use circom2_compiler::tester::dump_error;
-use circom2_compiler::evaluator::{print_info};
 use circom2_prover::groth16;
 
 use std::time::SystemTime;

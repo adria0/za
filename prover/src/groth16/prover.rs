@@ -1,7 +1,6 @@
 use circom2_parser::ast::BodyElementP;
 
 use circom2_compiler::algebra::{FS,SignalId};
-use circom2_compiler::evaluator::{check_constrains_eval_zero};
 use circom2_compiler::types::{Constraints, Signals};
 
 use std::io::Write;
@@ -155,7 +154,7 @@ pub fn generate_verified_proof<W: Write>(
     );
 
     let start = SystemTime::now();
-    check_constrains_eval_zero(&constraints, &signals).expect("check_constrains_eval_zero failed");
+    constraints.satisfies_with_signals(&signals).expect("check_constrains_eval_zero failed");
     info!(
         "Constraint check time: {:?} for {} constraint",
         SystemTime::now().duration_since(start).unwrap(),
@@ -277,7 +276,7 @@ mod test {
             .unwrap();
 
         // check constraints
-        check_constrains_eval_zero(&ev_r1cs.constraints, &ev_witness.signals)
+        &ev_r1cs.constraints.satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check all constraints = 0");
 
         println!("Creating proofs --------------------------------- ");
@@ -355,9 +354,9 @@ mod test {
             .eval_asts(&pk_asts)
             .unwrap();
 
-        check_constrains_eval_zero(&ev_r1cs.constraints, &ev_witness.signals)
+        ev_r1cs.constraints.satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check internal evaluator constraints = 0");
-        check_constrains_eval_zero(&pk_constraints, &ev_witness.signals)
+        pk_constraints.satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check optimized constraints = 0");
 
         // Create and verify proof
