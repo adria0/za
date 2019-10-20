@@ -4,6 +4,7 @@ use pairing::bn256::Bn256;
 
 use circom2_compiler::algebra::{Value, FS, LC, QEQ, SignalId};
 use circom2_compiler::types::{Constraints};
+use circom2_parser::ast::BodyElementP;
 
 use bellman::LinearCombination;
 
@@ -205,10 +206,17 @@ pub fn lc_to_bellman<E: Engine>(
 
 pub fn write_pk<W: Write>(
     mut pk: W,
+    asts: &Vec<BodyElementP>,
     constraints: &Constraints,
     ignore_signals: &[SignalId],
     params: &Parameters<Bn256>,
 ) -> Result<()> {
+
+    // write asts
+    let ast_serial = to_vec(asts)?;
+    pk.write_u32::<BigEndian>(ast_serial.len() as u32)?;
+    pk.write_all(&ast_serial)?;
+
     // write constrains
     pk.write_u32::<BigEndian>(constraints.len() as u32)?;
     for i in 0..constraints.len() {
@@ -228,9 +236,16 @@ pub fn write_pk<W: Write>(
     Ok(())
 }
 
-pub fn read_pk<R: Read>(mut pk: R) -> Result<(Constraints, Vec<SignalId>, Parameters<Bn256>)> {
+pub fn read_pk<R: Read>(mut pk: R) -> Result<(Vec<BodyElementP>,Constraints, Vec<SignalId>, Parameters<Bn256>)> {
     let mut buffer = Vec::with_capacity(1024);
     let mut constraints = Constraints::default();
+
+    // read asts
+    let bytes = pk.read_u32::<BigEndian>()?;
+    let mut ast_serial = Vec::with_capacity(bytes as usize);
+    ast_serial.resize(bytes as usize, 0);
+    pk.read_exact(&mut ast_serial)?;
+    let asts = from_slice(&ast_serial)?;
 
     // read constraints
     let count = pk.read_u32::<BigEndian>()?;
@@ -255,7 +270,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(Constraints, Vec<SignalId>, Parame
     // read proving key
     let params: Parameters<Bn256> = Parameters::read(pk, true)?;
 
-    Ok((constraints, ignore_signals, params))
+    Ok((asts,constraints, ignore_signals, params))
 }
 
 pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {

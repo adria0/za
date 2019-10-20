@@ -1,7 +1,7 @@
 use num_bigint::BigInt;
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,Serialize,Deserialize)]
 pub struct Attributes(Vec<String>);
 
 impl Attributes {
@@ -16,7 +16,7 @@ impl Attributes {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub start: usize,
     pub end: usize,
@@ -42,20 +42,20 @@ impl Meta {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub enum SelectorP {
     Pin { meta: Meta, name: String },
     Index { meta: Meta, pos: Box<ExpressionP> },
 }
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct VariableP {
     pub meta: Meta,
     pub name: String,
     pub sels: Vec<Box<SelectorP>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub enum ExpressionP {
     FunctionCall {
         meta: Meta,
@@ -87,7 +87,7 @@ pub enum ExpressionP {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub enum StatementP {
     IfThenElse {
         meta: Meta,
@@ -152,7 +152,7 @@ pub enum StatementP {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub enum BodyElementP {
     Include {
         meta: Meta,
@@ -184,7 +184,7 @@ pub enum SignalType {
     Internal,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq,Serialize,Deserialize)]
 pub enum VariableType {
     Empty,
     Var,
@@ -192,7 +192,7 @@ pub enum VariableType {
     Component,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq,Serialize,Deserialize)]
 pub enum Opcode {
     Mul,
     Div,

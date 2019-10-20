@@ -141,10 +141,6 @@ enum Command {
     #[structopt(name = "prove")]
     /// Generate a proof
     Prove {
-        #[structopt(long = "circuit")]
-        /// Input circuit, defaults to circuit.circom
-        circuit: Option<String>,
-
         #[structopt(long = "pk")]
         /// Input proving key file, defaults to prover.key
         pk: Option<String>,
@@ -231,8 +227,7 @@ fn main() {
                 _ => {}
             }
         }
-        Command::Prove { circuit, pk, input, proof } => {
-            let circuit_path = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+        Command::Prove { pk, input, proof } => {
             let pk_path = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
             let input_path = input.unwrap_or(DEFAULT_INPUT.to_string());
             let proof_path = proof.unwrap_or(DEFAULT_PROOF.to_string());
@@ -246,7 +241,7 @@ fn main() {
             let inputs = circom2_prover::groth16::flatten_json("main", &inputs_json)
                 .expect("cannot parse inputs file");
 
-            let proof = groth16::helper::prove(&circuit_path,&pk_path,inputs)
+            let proof = groth16::helper::prove(&pk_path,inputs)
                 .expect("cannot generate proof");
 
             File::create(proof_path)

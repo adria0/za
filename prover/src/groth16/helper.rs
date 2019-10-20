@@ -31,8 +31,8 @@ pub fn setup(
         Signals::default(),
         Constraints::default(),
     );
+    
     info!("Compiling circuit...");
-
     let start = SystemTime::now();
     if let Err(err) = eval.eval_file(".", &circuit_path) {
         dump_error(&eval, &format!("{:?}", err));
@@ -44,7 +44,7 @@ pub fn setup(
         SystemTime::now().duration_since(start).unwrap()
     );
     
-    let  Evaluator{constraints, signals, ..} = eval;
+    let Evaluator{constraints, signals, collected_asts, ..} = eval;
 
     print_info("compile", &constraints,&signals,&[], false);
 
@@ -64,7 +64,8 @@ pub fn setup(
     info!("Running setup");
 
     let pk = File::create(proving_key_path)?;
-    let (vk, inputs) = super::setup(&eval, removed_signals, pk)?;
+
+    let (vk, inputs) = super::setup(&collected_asts,&eval.signals, &eval.constraints, &removed_signals, pk)?;
 
     match verifier_type {
         VerifierType::Solidity => {
@@ -79,10 +80,13 @@ pub fn setup(
 }
 
 pub fn prove(
-    circuit_path: &str,
     proving_key_path: &str,
     inputs: Vec<(String, FS)>,
 ) -> Result<String> {
+
+    let pk = File::open(proving_key_path)?;
+    let (asts,constraints, ignore_signals, params) = super::format::read_pk(pk)?;
+
     info!("Generating witness...");
 
     let mut ev_witness = Evaluator::new(
@@ -95,7 +99,7 @@ pub fn prove(
     for (signal, value) in inputs {
         ev_witness.set_deferred_value(signal, Value::from(value));
     }
-    ev_witness.eval_file(".", &circuit_path)?;
+    ev_witness.eval_asts(&asts)?;
     info!(
         "Witness generation time: {:?}",
         SystemTime::now().duration_since(start).unwrap()
@@ -122,11 +126,14 @@ pub fn prove(
     // Create proof
     info!("Creating and self-verifying proof...");
 
-    let pk = File::open(proving_key_path)?;
-
     let mut proof = Vec::new();
 
-    let _ = super::generate_verified_proof(ev_witness.signals, pk, &mut proof)?;
+    let _ = super::generate_verified_proof(
+        &ev_witness.signals,
+        &ignore_signals,
+        &constraints,
+        &params,
+        &mut proof)?;
 
     Ok(String::from_utf8_lossy(&proof).to_string())
 }
@@ -142,3 +149,5 @@ pub fn verify(json_verifying_key: &str, proof_and_public_input: &str) -> Result<
     info!("Verifying proof...");
     Ok(verify_proof(&vk, &proof, &public_inputs)?)
 }
+
+    

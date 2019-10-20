@@ -61,6 +61,7 @@ pub struct Evaluator {
 
     // processed includes
     pub processed_files: Vec<String>,
+    pub collected_asts: Vec<BodyElementP>,
 
     // last got error
     pub last_error: Option<ErrorContext>,
@@ -89,6 +90,7 @@ impl Evaluator {
             current_function: None,
             debug_last_constraint: std::time::Instant::now(),
             processed_files: Vec::new(),
+            collected_asts: Vec::new(),
             last_error: None,
             path: PathBuf::from("."),
             deferred_signal_values: HashMap::new(),
@@ -100,8 +102,10 @@ impl Evaluator {
 
     pub fn eval_inline(&mut self, scope: &mut Scope, code: &str) -> Result<()> {
         match circom2_parser::parse(&code) {
-            Ok(elements) => self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?,
-
+            Ok(mut elements) => {
+                self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?;
+                self.collected_asts.append(&mut elements);
+            }
             Err(circom2_parser::Error::ParseError(err, meta)) => {
                 return self.register_error(&meta, &scope, Err(Error::Parse(err)));
             }
@@ -123,6 +127,28 @@ impl Evaluator {
         self.path = PathBuf::from(path);
         let mut scope = Scope::new(true, None, filename.to_string());
         self.eval_include(&Meta::new(0, 0, None), &mut scope, filename)?;
+        Ok(scope)
+    }
+
+    pub fn eval_asts(&mut self, asts: &[BodyElementP]) -> Result<Scope> {
+        let mut scope = Scope::new(true, None, "".to_string());
+
+        use BodyElementP::*;
+        for body_element in asts.iter() {
+            match body_element {
+                FunctionDef { meta, name, args, stmt }
+                  => self.eval_function_def(meta, &mut scope, name, args, stmt)?,
+                TemplateDef { meta, name, args, stmt }
+                  => self.eval_template_def(meta, &mut scope, name, args, stmt)?,
+                _ => (),
+            }
+        }
+        for body_element in asts.iter() {
+            match body_element {
+                Declaration { decl, .. } => self.eval_statement_p(&mut scope, decl)?,
+                _ => ()
+            }
+        }
         Ok(scope)
     }
 
@@ -1246,8 +1272,9 @@ impl Evaluator {
                 std::mem::swap(&mut new_path, &mut self.path);
 
                 match circom2_parser::parse(&code) {
-                    Ok(elements) => {
-                        self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?
+                    Ok(mut elements) => {
+                        self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?;
+                        self.collected_asts.append(&mut elements);
                     }
                     Err(circom2_parser::Error::ParseError(err, meta)) => {
                         let err: Result<()> = Err(Error::Parse(err));
