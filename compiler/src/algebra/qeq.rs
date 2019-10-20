@@ -1,8 +1,16 @@
 use std::fmt;
 use std::ops::{Add, Mul, Neg};
 
-use super::traits::AlgZero;
-use super::types::*;
+use super::AlgZero;
+use super::fs::FS;
+use super::lc::{SignalId,LC};
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct QEQ {
+    pub a: LC,
+    pub b: LC,
+    pub c: LC,
+}
 
 impl QEQ {
     pub fn new(a: LC, b: LC, c: LC) -> Self {
@@ -101,8 +109,8 @@ impl<'a> Neg for &'a QEQ {
     }
 }
 
-impl<'a> From<&'a FS> for QEQ {
-    fn from(fs: &'a FS) -> Self {
+impl From<FS> for QEQ {
+    fn from(fs: FS) -> Self {
         QEQ {
             a: LC::new(),
             b: LC::new(),
@@ -111,12 +119,25 @@ impl<'a> From<&'a FS> for QEQ {
     }
 }
 
-impl<'a> From<&'a LC> for QEQ {
-    fn from(lc: &'a LC) -> Self {
+impl From<LC> for QEQ {
+    fn from(lc: LC) -> Self {
         QEQ {
             a: LC::new(),
             b: LC::new(),
-            c: lc.clone(),
+            c: lc,
+        }
+    }
+}
+
+// &LC * &LC -> QEQ
+impl<'a> Mul<&'a LC> for &'a LC {
+    type Output = QEQ;
+
+    fn mul(self, rhs: &'a LC) -> QEQ {
+        QEQ {
+            a: self.clone(),
+            b: rhs.clone(),
+            c: LC::new(),
         }
     }
 }

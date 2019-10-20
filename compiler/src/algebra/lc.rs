@@ -2,8 +2,14 @@ use std::fmt;
 use std::iter;
 use std::ops::{Add, Mul, Neg};
 
-use super::traits::AlgZero;
-use super::types::*;
+use super::AlgZero;
+use super::fs::FS;
+
+pub type SignalId = usize;
+pub const SIGNAL_ONE: SignalId = 0;
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LC(pub Vec<(SignalId, FS)>);
 
 impl LC {
     pub fn new() -> Self {
@@ -75,9 +81,9 @@ impl AlgZero for LC {
     }
 }
 
-impl<'a> From<&'a FS> for LC {
-    fn from(fs: &'a FS) -> Self {
-        LC(vec![(SIGNAL_ONE, fs.clone())])
+impl From<FS> for LC {
+    fn from(fs: FS) -> Self {
+        LC(vec![(SIGNAL_ONE, fs)])
     }
 }
 
@@ -135,19 +141,6 @@ impl<'a> Add<&'a LC> for &'a LC {
         }
         v.retain(|v| !v.1.is_zero());
         LC(v)
-    }
-}
-
-// &LC * &LC -> QEQ
-impl<'a> Mul<&'a LC> for &'a LC {
-    type Output = QEQ;
-
-    fn mul(self, rhs: &'a LC) -> QEQ {
-        QEQ {
-            a: self.clone(),
-            b: rhs.clone(),
-            c: LC::new(),
-        }
     }
 }
 

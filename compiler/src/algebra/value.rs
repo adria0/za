@@ -5,7 +5,9 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::identities::Zero;
 
 use super::error::{Error, Result};
-use super::types::*;
+use super::fs::FS;
+use super::lc::{SignalId,LC};
+use super::qeq::QEQ;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -21,8 +23,8 @@ impl Value {
     pub fn into_qeq(self) -> QEQ {
         use Value::*;
         match self {
-            FieldScalar(a) => QEQ::from(&a),
-            LinearCombination(a) => QEQ::from(&a),
+            FieldScalar(a) => QEQ::from(a),
+            LinearCombination(a) => QEQ::from(a),
             QuadraticEquation(a) => a,
         }
     }

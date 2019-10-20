@@ -10,8 +10,7 @@ use std::io::Write;
 use std::ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, Shr};
 
 use super::error::{Error, Result};
-use super::traits::AlgZero;
-use super::types::*;
+use super::AlgZero;
 
 const BABYJUB_FIELD: &'static str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
@@ -30,6 +29,9 @@ lazy_static! {
 }
 
 // Field Scalar  ------------------------------------------------
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct FS(BigUint);
 
 impl FS {
     fn field() -> &'static BigUint {
@@ -60,9 +62,6 @@ impl FS {
     }
     pub fn to_bytes_le(&self) -> Vec<u8> {
         self.0.to_bytes_le()
-    }
-    pub fn to_repr(&self) -> BigUint {
-        self.0.clone()
     }
     pub fn into_repr(self) -> BigUint {
         self.0
@@ -349,8 +348,6 @@ pub fn extended_gcd(a: BigInt, b: BigInt) -> GcdResult {
         old_t -= quotient * &t;
         std::mem::swap(&mut old_t, &mut t);
     }
-
-    let _quotients = (t, s); // == (a, b) / gcd
 
     GcdResult {
         gcd: old_r,
