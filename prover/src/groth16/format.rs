@@ -2,7 +2,7 @@ extern crate rand;
 
 use pairing::bn256::Bn256;
 
-use circom2_compiler::algebra::{Value, FS, LC, QEQ, SignalId};
+use circom2_compiler::algebra::{Value, FS, LC, SignalId};
 use circom2_compiler::types::{Constraints};
 use circom2_parser::ast::BodyElementP;
 
@@ -16,7 +16,6 @@ use ff_ce::PrimeField;
 use pairing::Engine;
 
 use error::{Error, Result};
-use serde_cbor::{from_slice, to_vec};
 use serde_json;
 
 use super::error;
@@ -213,14 +212,14 @@ pub fn write_pk<W: Write>(
 ) -> Result<()> {
 
     // write asts
-    let ast_serial = to_vec(asts)?;
+    let ast_serial = bincode::serialize(asts)?;
     pk.write_u32::<BigEndian>(ast_serial.len() as u32)?;
     pk.write_all(&ast_serial)?;
 
     // write constrains
     pk.write_u32::<BigEndian>(constraints.len() as u32)?;
     for i in 0..constraints.len() {
-        let qeq = to_vec(&constraints.get(i))?;
+        let qeq = bincode::serialize(&constraints.get(i))?;
         pk.write_u32::<BigEndian>(qeq.len() as u32)?;
         pk.write(&qeq)?;
     }
@@ -245,7 +244,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(Vec<BodyElementP>,Constraints, Vec
     let mut ast_serial = Vec::with_capacity(bytes as usize);
     ast_serial.resize(bytes as usize, 0);
     pk.read_exact(&mut ast_serial)?;
-    let asts = from_slice(&ast_serial)?;
+    let asts = bincode::deserialize(&ast_serial)?;
 
     // read constraints
     let count = pk.read_u32::<BigEndian>()?;
@@ -256,7 +255,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(Vec<BodyElementP>,Constraints, Vec
         }
         buffer.resize(len, 0u8);
         pk.read_exact(&mut buffer)?;
-        let qeq = from_slice::<QEQ>(&buffer)?;
+        let qeq = bincode::deserialize(&buffer)?;
         constraints.push(qeq, None);
     }
 

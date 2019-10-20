@@ -3,6 +3,7 @@ pub enum Error {
     Io(std::io::Error),
     Synthesis(bellman::SynthesisError),
     Cbor(serde_cbor::error::Error),
+    Bincode(bincode::Error),
     Algebra(circom2_compiler::algebra::Error),
     Evaluator(circom2_compiler::evaluator::Error),
     BadFormat(String),
@@ -25,6 +26,12 @@ impl From<bellman::SynthesisError> for Error {
 impl From<serde_cbor::error::Error> for Error {
     fn from(err: serde_cbor::error::Error) -> Self {
         Error::Cbor(err)
+    }
+}
+
+impl From<bincode::Error> for Error {
+    fn from(err: bincode::Error) -> Self {
+        Error::Bincode(err)
     }
 }
 
