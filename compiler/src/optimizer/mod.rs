@@ -13,38 +13,57 @@ struct Change {
 
 pub fn optimize(
     constraints: &Constraints,
-    irreductible_signals: &[usize],
+    irreductible_signals: &[SignalId],
+) -> (Constraints, Vec<SignalId>) {
+
+    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
+    info!("Optimize L1 {} {}",constraints.len(),r1.len());
+    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
+    info!("Optimize L2 {} {}",constraints.len(),r1.len());
+    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
+    info!("Optimize L3 {} {}",constraints.len(),r1.len());
+    
+    (constraints, r1)
+}
+
+pub fn optimize_n(
+    constraints: &Constraints,
+    irreductible_signals: &[SignalId],
 ) -> (Constraints, Vec<SignalId>) {
     let mut replaces = HashMap::<SignalId, Change>::new();
     let mut rmconstraints = Vec::new();
+
+    let mut type1 = 0;
+    let mut type2 = 0;
+    let mut type3 = 0;
 
     // optimize constraints
     for n_c in 0..constraints.len() {
         let mut cnstr = constraints.get(n_c);
 
         // Rewrite to only-C if possible
-        //   rewrite [c1S1][c2SOne]+[c3s3] :> [][]+[c1s2S1+c3s3]
-        //   rewrite [c1SOne][c2S2]+[c3s3] :> [][]+[c1s2S1+c3s3]
+        //   rewrite [a][c2SOne]+[c3s3] :> [][]+[ c2 a c3s3 ]
+        //   rewrite [c1SOne][b]+[c3s3] :> [][]+[ c1 b c3s3 ]
 
-        if cnstr.a.0.len() == 1 && cnstr.b.0.len() == 1 && cnstr.c.0.len() == 1 {
-            if cnstr.a.0[0].0 == SIGNAL_ONE {
-                cnstr = QEQ::new(
-                    LC::zero(),
-                    LC::zero(),
-                    &cnstr.c + &LC::from_signal(cnstr.b.0[0].0, &cnstr.a.0[0].1 * &cnstr.b.0[0].1),
-                );
-            } else if cnstr.b.0[0].0 == SIGNAL_ONE {
-                cnstr = QEQ::new(
-                    LC::zero(),
-                    LC::zero(),
-                    &cnstr.c + &LC::from_signal(cnstr.a.0[0].0, &cnstr.a.0[0].1 * &cnstr.b.0[0].1),
-                );
-            }
+        if cnstr.a.0.len() == 1 && cnstr.a.0[0].0 == SIGNAL_ONE {
+            cnstr = QEQ::new(
+                LC::zero(),
+                LC::zero(),
+                &cnstr.c + &(&cnstr.b  * &cnstr.a.0[0].1),
+            );
+            type1 += 1;        
+        } else if cnstr.b.0.len() == 1 && cnstr.b.0[0].0 == SIGNAL_ONE {
+            cnstr = QEQ::new(
+                LC::zero(),
+                LC::zero(),
+                &cnstr.c + &(&cnstr.a  * &cnstr.b.0[0].1),
+            );
+            type1 += 1;        
         }
 
         // Remove constrain
-        //   a) []][]+[c1S1+c2S2] :>  search: S1 replace: c2/c1 S1 iff S1 is not irreductuble
-        //   b) []][]+[c1S1+c2S2] :>  search: S2 replace: c1/c2 S2 iff S2 is not irreductuble
+        //   a) [][]+[c1S1+c2S2] :>  search: S1 replace: c2/c1 S1 iff S1 is not irreductuble
+        //   b) [][]+[c1S1+c2S2] :>  search: S2 replace: c1/c2 S2 iff S2 is not irreductuble
 
         if cnstr.a.0.len() == 0 && cnstr.b.0.len() == 0 && cnstr.c.0.len() == 2 {
             
@@ -67,11 +86,13 @@ pub fn optimize(
             );
 
             if replaces.get(&search_s).is_none() {
+                
                 while let Some(v) = replaces.get(&replace_s.clone()) {
                     replace_s = v.replace_s;
                     replace_f = &replace_f * &v.replace_f;
+                    type3 +=1;
                 }
-
+                
                 replaces.insert(
                     search_s,
                     Change {
@@ -85,6 +106,7 @@ pub fn optimize(
 
         }
     }
+
 
     // fix replaces
     //
@@ -115,6 +137,7 @@ pub fn optimize(
             }
             if let Some(remove_r) = remove {
                 if let Some(r) = replaces.get_mut(s) {
+                    type2 += 1;
                     *r = Change {
                         replace_s : remove_r.replace_s,
                         replace_f : &r.replace_f * &remove_r.replace_f,
@@ -159,6 +182,8 @@ pub fn optimize(
         .for_each(|(k, _)| removed_signals.push(k));
 
     removed_signals.sort();
+
+    info!("type1={} type2={} type3={}",type1,type2,type3);
 
     (opt_cons, removed_signals)
 }
