@@ -1,4 +1,4 @@
-use circom2_compiler::{
+use za_compiler::{
     algebra::{Value, FS},
     evaluator::{Evaluator, Mode},
 };
@@ -9,8 +9,8 @@ use super::format::{JsonProofAndInput, JsonVerifyingKey};
 use std::fs::File;
 use std::time::SystemTime;
 
-use circom2_compiler::types::{Constraints, Signals, print_info};
-use circom2_compiler::tester::dump_error;
+use za_compiler::types::{Constraints, Signals, print_info};
+use za_compiler::tester::dump_error;
 
 use bellman::groth16::{prepare_verifying_key, verify_proof};
 
@@ -50,7 +50,7 @@ pub fn setup(
     let start = SystemTime::now();
 
     let irreductible_signals = signals.main_input_ids(); 
-    let (constraints, removed_signals) = circom2_compiler::optimizer::optimize(&constraints, &irreductible_signals);
+    let (constraints, removed_signals) = za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
 
     info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
     print_info("optimized", &constraints,&signals,&removed_signals, false);

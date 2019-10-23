@@ -1,7 +1,7 @@
-use circom2_parser::ast::BodyElementP;
+use za_parser::ast::BodyElementP;
 
-use circom2_compiler::algebra::{FS,SignalId};
-use circom2_compiler::types::{Constraints, Signals};
+use za_compiler::algebra::{FS,SignalId};
+use za_compiler::types::{Constraints, Signals};
 
 use std::io::Write;
 use std::marker::PhantomData;
@@ -213,8 +213,8 @@ mod test {
     use bellman::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
-    use circom2_compiler::algebra::Value;
-    use circom2_compiler::evaluator::{Evaluator, Mode, Scope};
+    use za_compiler::algebra::Value;
+    use za_compiler::evaluator::{Evaluator, Mode, Scope};
     use pairing::bn256::{Bn256, Fr};
     use rand::thread_rng;
     use std::fs::File;

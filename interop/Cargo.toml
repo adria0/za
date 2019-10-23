@@ -1,9 +1,9 @@
 [package]
-name = "circom2-interop"
+name = "za-interop"
 version = "0.1.0"
 authors = ["0Kims"]
 edition = "2018"
 
 [dependencies]
-circom2-parser = { path = "../parser" }
-circom2-compiler = { path = "../compiler" }
+za-parser = { path = "../parser" }
+za-compiler = { path = "../compiler" }

@@ -4,6 +4,8 @@ const assert = require("chai").assert;
 
 describe("Basic test", function () {
 
+    this.timeout(5000);
+
     const circuit_path = "/tmp/circuit.circom"; 
     const pk_path = "/tmp/proving.key"; 
 
@@ -26,7 +28,7 @@ describe("Basic test", function () {
       const verifying_key = circom2js.setupSync(circuit_path,pk_path,"json");
       
       all_inputs = { p:2, q:3 }
-      proof_and_public_inputs = circom2js.proveSync(circuit_path,pk_path,JSON.stringify(all_inputs));
+      proof_and_public_inputs = circom2js.proveSync(pk_path,JSON.stringify(all_inputs));
       
       const success = circom2js.verifySync(verifying_key,proof_and_public_inputs);
       assert.equal(success,true);

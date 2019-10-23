@@ -1,5 +1,5 @@
 [package]
-name = "circom2-cli"
+name = "za-cli"
 version = "0.1.0"
 authors = ["0Kims"]
 edition = "2018"
@@ -7,14 +7,14 @@ edition = "2018"
 [dependencies]
 codespan = "0.2.1"
 codespan-reporting = "0.2.1"
-circom2-parser = { path = "../parser" }
-circom2-compiler = { path = "../compiler" }
-circom2-prover = { path = "../prover" }
+za-parser = { path = "../parser" }
+za-compiler = { path = "../compiler" }
+za-prover = { path = "../prover" }
 stderrlog = "0.4.1"
 structopt = "0.2.14"
 log = "0.4.6"
 byteorder = "1.3.1"
 
 [[bin]]
-name = "circom2"
+name = "za"
 path = "src/main.rs"

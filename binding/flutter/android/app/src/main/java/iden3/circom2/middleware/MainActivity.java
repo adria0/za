@@ -1,4 +1,4 @@
-package iden3.circom2.middleware;
+package iden3.za.middleware;
 
 import android.os.Bundle;
 import com.google.gson.Gson;
@@ -19,7 +19,7 @@ public class MainActivity extends FlutterActivity {
     System.loadLibrary("middleware");
   }
 
-  private static final String MIDDLEWARE_CHANNEL = "iden3.circom2/middleware";
+  private static final String MIDDLEWARE_CHANNEL = "iden3.za/middleware";
 
   @Override
   public void onCreate(Bundle savedInstanceState) {

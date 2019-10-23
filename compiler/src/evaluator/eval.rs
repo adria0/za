@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 
-use circom2_parser;
-use circom2_parser::ast::{
+use za_parser;
+use za_parser::ast::{
     BodyElementP, ExpressionP, Meta, Opcode, SelectorP, SignalType, StatementP, VariableP,
     VariableType,
 };
@@ -100,12 +100,12 @@ impl Evaluator {
     // public interface ---------------------------------------------------------------------------
 
     pub fn eval_inline(&mut self, scope: &mut Scope, code: &str) -> Result<()> {
-        match circom2_parser::parse(&code) {
+        match za_parser::parse(&code) {
             Ok(mut elements) => {
                 self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?;
                 self.collected_asts.append(&mut elements);
             }
-            Err(circom2_parser::Error::ParseError(err, meta)) => {
+            Err(za_parser::Error::ParseError(err, meta)) => {
                 return self.register_error(&meta, &scope, Err(Error::Parse(err)));
             }
         }
@@ -174,7 +174,7 @@ impl Evaluator {
         &mut self,
         meta: &Meta,
         scope: &Scope,
-        op: circom2_parser::ast::Opcode,
+        op: za_parser::ast::Opcode,
         rhv: &algebra::Value,
     ) -> Result<algebra::Value> {
         match algebra::eval_prefix(op, rhv) {
@@ -188,7 +188,7 @@ impl Evaluator {
         meta: &Meta,
         scope: &Scope,
         lhv: &algebra::Value,
-        op: circom2_parser::ast::Opcode,
+        op: za_parser::ast::Opcode,
         rhv: &algebra::Value,
     ) -> Result<algebra::Value> {
         match algebra::eval_infix(lhv, op, rhv) {
@@ -198,7 +198,7 @@ impl Evaluator {
     }
 
     fn eval_expression_p(&mut self, scope: &Scope, v: &ExpressionP) -> Result<ReturnValue> {
-        use circom2_parser::ast::ExpressionP::*;
+        use za_parser::ast::ExpressionP::*;
         match v {
             FunctionCall { meta, name, args } => self.eval_function_call(meta, scope, name, args),
             Variable { meta, name } => self.eval_variable(meta, scope, name),
@@ -210,7 +210,7 @@ impl Evaluator {
     }
 
     fn eval_statement_p(&mut self, scope: &mut Scope, v: &StatementP) -> Result<()> {
-        use circom2_parser::ast::StatementP::*;
+        use za_parser::ast::StatementP::*;
         match v {
             IfThenElse {
                 meta,
@@ -258,7 +258,7 @@ impl Evaluator {
     }
 
     fn eval_body_element_p(&mut self, scope: &mut Scope, v: &BodyElementP) -> Result<()> {
-        use circom2_parser::ast::BodyElementP::*;
+        use za_parser::ast::BodyElementP::*;
         match v {
             Include { meta, path } => self.eval_include(meta, scope, path),
             FunctionDef {
@@ -1270,12 +1270,12 @@ impl Evaluator {
                 std::mem::swap(&mut new_current_file, &mut self.current_file);
                 std::mem::swap(&mut new_path, &mut self.path);
 
-                match circom2_parser::parse(&code) {
+                match za_parser::parse(&code) {
                     Ok(mut elements) => {
                         self.eval_body_elements_p(&Meta::new(0, 0, None), scope, &elements)?;
                         self.collected_asts.append(&mut elements);
                     }
-                    Err(circom2_parser::Error::ParseError(err, meta)) => {
+                    Err(za_parser::Error::ParseError(err, meta)) => {
                         let err: Result<()> = Err(Error::Parse(err));
                         return self.register_error(&meta, scope, err);
                     }

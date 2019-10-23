@@ -1,4 +1,4 @@
-extern crate circom2_parser;
+extern crate za_parser;
 
 #[cfg(not(target_os = "android"))]
 extern crate codespan;

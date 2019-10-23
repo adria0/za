@@ -1,7 +1,7 @@
-# rust-circom-experimental
-[![Build Status](https://travis-ci.org/iden3/rust-circom-experimental.svg?branch=master)](https://travis-ci.org/iden3/rust-circom-experimental)
+# ZA!
+[![Build Status](https://travis-ci.org/iden3/za.svg?branch=master)](https://travis-ci.org/iden3/za)
 
-An experimental port of IDEN3 circom compiler to rust.
+An experimental port of IDEN3 circom compiler to rust with embeeded bellman-bn128 prover.
 
 :heavy_exclamation_mark: **This is not the official and supported implementation of IDEN3 circom and circomlib circuits** please use [official version](http:/github.com/iden3/circom) instead
 
@@ -15,25 +15,25 @@ Install additional dependencies, you may need to install the `clang` `build-esse
 
 Clone the repo
 
-`git clone https://github.com/iden3/rust-circom-experimental.git`
+`git clone https://github.com/iden3/za.git`
 
 Build
 
 `cargo build --release`
 
-The final binary will be in `/target/release/circom2`
+The final binary will be in `target/release/za`
 
 ### Usage
 
 #### Generating trusted setup
 
-`circom2 setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol>`
+`za setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol>`
 
 - `circuit.circom` is an input file with the `main` component that specifies the circuit
 - `proving.key` if a generated output with the key required to generate proofs
 - `verifier.sol` if a generated output with the smartcontract to verify the generated proofs
 
-_if you want to do a test, create a file with name `circuit.circom` with the following contents and run the `circom2 setup`_
+_if you want to do a test, create a file with name `circuit.circom` with the following contents and run the `za setup`_
 
 ```
 template T() {
@@ -48,14 +48,14 @@ component main = T();
 
 #### Generating a proof
 
-`circom2 prove --circuit <circuit.circom> --input <input.json> --pk <proving.key> --proof <proof.json>`
+`za prove --circuit <circuit.circom> --input <input.json> --pk <proving.key> --proof <proof.json>`
 
 - `circuit.circom` is an input file with the `main` component that specifies the circuit
 - `input.json` is an input file with the required input signals to generate the full witness
 - `proving.key` if an input file with the key required to generate proofs
 - `proof.json`  the input required to the smartcontract to verify the proof
 
-_if you want to do a test, create a file with name `input.circom` with the following contents and run the `circom2 prove`_
+_if you want to do a test, create a file with name `input.circom` with the following contents and run the `za prove`_
 
 ```
 { a : 2, b: 3 }
@@ -68,7 +68,7 @@ _then deploy the `verifier.sol` smartcontract and exec the `verifyTx` method wit
 
 In order to test if a circuit is correct is possible to write an embedded test by using the `#[test]` tag before a template definition (see `interop/circomlib/babyjub.circom`), to execute the test, run:
 
-- `circom2 test --circuit <circuit.circom>`
+- `za test --circuit <circuit.circom>`
 
 this will run the tests found in the circuit and all the tests found in the included templates
 

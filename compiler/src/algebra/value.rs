@@ -1,6 +1,6 @@
 use std::fmt;
 
-use circom2_parser::ast;
+use za_parser::ast;
 use num_bigint::{BigInt, BigUint};
 use num_traits::identities::Zero;
 

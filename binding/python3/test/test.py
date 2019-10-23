@@ -1,4 +1,4 @@
-import libcircom2py as circom
+import libza2py as circom
 import json
 
 circuit_path = "/tmp/circuit.circom" 
@@ -22,7 +22,7 @@ with open(circuit_path, 'w') as filehandle:
 verifying_key = circom.setup(circuit_path,pk_path,"json")
 
 all_inputs = { "p":"2", "q":"3" }
-proof_and_public_inputs = circom.prove(circuit_path,pk_path,json.dumps(all_inputs))
+proof_and_public_inputs = circom.prove(pk_path,json.dumps(all_inputs))
       
 success = circom.verify(verifying_key,proof_and_public_inputs)
 print("SUCCESS", success)

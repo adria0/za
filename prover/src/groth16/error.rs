@@ -4,8 +4,8 @@ pub enum Error {
     Synthesis(bellman::SynthesisError),
     Cbor(serde_cbor::error::Error),
     Bincode(bincode::Error),
-    Algebra(circom2_compiler::algebra::Error),
-    Evaluator(circom2_compiler::evaluator::Error),
+    Algebra(za_compiler::algebra::Error),
+    Evaluator(za_compiler::evaluator::Error),
     BadFormat(String),
     Unexpected(String),
     Json(serde_json::error::Error),
@@ -35,8 +35,8 @@ impl From<bincode::Error> for Error {
     }
 }
 
-impl From<circom2_compiler::algebra::Error> for Error {
-    fn from(err: circom2_compiler::algebra::Error) -> Self {
+impl From<za_compiler::algebra::Error> for Error {
+    fn from(err: za_compiler::algebra::Error) -> Self {
         Error::Algebra(err)
     }
 }
@@ -47,8 +47,8 @@ impl From<serde_json::error::Error> for Error {
     }
 }
 
-impl From<circom2_compiler::evaluator::Error> for Error {
-    fn from(err: circom2_compiler::evaluator::Error) -> Self {
+impl From<za_compiler::evaluator::Error> for Error {
+    fn from(err: za_compiler::evaluator::Error) -> Self {
         Error::Evaluator(err)
     }
 }

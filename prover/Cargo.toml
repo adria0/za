@@ -1,12 +1,12 @@
 [package]
-name = "circom2-prover"
+name = "za-prover"
 version = "0.1.0"
 authors = ["0Kims"]
 edition = "2018"
 
 [dependencies]
-circom2-compiler = { path = "../compiler" }
-circom2-parser = { path = "../parser" }
+za-compiler = { path = "../compiler" }
+za-parser = { path = "../parser" }
 num-traits = "0.2.6"
 serde = "1.0.82"
 serde_cbor = "0.10.2"

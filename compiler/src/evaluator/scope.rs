@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 
-use circom2_parser::ast::{Attributes, StatementP};
+use za_parser::ast::{Attributes, StatementP};
 
 use super::algebra;
 use super::error::*;

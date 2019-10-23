@@ -1,6 +1,6 @@
 .PHONY: test
 
-SO_LIB=native/target/release/libcircom2py.so
+SO_LIB=native/target/release/libza2py.so
 
 all: $(SO_LIB)
 

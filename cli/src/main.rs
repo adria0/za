@@ -1,8 +1,8 @@
 mod cuda;
 
-extern crate circom2_compiler;
-extern crate circom2_parser;
-extern crate circom2_prover;
+extern crate za_compiler;
+extern crate za_parser;
+extern crate za_prover;
 
 extern crate codespan;
 extern crate codespan_reporting;
@@ -12,13 +12,13 @@ extern crate structopt;
 #[macro_use]
 extern crate log;
 
-use circom2_compiler::{
+use za_compiler::{
     evaluator::{Evaluator,Mode},
     tester
 };
-use circom2_compiler::types::{Constraints, Signals,print_info};
-use circom2_compiler::tester::dump_error;
-use circom2_prover::groth16;
+use za_compiler::types::{Constraints, Signals,print_info};
+use za_compiler::tester::dump_error;
+use za_prover::groth16;
 
 use std::time::SystemTime;
 use std::fs::File;
@@ -59,7 +59,7 @@ fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
         print_info("compile", &constraints,&signals, &[], print_all);
 
         let irreductible_signals = signals.main_input_ids(); 
-        let (constraints, removed_signals) = circom2_compiler::optimizer::optimize(&constraints, &irreductible_signals);
+        let (constraints, removed_signals) = za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
 
         info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
 
@@ -186,7 +186,7 @@ fn main() {
         .init()
         .unwrap();
 
-    circom2_prover::groth16::bellman_verbose(true);
+    za_prover::groth16::bellman_verbose(true);
 
     let cmd = Command::from_args();
     match cmd {
@@ -237,7 +237,7 @@ fn main() {
                 .read_to_string(&mut inputs_json)
                 .expect("cannot read inputs file");
             
-            let inputs = circom2_prover::groth16::flatten_json("main", &inputs_json)
+            let inputs = za_prover::groth16::flatten_json("main", &inputs_json)
                 .expect("cannot parse inputs file");
 
             let proof = groth16::helper::prove(&pk_path,inputs)

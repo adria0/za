@@ -2,9 +2,9 @@ extern crate rand;
 
 use pairing::bn256::Bn256;
 
-use circom2_compiler::algebra::{Value, FS, LC, SignalId};
-use circom2_compiler::types::{Constraints};
-use circom2_parser::ast::BodyElementP;
+use za_compiler::algebra::{Value, FS, LC, SignalId};
+use za_compiler::types::{Constraints};
+use za_parser::ast::BodyElementP;
 
 use bellman::LinearCombination;
 

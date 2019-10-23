@@ -1,4 +1,4 @@
-package iden3.circom2.middleware;
+package iden3.za.middleware;
 
 public class MiddleWare {
 

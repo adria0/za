@@ -1,11 +1,11 @@
 [package]
-name = "circom2-compiler"
+name = "za-compiler"
 version = "0.1.0"
 authors = ["0Kims"]
 edition = "2018"
 
 [dependencies]
-circom2-parser = { path = "../parser" }
+za-parser = { path = "../parser" }
 num-traits = "0.2.6"
 lazy_static = "1.3.0"
 blake2-rfc = "0.2.18"

@@ -2,13 +2,16 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive; // 1.0.70
 extern crate serde; // 1.0.70
-extern crate circom2_prover;
+extern crate za_prover;
 
 use std::os::raw::c_char;
 use std::ffi::{CString, CStr};
 
 use std::fmt::Debug;
 use serde::Serialize;
+
+use za_prover::groth16;
+use za_prover::helper;
 
 // FLOW:
 // app -> request_fuction -> Deserialize
@@ -26,13 +29,13 @@ enum Request {
 
 fn dispatch(req: Request) -> String {
     match req {
-        Request::Prove(circuit_path,pk_path,inputs) => ser_rslt(call_prove(circuit_path,pk_path,inputs)),
+        Request::Prove(pk_path,inputs) => ser_rslt(call_prove(pk_path,inputs)),
     }
 }
 
-fn call_prove(circuit_path : String, pk_path : String, inputs : String) -> Result<String, String> {
-    match circom2_prover::groth16::flatten_json("main",&inputs) {
-        Ok(inputs) => match circom2_prover::groth16::prove_ram(&circuit_path,&pk_path,inputs) {
+fn call_prove(pk_path : String, inputs : String) -> Result<String, String> {
+    match groth16::flatten_json("main",&inputs) {
+        Ok(inputs) => match helper::prove(&circuit_path,&pk_path,inputs) {
             Ok(proof) => Ok(proof),
             Err(err) => Err(format!("{:?}",err))
         },
@@ -88,7 +91,7 @@ pub mod android {
     use self::jni::sys::jstring;
 
     #[no_mangle]
-    pub unsafe extern "C" fn Java_iden3_circom2_middleware_MiddleWare_result(
+    pub unsafe extern "C" fn Java_iden3_za_middleware_MiddleWare_result(
         env: JNIEnv,
         _: JClass,
         java_pattern: JString,

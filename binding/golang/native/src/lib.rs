@@ -1,7 +1,9 @@
 extern crate stderrlog;
-extern crate circom2_prover;
-extern crate circom2_compiler;
+extern crate za_prover;
 extern crate libc;
+
+use za_prover::groth16;
+use za_prover::groth16::helper;
 
 use std::ffi::{CStr, CString};
 
@@ -30,14 +32,14 @@ fn return_string(s : &str, buffer : *mut libc::c_char, size : libc::size_t, ret:
 #[no_mangle]
 pub extern "C" fn verbose(on: libc::c_int) {
    if on != 0 {
-        circom2_prover::groth16::bellman_verbose(true);
+        groth16::bellman_verbose(true);
         stderrlog::new()
             .verbosity(2)
             .timestamp(stderrlog::Timestamp::Off)
             .init()
             .unwrap();
    } else {
-        circom2_prover::groth16::bellman_verbose(false);
+        groth16::bellman_verbose(false);
         stderrlog::new()
             .quiet(true)
             .init()
@@ -61,12 +63,12 @@ pub extern "C" fn setup(
     let verifier_type = cstr_to_string(verifier_type);
 
     let verifier_type = match verifier_type.as_ref() {
-        "json" => circom2_prover::groth16::VerifierType::JSON,
-        "solidity" => circom2_prover::groth16::VerifierType::Solidity,
+        "json" => helper::VerifierType::JSON,
+        "solidity" => helper::VerifierType::Solidity,
         _ => return return_string("invalid validator type",error_buffer,error_buffer_size,ERR_CUSTOM)
     };
 
-    match circom2_prover::groth16::setup_ram(&circuit_path,&pk_path,verifier_type) {
+    match helper::setup(&circuit_path,&pk_path,verifier_type) {
         Ok(verifier) => {
             return_string(&verifier,verifier_buffer,verifier_buffer_size,ERR_NONE)
         }
@@ -78,7 +80,6 @@ pub extern "C" fn setup(
 
 #[no_mangle]
 pub extern "C" fn prove(
-    circuit_path:         *const libc::c_char,
     pk_path:              *const libc::c_char,
     inputs:               *const libc::c_char,
     proof_buffer:         *mut   libc::c_char,
@@ -87,12 +88,11 @@ pub extern "C" fn prove(
     error_buffer_size:    libc::size_t, 
 ) -> libc::c_int {
 
-    let circuit_path = cstr_to_string(circuit_path);
     let pk_path =  cstr_to_string(pk_path); 
     let inputs = cstr_to_string(inputs);
 
-    match circom2_prover::groth16::flatten_json("main",&inputs)
-    .and_then(|inputs| circom2_prover::groth16::prove_ram(&circuit_path,&pk_path,inputs)) {   
+    match groth16::flatten_json("main",&inputs)
+    .and_then(|inputs| helper::prove(&pk_path,inputs)) {   
         Ok(proof) => return_string(&proof,proof_buffer,proof_buffer_size,ERR_NONE),
         Err(err) => return_string(&format!("{:?}",err),error_buffer,error_buffer_size,ERR_CUSTOM)
     }
@@ -109,7 +109,7 @@ pub extern "C" fn verify(
     let verifying_key = cstr_to_string(verifying_key);
     let proof_with_inputs =  cstr_to_string(proof_with_inputs); 
 
-    match circom2_prover::groth16::verify_ram(&verifying_key,&proof_with_inputs) {
+    match helper::verify(&verifying_key,&proof_with_inputs) {
         Ok(true) => ERR_NONE,
         Ok(false) => ERR_VERIFICATION_FAILED,
         Err(err) => return_string(&format!("{:?}",err),error_buffer,error_buffer_size,ERR_CUSTOM),

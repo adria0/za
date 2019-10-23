@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use circom2_parser::ast::SignalType;
+use za_parser::ast::SignalType;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 

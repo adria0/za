@@ -1,17 +1,17 @@
 [package]
-name = "circom2py"
+name = "za2py"
 version = "0.1.0"
 edition = "2018"
 
 [lib]
-name = "circom2py"
+name = "za2py"
 crate-type = ["cdylib"]
 
 [dependencies]
 neon = "0.2.0"
 stderrlog = "0.4.1"
-circom2-prover = { path = "../../../prover" }
-circom2-compiler = { path = "../../../compiler" }
+za-prover = { path = "../../../prover" }
+za-compiler = { path = "../../../compiler" }
 
 [dependencies.cpython]
 version = "0.2"

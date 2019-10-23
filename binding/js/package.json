@@ -1,7 +1,7 @@
 {
-  "name": "circom2js",
+  "name": "za2js",
   "version": "0.1.0-alpha",
-  "description": "js bindings for circom2",
+  "description": "js bindings for za",
   "main": "lib/index.js",
   "author": "OKims",
   "directories": {

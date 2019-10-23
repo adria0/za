@@ -1,8 +1,8 @@
-use circom2_compiler::algebra::{LC, QEQ};
-use circom2_compiler::types::{Constraints, Signals};
+use za_compiler::algebra::{LC, QEQ};
+use za_compiler::types::{Constraints, Signals};
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use circom2_parser::ast::SignalType;
+use za_parser::ast::SignalType;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
 

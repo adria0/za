@@ -3,7 +3,7 @@ package main
 import "C"
 
 import (
-	circom "github.com/iden3/rust-circom-experimental/binding/golang"
+	za "github.com/iden3/za/binding/golang"
 	"io/ioutil"
 	"fmt"
 )
@@ -34,7 +34,7 @@ func main() {
 	`
 
 	assert(ioutil.WriteFile(circuitPath, []byte(circuit), 0644))
-	verifyingKey, err := circom.Setup(circuitPath,pkPath,circom.VerifierJSON,maxBuffer)
+	verifyingKey, err := za.Setup(circuitPath,pkPath,circom.VerifierJSON,maxBuffer)
 	assert(err)
 
 	inputs := map[string]string{
@@ -42,10 +42,10 @@ func main() {
 		"q": "3",
 	}
 
-	proofWithPublicInputs,err := circom.Prove(circuitPath,pkPath,inputs,maxBuffer)
+	proofWithPublicInputs,err := za.Prove(pkPath,inputs,maxBuffer)
 	assert(err)
 
-	ok,err := circom.Verify(verifyingKey,proofWithPublicInputs,maxBuffer)
+	ok,err := za.Verify(verifyingKey,proofWithPublicInputs,maxBuffer)
 	assert(err)
 	fmt.Println(ok)
 }
