@@ -16,13 +16,16 @@ pub fn optimize(
     irreductible_signals: &[SignalId],
 ) -> (Constraints, Vec<SignalId>) {
 
-    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
-    info!("Optimize L1 {} {}",constraints.len(),r1.len());
-    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
-    info!("Optimize L2 {} {}",constraints.len(),r1.len());
-    let (constraints, r1) = optimize_n(&constraints,irreductible_signals);
-    info!("Optimize L3 {} {}",constraints.len(),r1.len());
+    let (constraints, mut r1) = optimize_n(&constraints,irreductible_signals);
+    println!("Optimize L1 {} {}",constraints.len(),r1.len());
+    let (constraints, mut r2) = optimize_n(&constraints,irreductible_signals);
+    println!("Optimize L2 {} {}",constraints.len(),r2.len());
+    let (constraints, mut r3) = optimize_n(&constraints,irreductible_signals);
+    println!("Optimize L3 {} {}",constraints.len(),r3.len());
     
+    r1.append(&mut r2);
+    r1.append(&mut r3);
+
     (constraints, r1)
 }
 
@@ -221,7 +224,7 @@ fn test_optimize_eq() {
     cons.push(qeq1, None);
     cons.push(qeq2, None);
     cons.push(qeq3, None);
-    let (opt_cons, removed_signals) = optimize(&cons, &[sin, sout]);
+    let (opt_cons, removed_signals) = optimize_n(&cons, &[sin, sout]);
 
     let qeq_optimized = QEQ::new(
         LC::zero(),

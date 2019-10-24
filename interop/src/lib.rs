@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test {
-    use circom2_compiler::tester;
-    use circom2_parser::parse;
+    use za_compiler::tester;
+    use za_parser::parse;
     use std::fs::{read_dir, File};
     use std::io::prelude::*;
 
