@@ -3,8 +3,6 @@
 
 An experimental port of IDEN3 circom compiler to rust with embeeded bellman-bn128 prover.
 
-:heavy_exclamation_mark: **This is not the official and supported implementation of IDEN3 circom and circomlib circuits** please use [official version](http:/github.com/iden3/circom) instead
-
 ### Building 
 
 Install rust
