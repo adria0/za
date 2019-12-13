@@ -1,5 +1,5 @@
 # ZA!
-[![Build Status](https://travis-ci.org/iden3/za.svg?branch=master)](https://travis-ci.org/iden3/za)
+[![Build Status](https://travis-ci.org/adria0/za.svg?branch=master)](https://travis-ci.org/adria0/za)
 
 An experimental port of IDEN3 circom compiler to rust with embeeded bellman-bn128 prover.
 
