@@ -113,13 +113,15 @@ impl Evaluator {
     }
 
     pub fn eval_template(&mut self, scope: &mut Scope, template_name: &str) -> Result<()> {
-        scope.get(&template_name, |value| match value {
-            Some(ScopeValue::Template { stmt, path, .. }) => {
+        let err_not_found = || Error::NotFound(format!("template {}", template_name));
+
+        match &*scope.get(&template_name).ok_or_else(err_not_found)? {
+            ScopeValue::Template { stmt, path, .. } => {
                 let mut scope = Scope::new(true, Some(scope), path.to_string());
-                Ok(self.eval_statement_p(&mut scope, stmt)?)
+                Ok(self.eval_statement_p(&mut scope, &stmt)?)
             }
-            _ => Err(Error::NotFound(format!("template {}", template_name))),
-        })
+            _ => Err(err_not_found())
+        }
     }
 
     pub fn eval_file(&mut self, path: &str, filename: &str) -> Result<Scope> {
@@ -313,41 +315,45 @@ impl Evaluator {
         self.trace(meta, || format!("eval_function_call {}", name));
 
         let mut internal = || {
-            scope.root().get(name, |v| match v {
-                Some(ScopeValue::Function { args, stmt, path }) => {
-                    if args.len() != params.len() {
-                        return Err(Error::InvalidParameter(name.to_string()));
-                    }
+            let err_not_found = || Error::NotFound(format!("function {}", name));
 
-                    let mut func_scope = Scope::new(
-                        true,
-                        Some(scope),
-                        format!("{}:{}", self.current_file, meta.start),
-                    );
+            let function = scope.root().get(name).ok_or_else(err_not_found)?;
+            let (args,stmt,path) = match &*function {
+                ScopeValue::Function { args, stmt, path } => Ok((args,stmt,path)),
+                _ => Err(err_not_found())
+            }?;
 
-                    for n in 0..args.len() {
-                        let value = self.eval_expression_p(scope, &*params[n])?;
-                        func_scope.insert(args[n].clone(), ScopeValue::from(value));
-                    }
+            if args.len() != params.len() {
+                return Err(Error::InvalidParameter(name.to_string()));
+            }
 
-                    let mut new_current_function = Some(name.to_string());
-                    let mut new_current_file = path.to_string();
+            let mut func_scope = Scope::new(
+                true,
+                Some(scope),
+                format!("{}:{}", self.current_file, meta.start),
+            );
 
-                    std::mem::swap(&mut new_current_function, &mut self.current_function);
-                    std::mem::swap(&mut new_current_file, &mut self.current_file);
+            for n in 0..args.len() {
+                let value = self.eval_expression_p(scope, &*params[n])?;
+                func_scope.insert(args[n].clone(), ScopeValue::from(value));
+            }
 
-                    self.eval_statement_p(&mut func_scope, stmt)?;
+            let mut new_current_function = Some(name.to_string());
+            let mut new_current_file = path.to_string();
 
-                    std::mem::swap(&mut self.current_function, &mut new_current_function);
-                    std::mem::swap(&mut self.current_file, &mut new_current_file);
+            std::mem::swap(&mut new_current_function, &mut self.current_function);
+            std::mem::swap(&mut new_current_file, &mut self.current_file);
 
-                    func_scope
-                        .take_return()
-                        .ok_or_else(|| Error::BadFunctionReturn(name.to_string()))
-                }
-                _ => Err(Error::NotFound(format!("function {}", name))),
-            })
+            self.eval_statement_p(&mut func_scope, stmt)?;
+
+            std::mem::swap(&mut self.current_function, &mut new_current_function);
+            std::mem::swap(&mut self.current_file, &mut new_current_file);
+
+            func_scope
+                .take_return()
+                .ok_or_else(|| Error::BadFunctionReturn(name.to_string()))
         };
+
         let res = internal();
         self.register_error(meta, scope, res)
     }
@@ -369,122 +375,111 @@ impl Evaluator {
         self.trace(meta, || format!("eval_component_inst {}", component_name));
 
         let mut internal = || {
-            let (updated, pending_signals_count) = if let ExpressionP::FunctionCall {
-                name: template_name,
-                args: params,
-                ..
-            } = init
-            {
-                scope.root().get(template_name, |v| match v {
-                    Some(ScopeValue::Template {
-                        args, stmt, path, ..
-                    }) => {
-                        if args.len() != params.len() {
-                            return Err(Error::InvalidParameter(format!(
-                                "Invalid parameter count when instantiating {}",
-                                template_name
-                            )));
-                        }
-                        let mut evalargs = Vec::new();
-                        let mut all_pending_input_signals: Vec<SignalId> = Vec::new();
+            let (can_be_expanded_now,component) = {
+                let err_invalid_template = || Error::InvalidType(format!("component {} only can be initialized with existingtemplate",&component_name));
 
-                        // create a new scope, and put into arguments
-                        let mut template_scope = Scope::new(
-                            true,
-                            Some(scope),
-                            format!("{}:{}", self.current_file, meta.start),
-                        );
+                let (template_name,params) = match init {
+                    ExpressionP::FunctionCall { name, args, ..} => Ok((name,args)),
+                    _ => Err(err_invalid_template()),
+                }?;
+                let template = scope.root().get(template_name).ok_or_else(err_invalid_template)?;
+                let (args,stmt,path) = match &*template {
+                    ScopeValue::Template {args, stmt, path, ..} => Ok((args,stmt,path)),
+                    _ => Err(err_invalid_template())
+                }?;
 
-                        for n in 0..args.len() {
-                            let value = self.eval_expression_p(scope, &*params[n])?;
-                            evalargs.push(value.clone());
-                            template_scope.insert(args[n].clone(), ScopeValue::from(value));
-                        }
-
-                        let mut new_current_component = self.expand_full_name(component_name);
-                        let mut new_current_file = path.to_string();
-
-                        std::mem::swap(&mut new_current_file, &mut self.current_file);
-                        std::mem::swap(&mut new_current_component, &mut self.current_component);
-
-                        if let StatementP::Block { stmts, .. } = &**stmt {
-                            let signals = stmts
-                                .iter()
-                                .filter_map(|stmt| {
-                                    if let StatementP::Declaration {
-                                        meta,
-                                        name,
-                                        xtype: VariableType::Signal(xtype),
-                                        ..
-                                    } = &**stmt
-                                    {
-                                        Some((meta, name, xtype))
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .sorted_by(|(_, _, xtype1), (_, _, xtype2)| {
-                                    Ord::cmp(xtype1, xtype2)
-                                });
-
-                            for (meta, name, xtype) in signals {
-                                let mut pending_signals = self.eval_declaration_signals(
-                                    meta,
-                                    &mut template_scope,
-                                    *xtype,
-                                    name,
-                                )?;
-                                if *xtype == SignalType::PublicInput
-                                    || *xtype == SignalType::PrivateInput
-                                {
-                                    if !(component_name == "main"
-                                        && self.mode == Mode::GenConstraints)
-                                    {
-                                        all_pending_input_signals.append(&mut pending_signals);
-                                    }
-                                }
-                            }
-                        } else {
-                            unreachable!();
-                        }
-                        std::mem::swap(&mut self.current_file, &mut new_current_file);
-                        std::mem::swap(&mut self.current_component, &mut new_current_component);
-
-                        let all_pending_input_signals_count = all_pending_input_signals.len();
-
-                        Ok((
-                            ScopeValue::Component {
-                                template: template_name.to_string(),
-                                path: path.to_string(),
-                                args: evalargs,
-                                pending_inputs: all_pending_input_signals,
-                            },
-                            all_pending_input_signals_count,
-                        ))
-                    }
-                    _ => Err(Error::NotFound(format!("template {}", template_name))),
-                })
-            } else {
-                Err(Error::InvalidType(format!(
-                    "component {} only can be initialized with template",
-                    &component_name
-                )))
-            }?;
-
-            // update component
-            scope.get_mut(component_name, |v| {
-                if let Some(v) = v {
-                    *v = updated;
-                    Ok(())
-                } else {
-                    Err(Error::NotFound(component_name.to_string()))
+                if args.len() != params.len() {
+                    return Err(Error::InvalidParameter(format!(
+                        "Invalid parameter count when instantiating {}",
+                        template_name
+                    )));
                 }
-            })?;
+                let mut evalargs = Vec::new();
+                let mut all_pending_input_signals: Vec<SignalId> = Vec::new();
 
-            if pending_signals_count == 0 {
+                // create a new scope, and put into arguments
+                let mut template_scope = Scope::new(
+                    true,
+                    Some(scope),
+                    format!("{}:{}", self.current_file, meta.start),
+                );
+
+                for n in 0..args.len() {
+                    let value = self.eval_expression_p(scope, &*params[n])?;
+                    evalargs.push(value.clone());
+                    template_scope.insert(args[n].clone(), ScopeValue::from(value));
+                }
+
+                let mut new_current_component = self.expand_full_name(component_name);
+                let mut new_current_file = path.to_string();
+
+                std::mem::swap(&mut new_current_file, &mut self.current_file);
+                std::mem::swap(&mut new_current_component, &mut self.current_component);
+
+                if let StatementP::Block { stmts, .. } = &**stmt {
+                    let signals = stmts
+                        .iter()
+                        .filter_map(|stmt| {
+                            if let StatementP::Declaration {
+                                meta,
+                                name,
+                                xtype: VariableType::Signal(xtype),
+                                ..
+                            } = &**stmt
+                            {
+                                Some((meta, name, xtype))
+                            } else {
+                                None
+                            }
+                        })
+                        .sorted_by(|(_, _, xtype1), (_, _, xtype2)| {
+                            Ord::cmp(xtype1, xtype2)
+                        });
+
+                    for (meta, name, xtype) in signals {
+                        let mut pending_signals = self.eval_declaration_signals(
+                            meta,
+                            &mut template_scope,
+                            *xtype,
+                            name,
+                        )?;
+                        if *xtype == SignalType::PublicInput
+                            || *xtype == SignalType::PrivateInput
+                        {
+                            if !(component_name == "main"
+                                && self.mode == Mode::GenConstraints)
+                            {
+                                all_pending_input_signals.append(&mut pending_signals);
+                            }
+                        }
+                    }
+                } else {
+                    unreachable!();
+                }
+                std::mem::swap(&mut self.current_file, &mut new_current_file);
+                std::mem::swap(&mut self.current_component, &mut new_current_component);
+
+                (
+                    all_pending_input_signals.len() == 0,
+                    ScopeValue::Component {
+                        template: template_name.to_string(),
+                        path: path.to_string(),
+                        args: evalargs,
+                        pending_inputs: all_pending_input_signals,
+                    }
+                )
+            };
+            {
+                let mut scope_component = scope
+                    .get_mut(component_name)
+                    .ok_or_else(|| Error::NotFound(component_name.to_string()))?;
+                
+                *scope_component = component;
+            }
+            
+            if can_be_expanded_now {
                 self.eval_component_expand(meta, scope, component_name)?;
             }
-
             Ok(())
         };
         let res = internal();
@@ -498,48 +493,45 @@ impl Evaluator {
         component_name: &str,
     ) -> Result<()> {
         self.trace(meta, || format!("eval_component_expand {}", component_name));
-        scope.get(component_name, |c| match c {
-            Some(ScopeValue::Component {
-                template,
-                args: values,
-                ..
-            }) => {
-                scope.root().get(template, |t| match t {
-                    Some(ScopeValue::Template {
-                        args, stmt, path, ..
-                    }) => {
-                        // put arguments in scope
-                        let mut template_scope = Scope::new(
-                            true,
-                            Some(scope),
-                            format!("{}:{}", self.current_file, meta.start),
-                        );
-                        for n in 0..args.len() {
-                            template_scope
-                                .insert(args[n].clone(), ScopeValue::from(values[n].clone()));
-                        }
 
-                        // set new component & file scope
-                        let mut new_current_component = self.expand_full_name(component_name);
-                        let mut new_current_file = path.to_string();
-
-                        std::mem::swap(&mut new_current_file, &mut self.current_file);
-                        std::mem::swap(&mut new_current_component, &mut self.current_component);
-
-                        // execute the template
-                        self.eval_statement_p(&mut template_scope, stmt)?;
-
-                        // revert previous state
-                        std::mem::swap(&mut self.current_file, &mut new_current_file);
-                        std::mem::swap(&mut self.current_component, &mut new_current_component);
-
-                        Ok(())
-                    }
-                    _ => unreachable!(),
-                })
-            }
+        let component = scope.get(component_name).unwrap();
+        let (template,values) = match &*component {
+            ScopeValue::Component{template,args,..} => (template,args),
             _ => unreachable!(),
-        })
+        };
+
+        let template = scope.root().get(template).unwrap();
+        let (args,stmt,path) = match &*template {
+            ScopeValue::Template {args, stmt, path,..} => (args,stmt,path),
+            _ => unreachable!(),
+        };
+
+        // put arguments in scope
+        let mut template_scope = Scope::new(
+            true,
+            Some(scope),
+            format!("{}:{}", self.current_file, meta.start),
+        );
+        for n in 0..args.len() {
+            template_scope
+                .insert(args[n].clone(), ScopeValue::from(values[n].clone()));
+        }
+
+        // set new component & file scope
+        let mut new_current_component = self.expand_full_name(component_name);
+        let mut new_current_file = path.to_string();
+
+        std::mem::swap(&mut new_current_file, &mut self.current_file);
+        std::mem::swap(&mut new_current_component, &mut self.current_component);
+
+        // execute the template
+        self.eval_statement_p(&mut template_scope, stmt)?;
+
+        // revert previous state
+        std::mem::swap(&mut self.current_file, &mut new_current_file);
+        std::mem::swap(&mut self.current_component, &mut new_current_component);
+
+        Ok(())
     }
 
     fn eval_variable(
@@ -563,12 +555,11 @@ impl Evaluator {
             }
 
             // check if is a variable
-            scope.get(&var.name, |v| match v {
-                Some(ScopeValue::Algebra(a)) => Ok(ReturnValue::Algebra(a.clone())),
-
-                Some(ScopeValue::Bool(a)) => Ok(ReturnValue::Bool(*a)),
-
-                Some(ScopeValue::List(l)) => {
+            let scope_var = scope.get(&var.name).ok_or_else(|| Error::NotFound(name_sel.clone()))?;
+            match &*scope_var {
+                ScopeValue::Algebra(a) => Ok(ReturnValue::Algebra(a.clone())),
+                ScopeValue::Bool(a) => Ok(ReturnValue::Bool(*a)),
+                ScopeValue::List(l) => {
                     let mut indexes = Vec::new();
                     for sel in &var.sels {
                         match &**sel {
@@ -590,15 +581,11 @@ impl Evaluator {
                         List::List(l) => Ok(ReturnValue::List(List::List(l.clone()))),
                     }
                 }
-                None => Err(Error::InvalidType(format!(
-                    "'{}' is not a variable nor a signal",
-                    name_sel
-                ))),
-                _ => Err(Error::InvalidType(format!(
+                other => Err(Error::InvalidType(format!(
                     "expected valid value from variable '{}' (current is '{:?}') [nameselfull={}]",
-                    name_sel, &v, name_sel_full
+                    name_sel, other, name_sel_full
                 ))),
-            })
+            }
         };
 
         let res = internal();
@@ -958,16 +945,17 @@ impl Evaluator {
         }
 
         let mut internal = || {
+
             // check if we are instatianting a UndefComponent
             let var_sel = self.expand_selectors(scope, var, None)?;
 
-            let is_undef_component = scope.get(&var_sel, |v| {
-                if let Some(ScopeValue::UndefComponent) = v {
+            let is_undef_component = scope.get(&var_sel)
+                .map(|v| if let ScopeValue::UndefComponent = &*v {
                     true
                 } else {
                     false
-                }
-            });
+                })
+                .unwrap_or(false);
 
             if is_undef_component {
                 self.eval_component_inst(meta, &scope, &var_sel, expr)?;
@@ -1001,13 +989,11 @@ impl Evaluator {
                 scope.update(&var.name, ScopeValue::Algebra(value))?;
             } else if let SelectorP::Index { .. } = &*var.sels[0] {
                 let indexes = self.expand_indexes(scope, &var.sels)?;
-                scope.get_mut(&var.name, |v| {
-                    if let Some(ScopeValue::List(l)) = v {
-                        l.set(&value, &indexes)
-                    } else {
-                        Ok(())
-                    }
-                })?;
+                let mut scope_var = scope.get_mut(&var.name).ok_or_else(|| Error::NotFound(var.name.clone()))?;
+                match &mut *scope_var {
+                    ScopeValue::List(ref mut l) => l.set(&value, &indexes),
+                    _ => Err(Error::InvalidType(var.name.clone())),
+                }?;
             }
             Ok(())
         };
@@ -1108,7 +1094,7 @@ impl Evaluator {
                     }
 
                     if let Some(component_name) = self.signal_component(scope, signal)? {
-                        let needs_expansion = scope.get_mut(&component_name, |var| match var {
+                        let needs_expansion = scope.get_mut_f(&component_name, |var| match var {
                             Some(ScopeValue::Component { pending_inputs, .. }) => {
                                 if pending_inputs.len() > 0 {
                                     pending_inputs.retain(|s| *s != signal_id);
@@ -1509,13 +1495,25 @@ impl Evaluator {
                 );
                 return Ok(());
             }
+            if var.name == "SCOPE" {
+                println!("{:?}",scope);
+                return Ok(());
+            }
+            if var.name == "TRACEON" {
+                self.debug = true;
+                return Ok(());
+            }
+            if var.name == "TRACEOFF" {
+                self.debug = false;
+                return Ok(());
+            }
         }
-
+        
         if let ExpressionP::Variable { name: var, .. } = &expr {
             let full_name = self.expand_selectors(scope, var, None)?;
-
-            scope.get(&full_name, |var_value| match var_value {
-                Some(ScopeValue::Component { pending_inputs, .. }) => {
+            let scope_var = scope.get(&full_name).ok_or_else(|| Error::NotFound(full_name.to_string()))?;
+            match &*scope_var {
+                ScopeValue::Component { pending_inputs, .. } => {
                     let pending_inputs_str = pending_inputs
                         .iter()
                         .map(|signal| {
@@ -1534,9 +1532,9 @@ impl Evaluator {
                     processed = true;
                 }
                 _ => {}
-            });
+            }
         }
-
+        
         if !processed {
             let value = self.eval_expression_p(scope, expr)?;
             print!("{:?} ⇨ ", expr);
