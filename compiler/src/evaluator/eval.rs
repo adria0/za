@@ -113,13 +113,15 @@ impl Evaluator {
     }
 
     pub fn eval_template(&mut self, scope: &mut Scope, template_name: &str) -> Result<()> {
-        scope.get(&template_name, |value| match value {
-            Some(ScopeValue::Template { stmt, path, .. }) => {
+        let err_not_found = || Error::NotFound(format!("template {}", template_name));
+
+        match &*scope.get_ref(&template_name).ok_or_else(err_not_found)? {
+            ScopeValue::Template { stmt, path, .. } => {
                 let mut scope = Scope::new(true, Some(scope), path.to_string());
-                Ok(self.eval_statement_p(&mut scope, stmt)?)
+                Ok(self.eval_statement_p(&mut scope, &stmt)?)
             }
-            _ => Err(Error::NotFound(format!("template {}", template_name))),
-        })
+            _ => Err(err_not_found())
+        }
     }
 
     pub fn eval_file(&mut self, path: &str, filename: &str) -> Result<Scope> {
@@ -313,6 +315,8 @@ impl Evaluator {
         self.trace(meta, || format!("eval_function_call {}", name));
 
         let mut internal = || {
+            let (args,stmt,path)
+
             scope.root().get(name, |v| match v {
                 Some(ScopeValue::Function { args, stmt, path }) => {
                     if args.len() != params.len() {

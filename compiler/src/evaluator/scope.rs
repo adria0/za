@@ -65,6 +65,35 @@ pub struct Scope<'a> {
     pub vars: RefCell<HashMap<String, ScopeValue>>,
 }
 
+pub struct ScopeValueGuard<'a,'b> {
+    guard : std::cell::Ref<'a,HashMap<String, ScopeValue>>,
+    key : &'b str,
+}
+impl<'a,'b> std::ops::Deref for ScopeValueGuard<'a,'b> {
+    type Target = ScopeValue;
+
+    fn deref(&self) -> &Self::Target {
+        &self.guard.get(self.key).unwrap()
+    }
+}
+
+pub struct ScopeValueGuardMut<'a,'b> {
+    guard : std::cell::RefMut<'a,HashMap<String, ScopeValue>>,
+    key : &'b str,
+}
+impl<'a,'b> std::ops::Deref for ScopeValueGuardMut<'a,'b> {
+    type Target = ScopeValue;
+
+    fn deref(&self) -> &Self::Target {
+        &self.guard.get(self.key).unwrap()
+    }
+}
+impl<'a,'b> std::ops::DerefMut for ScopeValueGuardMut<'a,'b> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.guard.get_mut(self.key).unwrap()
+    }
+}
+
 impl<'a> Scope<'a> {
     pub fn new(start: bool, prev: Option<&'a Scope>, pos: String) -> Self {
         Self {
@@ -100,7 +129,35 @@ impl<'a> Scope<'a> {
         self.vars.borrow_mut().insert(k, v);
     }
 
-    pub fn get<F, R>(&self, key: &'a str, func: F) -> R
+    pub fn get_ref(&self, key: &'a str) -> Option<ScopeValueGuard> {
+        if self.vars.borrow().contains_key(key) {
+            Some(ScopeValueGuard { guard: self.vars.borrow(), key })
+        } else if !self.start {
+            if let Some(prev) = self.prev {
+                prev.get_ref(key)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_ref_mut(&self, key: &'a str) -> Option<ScopeValueGuardMut> {
+        if self.vars.borrow().contains_key(key) {
+            Some(ScopeValueGuardMut { guard: self.vars.borrow_mut(), key })
+        } else if !self.start {
+            if let Some(prev) = self.prev {
+                prev.get_ref_mut(key)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_1<F, R>(&self, key: &'a str, func: F) -> R
     where
         F: FnOnce(Option<&ScopeValue>) -> R,
     {
