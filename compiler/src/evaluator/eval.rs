@@ -1094,17 +1094,23 @@ impl Evaluator {
                     }
 
                     if let Some(component_name) = self.signal_component(scope, signal)? {
-                        let needs_expansion = scope.get_mut_f(&component_name, |var| match var {
-                            Some(ScopeValue::Component { pending_inputs, .. }) => {
-                                if pending_inputs.len() > 0 {
-                                    pending_inputs.retain(|s| *s != signal_id);
-                                    pending_inputs.len() == 0
-                                } else {
-                                    false
-                                }
+                        let err_not_found = || Error::NotFound(format!("signal not found '{}' in scope {:?}", signal.name, meta));
+                        
+                        let needs_expansion = {
+                            let mut component = scope.get_mut(&component_name).ok_or_else(err_not_found)?;
+                            match &mut *component {
+                                ScopeValue::Component { pending_inputs, .. } => {
+                                    if pending_inputs.len() > 0 {
+                                        pending_inputs.retain(|s| *s != signal_id);
+                                        Ok(pending_inputs.len() == 0)
+                                    } else {
+                                        Ok(false)
+                                    }
+                                },
+                                _ => Err(err_not_found())
                             }
-                            _ => panic!("signal not found '{}' in scope {:?}", signal.name, meta),
-                        });
+                        }?;
+
                         // if all input signals has been set, then expand the component
                         if needs_expansion {
                             self.trace(meta, || {

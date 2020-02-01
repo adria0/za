@@ -109,11 +109,19 @@ impl<'a> Scope<'a> {
     }
 
     pub fn root(&self) -> &Scope {
-        let mut this = self;
-        while let Some(prev) = this.prev {
-            this = prev;
+        let mut it = self;
+        while let Some(prev) = it.prev {
+            it = prev;
         }
-        this
+        it
+    }
+
+    pub fn start(&self) -> &Scope {
+        let mut it = self;
+        while !it.start {
+            it = it.prev.unwrap();
+        }
+        it
     }
 
     pub fn insert(&self, k: String, v: ScopeValue) -> Result<()> {
@@ -126,122 +134,58 @@ impl<'a> Scope<'a> {
     }
 
     pub fn get(&self, key: &'a str) -> Option<ScopeValueGuard> {
-        if self.vars.borrow().contains_key(key) {
-            Some(ScopeValueGuard { guard: self.vars.borrow(), key })
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.get(key)
-            } else {
-                None
-            }
-        } else {
-            None
+        let mut it = self;
+        loop {
+           if it.vars.borrow().contains_key(key) {
+              return Some(ScopeValueGuard { guard: it.vars.borrow(), key }) 
+           } else if it.prev.is_none() || it.start {
+               return None
+           }
+           it = it.prev.unwrap();
         }
     }
 
     pub fn get_mut(&self, key: &'a str) -> Option<ScopeValueGuardMut> {
-        if self.vars.borrow().contains_key(key) {
-            Some(ScopeValueGuardMut { guard: self.vars.borrow_mut(), key })
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.get_mut(key)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    pub fn get_f<F, R>(&self, key: &'a str, func: F) -> R
-    where
-        F: FnOnce(Option<&ScopeValue>) -> R,
-    {
-        if let Some(value) = self.vars.borrow().get(key) {
-            func(Some(value))
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.get_f(key, func)
-            } else {
-                func(None)
-            }
-        } else {
-            func(None)
-        }
-    }
-
-    pub fn get_mut_f<F, R>(&self, key: &'a str, func: F) -> R
-    where
-        F: FnOnce(Option<&mut ScopeValue>) -> R,
-    {
-        if let Some(value) = self.vars.borrow_mut().get_mut(key) {
-            func(Some(value))
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.get_mut_f(key, func)
-            } else {
-                func(None)
-            }
-        } else {
-            func(None)
+        let mut it = self;
+        loop {
+           if it.vars.borrow().contains_key(key) {
+              return Some(ScopeValueGuardMut { guard: it.vars.borrow_mut(), key }) 
+           } else if it.prev.is_none() || it.start {
+               return None
+           }
+           it = it.prev.unwrap();
         }
     }
 
     pub fn contains_key(&self, key: &'a str) -> bool {
-        if self.vars.borrow().contains_key(key) {
-            true
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.contains_key(key)
-            } else {
-                false
-            }
-        } else {
-            false
+        let mut it = self;
+        loop {
+           if it.vars.borrow().contains_key(key) {
+              return true; 
+           } else if it.prev.is_none() || it.start {
+              return false;
+           }
+           it = it.prev.unwrap();
         }
     }
 
     pub fn update(&self, key: &'a str, v: ScopeValue) -> Result<()> {
-        if self.vars.borrow().contains_key(key) {
-            self.vars.borrow_mut().insert(key.to_string(), v);
-            Ok(())
-        } else if !self.start {
-            if let Some(prev) = self.prev {
-                prev.update(key, v)
-            } else {
-                Err(Error::NotFound(key.to_string()))
-            }
-        } else {
-            Err(Error::NotFound(key.to_string()))
-        }
+        let mut scope_value = self.get_mut(key)
+            .ok_or_else(||Error::NotFound(key.to_string()))?; 
+        *scope_value = v;
+        Ok(())
     }
-
+        
     pub fn set_return(&self, v: ReturnValue) {
-        if self.start {
-            *self.return_value.borrow_mut() = Some(v);
-        } else if let Some(prev) = self.prev {
-            prev.set_return(v);
-        }
+        *self.start().return_value.borrow_mut() = Some(v);
     }
 
     pub fn take_return(&self) -> Option<ReturnValue> {
-        if self.start {
-            self.return_value.borrow_mut().take()
-        } else if let Some(prev) = self.prev {
-            prev.take_return()
-        } else {
-            None
-        }
+        self.start().return_value.borrow_mut().take()
     }
 
     pub fn has_return(&self) -> bool {
-        if self.start {
-            self.return_value.borrow().is_some()
-        } else if let Some(prev) = self.prev {
-            prev.has_return()
-        } else {
-            false
-        }
+        self.start().return_value.borrow().is_some()
     }
 }
 
@@ -279,14 +223,8 @@ mod test {
         assert_eq!("Bool(false)",format!("{:?}",&*sc.get("k1").unwrap()));
         
         sc.update("k1",ScopeValue::Bool(true))?;
+        assert_eq!("Bool(true)",format!("{:?}",&*sc.get("k1").unwrap()));
 
-        sc.get_mut_f("k1", |v| {
-            assert_eq!("Some(Bool(true))",format!("{:?}",v));
-            *v.unwrap() = ScopeValue::Bool(false);
-        });
-        sc.get_f("k1", |v| {
-            assert_eq!("Some(Bool(false))",format!("{:?}",v));
-        });
         Ok(())
     }
 

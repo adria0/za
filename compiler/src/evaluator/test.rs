@@ -5,6 +5,7 @@ mod test {
     use crate::algebra;
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::types::{Constraints, Signals};
+    use std::borrow::Cow;
 
     fn constrain_eq<'a>(
         eval: &Evaluator,
@@ -32,7 +33,11 @@ mod test {
         }
     }
     fn scope_eq(scope: &Scope, name: &str, value: &str) {
-        assert_eq!(scope.get_f(name, |v| format!("{:?}", v)), value);
+        let v = match scope.get(name) {
+            Some(v) => Cow::Owned(format!("Some({:?})",&*v)),
+            None => Cow::Borrowed("None"),
+        };
+        assert_eq!(value,v);
     }
 
     fn eval_generic(
