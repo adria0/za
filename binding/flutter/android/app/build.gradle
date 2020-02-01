@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "iden3.za.middleware"
+        applicationId "za.middleware"
         minSdkVersion 23
         targetSdkVersion 23
         versionCode 1

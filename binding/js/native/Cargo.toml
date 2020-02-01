@@ -1,7 +1,7 @@
 [package]
 name = "jsbinding"
 version = "0.1.0"
-authors = ["adriamb <adria@iden3.io>"]
+authors = ["Za! Authors"]
 license = "MIT"
 build = "build.rs"
 exclude = ["artifacts.json", "index.node"]

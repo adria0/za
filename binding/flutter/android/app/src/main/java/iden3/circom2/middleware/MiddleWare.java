@@ -1,4 +1,4 @@
-package iden3.za.middleware;
+package za.middleware;
 
 public class MiddleWare {
 

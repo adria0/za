@@ -1,7 +1,7 @@
 [package]
 name = "middleware"
 version = "0.1.1"
-authors = ["0Kims"]
+authors = ["Za! Authors"]
 description = "flutter bindings for za"
 publish = false
 

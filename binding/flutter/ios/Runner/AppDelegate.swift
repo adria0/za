@@ -14,7 +14,7 @@ import Foundation
     didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
     GeneratedPluginRegistrant.register(with: self);
     let controller : FlutterViewController = window?.rootViewController as! FlutterViewController;
-    let middlewareChannel = FlutterMethodChannel.init(name: "iden3.za/middleware",
+    let middlewareChannel = FlutterMethodChannel.init(name: "za/middleware",
                                                    binaryMessenger: controller);
     middlewareChannel.setMethodCallHandler({
       (call: FlutterMethodCall, result: FlutterResult) -> Void in

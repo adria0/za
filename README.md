@@ -1,7 +1,7 @@
 # ZA!
 [![Build Status](https://github.com/adria0/za/workflows/Rust/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3ARust)
 
-An experimental fork of circom compiler to rust with embeeded bellman-bn128 prover.
+An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover.
 
 ### Building 
 
@@ -13,7 +13,7 @@ Install additional dependencies, you may need to install the `clang` `build-esse
 
 Clone the repo
 
-`git clone https://github.com/iden3/za.git`
+`git clone https://github.com/adria0/za.git`
 
 Build
 
@@ -25,7 +25,7 @@ The final binary will be in `target/release/za`
 
 #### Generating trusted setup
 
-`za setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol>`
+`za setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol> --verifiertype <solidity|json>`
 
 - `circuit.circom` is an input file with the `main` component that specifies the circuit
 - `proving.key` if a generated output with the key required to generate proofs
@@ -46,9 +46,8 @@ component main = T();
 
 #### Generating a proof
 
-`za prove --circuit <circuit.circom> --input <input.json> --pk <proving.key> --proof <proof.json>`
+`za prove --input <input.json> --pk <proving.key> --proof <proof.json>`
 
-- `circuit.circom` is an input file with the `main` component that specifies the circuit
 - `input.json` is an input file with the required input signals to generate the full witness
 - `proving.key` if an input file with the key required to generate proofs
 - `proof.json`  the input required to the smartcontract to verify the proof

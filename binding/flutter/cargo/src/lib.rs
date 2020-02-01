@@ -91,7 +91,7 @@ pub mod android {
     use self::jni::sys::jstring;
 
     #[no_mangle]
-    pub unsafe extern "C" fn Java_iden3_za_middleware_MiddleWare_result(
+    pub unsafe extern "C" fn Java_za_middleware_MiddleWare_result(
         env: JNIEnv,
         _: JClass,
         java_pattern: JString,

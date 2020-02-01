@@ -3,7 +3,7 @@ package main
 import "C"
 
 import (
-	za "github.com/iden3/za/binding/golang"
+	za "github.com/adria0/za/binding/golang"
 	"io/ioutil"
 	"fmt"
 )

@@ -26,7 +26,7 @@ class Command {
 
 
 class MiddleWare {
-  static const MethodChannel middlewareChannel = const MethodChannel('iden3.za/middleware');
+  static const MethodChannel middlewareChannel = const MethodChannel('za/middleware');
 
   static Future<String> execute(Command cmd) async {
     String middleware;
