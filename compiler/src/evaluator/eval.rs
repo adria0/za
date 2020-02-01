@@ -335,7 +335,7 @@ impl Evaluator {
 
             for n in 0..args.len() {
                 let value = self.eval_expression_p(scope, &*params[n])?;
-                func_scope.insert(args[n].clone(), ScopeValue::from(value));
+                func_scope.insert(args[n].clone(), ScopeValue::from(value))?;
             }
 
             let mut new_current_function = Some(name.to_string());
@@ -360,7 +360,7 @@ impl Evaluator {
 
     fn eval_component_decl(&mut self, _meta: &Meta, scope: &Scope, name: &VariableP) -> Result<()> {
         for selector_name in self.generate_selectors(scope, &name)? {
-            scope.insert(selector_name, ScopeValue::UndefComponent);
+            scope.insert(selector_name, ScopeValue::UndefComponent)?;
         }
         Ok(())
     }
@@ -407,7 +407,7 @@ impl Evaluator {
                 for n in 0..args.len() {
                     let value = self.eval_expression_p(scope, &*params[n])?;
                     evalargs.push(value.clone());
-                    template_scope.insert(args[n].clone(), ScopeValue::from(value));
+                    template_scope.insert(args[n].clone(), ScopeValue::from(value))?;
                 }
 
                 let mut new_current_component = self.expand_full_name(component_name);
@@ -514,7 +514,7 @@ impl Evaluator {
         );
         for n in 0..args.len() {
             template_scope
-                .insert(args[n].clone(), ScopeValue::from(values[n].clone()));
+                .insert(args[n].clone(), ScopeValue::from(values[n].clone()))?;
         }
 
         // set new component & file scope
@@ -875,12 +875,12 @@ impl Evaluator {
                     match var.sels.len() {
                         0 => {
                             // var a;
-                            scope.insert(var.name.clone(), ScopeValue::UndefVar);
+                            scope.insert(var.name.clone(), ScopeValue::UndefVar)?;
                             Ok(())
                         }
                         _ => {
                             let sizes = self.expand_indexes(scope, &var.sels)?;
-                            scope.insert(var.name.clone(), ScopeValue::List(List::new(&sizes)));
+                            scope.insert(var.name.clone(), ScopeValue::List(List::new(&sizes)))?;
                             Ok(())
                         }
                     }
@@ -890,15 +890,15 @@ impl Evaluator {
                     let value = self.eval_expression_p(&scope, &*init.1)?;
                     match (init.0, value) {
                         (Opcode::Assig, ReturnValue::Algebra(n)) => {
-                            scope.insert(var.name.clone(), ScopeValue::Algebra(n));
+                            scope.insert(var.name.clone(), ScopeValue::Algebra(n))?;
                             Ok(())
                         }
                         (Opcode::Assig, ReturnValue::Bool(b)) => {
-                            scope.insert(var.name.clone(), ScopeValue::Bool(b));
+                            scope.insert(var.name.clone(), ScopeValue::Bool(b))?;
                             Ok(())
                         }
                         (Opcode::Assig, ReturnValue::List(a)) => {
-                            scope.insert(var.name.clone(), ScopeValue::List(a));
+                            scope.insert(var.name.clone(), ScopeValue::List(a))?;
                             Ok(())
                         }
                         _ => Err(Error::InvalidType(format!(
@@ -1294,7 +1294,7 @@ impl Evaluator {
                     stmt: Box::new(stmt.clone()),
                     path: self.current_file.to_string(),
                 },
-            );
+            )?;
             Ok(())
         };
         let res = internal();
@@ -1318,7 +1318,7 @@ impl Evaluator {
                     stmt: Box::new(stmt.clone()),
                     path: self.current_file.clone(),
                 },
-            );
+            )?;
             Ok(())
         };
         let res = internal();

@@ -56,6 +56,7 @@ impl From<algebra::Value> for ScopeValue {
     }
 }
 
+#[derive(Clone)]
 pub struct Scope<'a> {
     start: bool,
     prev: Option<&'a Self>,
@@ -106,15 +107,6 @@ impl<'a> Scope<'a> {
             vars: RefCell::new(HashMap::new()),
         }
     }
-    pub fn deep_clone(&self) -> Self {
-        Self {
-            start: self.start,
-            prev: self.prev.clone(),
-            pos: self.pos.clone(),
-            return_value: self.return_value.clone(),
-            vars: self.vars.clone(),
-        }
-    }
 
     pub fn root(&self) -> &Scope {
         let mut this = self;
@@ -124,11 +116,13 @@ impl<'a> Scope<'a> {
         this
     }
 
-    pub fn insert(&self, k: String, v: ScopeValue) {
+    pub fn insert(&self, k: String, v: ScopeValue) -> Result<()> {
         if self.vars.borrow().contains_key(&k) {
-            panic!("cannot insert into scope a duplicated key '{}'", k);
+            Err(Error::AlreadyExists(k.to_string()))
+        } else {
+            self.vars.borrow_mut().insert(k, v);
+            Ok(())
         }
-        self.vars.borrow_mut().insert(k, v);
     }
 
     pub fn get(&self, key: &'a str) -> Option<ScopeValueGuard> {
@@ -276,12 +270,92 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_scope_basic() {
+    fn test_scope_basic() -> Result<()>{
         let sc = Scope::new(true, None, "sc1".to_string());
-        sc.insert("k1".to_string(), ScopeValue::Bool(true));
+        sc.insert("k1".to_string(), ScopeValue::Bool(true))?;
         
         assert_eq!("Bool(true)",format!("{:?}",&*sc.get("k1").unwrap()));
         *sc.get_mut("k1").unwrap() = ScopeValue::Bool(false);
         assert_eq!("Bool(false)",format!("{:?}",&*sc.get("k1").unwrap()));
+        
+        sc.update("k1",ScopeValue::Bool(true))?;
+
+        sc.get_mut_f("k1", |v| {
+            assert_eq!("Some(Bool(true))",format!("{:?}",v));
+            *v.unwrap() = ScopeValue::Bool(false);
+        });
+        sc.get_f("k1", |v| {
+            assert_eq!("Some(Bool(false))",format!("{:?}",v));
+        });
+        Ok(())
     }
+
+    #[test]
+    fn test_no_duplicated_key() -> Result<()> {
+        let sc = Scope::new(true, None, "sc1".to_string());
+
+        sc.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        assert_eq!(true,sc.insert("k1".to_string(), ScopeValue::Bool(false)).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_shadowing_allowed() -> Result<()> {
+        let sc1 = Scope::new(true, None, "sc1".to_string());
+        sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        let sc2 = Scope::new(false, Some(&sc1), "sc2".to_string());
+        sc2.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_deeper_var_in_same_start() -> Result<()> {
+        let sc1 = Scope::new(true, None, "sc1".to_string());
+        sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        let sc2 = Scope::new(false, Some(&sc1), "sc2".to_string());
+        sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
+        
+        assert_eq!(true, sc2.contains_key("k1"));                
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_find_deeper_var_in_another_start() -> Result<()> {
+        let sc1 = Scope::new(true, None, "sc1".to_string());
+        sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        let sc2 = Scope::new(true, Some(&sc1), "sc2".to_string());
+        sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
+        
+        assert_eq!(false, sc2.contains_key("k1"));        
+        assert_eq!(true, sc2.root().contains_key("k1"));        
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_returns() -> Result<()> {
+        let sc1 = Scope::new(true, None, "sc1".to_string());
+        sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
+        let sc2 = Scope::new(false, Some(&sc1), "sc2".to_string());
+        sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
+        
+        assert_eq!(false, sc1.has_return());        
+        assert_eq!(false, sc2.has_return());        
+
+        sc2.set_return(ReturnValue::Bool(true));
+        assert_eq!(true, sc1.has_return());        
+        assert_eq!(true, sc2.has_return());        
+
+        let ret = sc2.take_return();
+        assert_eq!(false, sc1.has_return());        
+        assert_eq!(false, sc2.has_return());        
+
+        assert_eq!("Some(Bool(true))",format!("{:?}",ret));
+
+
+        Ok(())
+    }
+
 }

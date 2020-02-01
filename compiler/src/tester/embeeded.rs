@@ -47,7 +47,7 @@ pub fn run_embeeded_tests(
                     Constraints::default(),
                 );
                 ev_witness.debug = debug;
-                if let Err(err) = ev_witness.eval_template(&mut scan_scope.deep_clone(), &test_name)
+                if let Err(err) = ev_witness.eval_template(&mut scan_scope.clone(), &test_name)
                 {
                     dump_error(&ev_witness, &format!("{:?}", &err));
                     return Err(Error::Evaluator(err));
@@ -75,7 +75,7 @@ pub fn run_embeeded_tests(
                     );
                     ev_constraints.debug = debug;
                     if let Err(err) =
-                        ev_constraints.eval_template(&mut scan_scope.deep_clone(), &test_name)
+                        ev_constraints.eval_template(&mut scan_scope.clone(), &test_name)
                     {
                         dump_error(&ev_constraints, &format!("{:?}", &err));
                         return Err(Error::Evaluator(err));
