@@ -65,6 +65,7 @@ pub struct Scope<'a> {
     pub vars: RefCell<HashMap<String, ScopeValue>>,
 }
 
+#[derive(Debug)]
 pub struct ScopeValueGuard<'a,'b> {
     guard : std::cell::Ref<'a,HashMap<String, ScopeValue>>,
     key : &'b str,
@@ -77,6 +78,7 @@ impl<'a,'b> std::ops::Deref for ScopeValueGuard<'a,'b> {
     }
 }
 
+#[derive(Debug)]
 pub struct ScopeValueGuardMut<'a,'b> {
     guard : std::cell::RefMut<'a,HashMap<String, ScopeValue>>,
     key : &'b str,
@@ -129,12 +131,12 @@ impl<'a> Scope<'a> {
         self.vars.borrow_mut().insert(k, v);
     }
 
-    pub fn get_ref(&self, key: &'a str) -> Option<ScopeValueGuard> {
+    pub fn get(&self, key: &'a str) -> Option<ScopeValueGuard> {
         if self.vars.borrow().contains_key(key) {
             Some(ScopeValueGuard { guard: self.vars.borrow(), key })
         } else if !self.start {
             if let Some(prev) = self.prev {
-                prev.get_ref(key)
+                prev.get(key)
             } else {
                 None
             }
@@ -143,12 +145,12 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn get_ref_mut(&self, key: &'a str) -> Option<ScopeValueGuardMut> {
+    pub fn get_mut(&self, key: &'a str) -> Option<ScopeValueGuardMut> {
         if self.vars.borrow().contains_key(key) {
             Some(ScopeValueGuardMut { guard: self.vars.borrow_mut(), key })
         } else if !self.start {
             if let Some(prev) = self.prev {
-                prev.get_ref_mut(key)
+                prev.get_mut(key)
             } else {
                 None
             }
@@ -157,7 +159,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn get_1<F, R>(&self, key: &'a str, func: F) -> R
+    pub fn get_f<F, R>(&self, key: &'a str, func: F) -> R
     where
         F: FnOnce(Option<&ScopeValue>) -> R,
     {
@@ -165,7 +167,7 @@ impl<'a> Scope<'a> {
             func(Some(value))
         } else if !self.start {
             if let Some(prev) = self.prev {
-                prev.get(key, func)
+                prev.get_f(key, func)
             } else {
                 func(None)
             }
@@ -174,7 +176,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    pub fn get_mut<F, R>(&self, key: &'a str, func: F) -> R
+    pub fn get_mut_f<F, R>(&self, key: &'a str, func: F) -> R
     where
         F: FnOnce(Option<&mut ScopeValue>) -> R,
     {
@@ -182,7 +184,7 @@ impl<'a> Scope<'a> {
             func(Some(value))
         } else if !self.start {
             if let Some(prev) = self.prev {
-                prev.get_mut(key, func)
+                prev.get_mut_f(key, func)
             } else {
                 func(None)
             }
@@ -266,5 +268,20 @@ impl<'a> Debug for Scope<'a> {
             writeln!(fmt, "{:?}", prev)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_scope_basic() {
+        let sc = Scope::new(true, None, "sc1".to_string());
+        sc.insert("k1".to_string(), ScopeValue::Bool(true));
+        
+        assert_eq!("Bool(true)",format!("{:?}",&*sc.get("k1").unwrap()));
+        *sc.get_mut("k1").unwrap() = ScopeValue::Bool(false);
+        assert_eq!("Bool(false)",format!("{:?}",&*sc.get("k1").unwrap()));
     }
 }

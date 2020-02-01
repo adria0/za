@@ -32,7 +32,7 @@ mod test {
         }
     }
     fn scope_eq(scope: &Scope, name: &str, value: &str) {
-        assert_eq!(scope.get(name, |v| format!("{:?}", v)), value);
+        assert_eq!(scope.get_f(name, |v| format!("{:?}", v)), value);
     }
 
     fn eval_generic(
@@ -559,7 +559,7 @@ mod test {
     }
 
     #[test]
-    fn test_variable_array() -> Result<()> {
+    fn test_variable_array_simple() -> Result<()> {
         let (_, scope) = eval_constraint(
             "
             function f() {
