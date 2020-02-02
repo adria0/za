@@ -4,7 +4,7 @@
 [![Clippy](https://github.com/adria0/za/workflows/Clippy/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3AClippy)
 [![Rustfmt](https://github.com/adria0/za/workflows/Rustfmt/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3ARustfmt)
 
-An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover.
+An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover, initially created when I was working in iden3.io. Since now is discontinued I forked it just to lean-by-doing. 
 
 ### Building 
 
