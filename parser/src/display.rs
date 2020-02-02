@@ -1,3 +1,5 @@
+#![allow(clippy::vec_box)]
+
 use super::ast::*;
 use std::fmt::{Debug, Error, Formatter};
 
@@ -58,14 +60,14 @@ impl Debug for StatementP {
         };
 
         let sl = |l: &Vec<Box<StatementP>>| {
-            l.into_iter()
+            l.iter()
                 .map(|arg| format!("{:?}", arg))
                 .collect::<Vec<String>>()
                 .join(" ")
         };
 
         let comma_concat = |l: &Vec<Box<ExpressionP>>| {
-            l.into_iter()
+            l.iter()
                 .map(|arg| format!("{:?}", arg))
                 .collect::<Vec<String>>()
                 .join(",")
@@ -141,7 +143,7 @@ impl Debug for SelectorP {
 impl Debug for VariableP {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         let concat = |l: &Vec<Box<SelectorP>>| {
-            l.into_iter()
+            l.iter()
                 .map(|arg| format!("{:?}", arg))
                 .collect::<Vec<String>>()
                 .join("")
@@ -155,7 +157,7 @@ impl Debug for ExpressionP {
         use self::ExpressionP::*;
 
         let comma_concat = |l: &Vec<Box<ExpressionP>>| {
-            l.into_iter()
+            l.iter()
                 .map(|arg| format!("{:?}", arg))
                 .collect::<Vec<String>>()
                 .join(",")

@@ -23,6 +23,13 @@ use super::error;
 type G1JsonStruct = [String; 2];
 type G2JsonStruct = [[String; 2]; 2];
 
+pub struct ProvingKey {
+    pub asts: Vec<BodyElementP>,
+    pub constraints: Constraints,
+    pub ignore_signals: Vec<SignalId>,
+    pub params :  Parameters<Bn256>,
+}
+
 fn str_to_fq(s: &str) -> Result<pairing::bn256::Fq> {
     let fsstr = FS::parse(&s)?.to_string();
     Ok(pairing::bn256::Fq::from_str(&fsstr).unwrap())
@@ -74,7 +81,7 @@ fn g2_bellman_to_jstruct(
 pub struct JsonProofAndInput(G1JsonStruct, G2JsonStruct, G1JsonStruct, Vec<String>);
 
 impl JsonProofAndInput {
-    pub fn from_bellman(proof: Proof<Bn256>, public_input: Vec<(String, FS)>) -> Result<Self> {
+    pub fn json_from_bellman(proof: Proof<Bn256>, public_input: Vec<(String, FS)>) -> Result<Self> {
         Ok(JsonProofAndInput(
             g1_bellman_to_jstruct(&proof.a)?,
             g2_bellman_to_jstruct(&proof.b)?,
@@ -86,7 +93,7 @@ impl JsonProofAndInput {
         ))
     }
 
-    pub fn to_bellman(json: &str) -> Result<(Proof<Bn256>, Vec<pairing::bn256::Fr>)> {
+    pub fn json_to_bellman(json: &str) -> Result<(Proof<Bn256>, Vec<pairing::bn256::Fr>)> {
         let JsonProofAndInput(a, b, c, inputs) = serde_json::from_str(json)?;
         let proof = Proof {
             a: g1_jstruct_to_bellman(&a)?,
@@ -105,7 +112,7 @@ impl JsonProofAndInput {
 
     pub fn write<W: Write>(&self, out: &mut W) -> Result<()> {
         let json = serde_json::to_string(self)?;
-        out.write(json.as_bytes())?;
+        out.write_all(json.as_bytes())?;
         Ok(())
     }
 }
@@ -163,7 +170,7 @@ impl JsonVerifyingKey {
             delta_g1: g1_jstruct_to_bellman(&self.delta_g1)?,
             delta_g2: g2_jstruct_to_bellman(&self.delta_g2)?,
             gamma_g2: g2_jstruct_to_bellman(&self.gamma_g2)?,
-            ic: ic,
+            ic,
         })
     }
 
@@ -205,7 +212,7 @@ pub fn lc_to_bellman<E: Engine>(
 
 pub fn write_pk<W: Write>(
     mut pk: W,
-    asts: &Vec<BodyElementP>,
+    asts: &[BodyElementP],
     constraints: &Constraints,
     ignore_signals: &[SignalId],
     params: &Parameters<Bn256>,
@@ -221,13 +228,13 @@ pub fn write_pk<W: Write>(
     for i in 0..constraints.len() {
         let qeq = bincode::serialize(&constraints.get(i))?;
         pk.write_u32::<BigEndian>(qeq.len() as u32)?;
-        pk.write(&qeq)?;
+        pk.write_all(&qeq)?;
     }
 
     // write signal aliases
     pk.write_u32::<BigEndian>(ignore_signals.len() as u32)?;
-    for i in 0..ignore_signals.len() {
-        pk.write_u32::<BigEndian>(ignore_signals[i] as u32)?;
+    for signal in ignore_signals {
+        pk.write_u32::<BigEndian>(*signal as u32)?;
     }
 
     // write signalid
@@ -235,14 +242,13 @@ pub fn write_pk<W: Write>(
     Ok(())
 }
 
-pub fn read_pk<R: Read>(mut pk: R) -> Result<(Vec<BodyElementP>,Constraints, Vec<SignalId>, Parameters<Bn256>)> {
+pub fn read_pk<R: Read>(mut pk: R) -> Result<ProvingKey> {
     let mut buffer = Vec::with_capacity(1024);
     let mut constraints = Constraints::default();
 
     // read asts
     let bytes = pk.read_u32::<BigEndian>()?;
-    let mut ast_serial = Vec::with_capacity(bytes as usize);
-    ast_serial.resize(bytes as usize, 0);
+    let mut ast_serial = vec![0;bytes as usize];
     pk.read_exact(&mut ast_serial)?;
     let asts = bincode::deserialize(&ast_serial)?;
 
@@ -269,7 +275,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<(Vec<BodyElementP>,Constraints, Vec
     // read proving key
     let params: Parameters<Bn256> = Parameters::read(pk, true)?;
 
-    Ok((asts,constraints, ignore_signals, params))
+    Ok(ProvingKey{asts,constraints, ignore_signals, params})
 }
 
 pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {

@@ -12,7 +12,7 @@ use std::ops::{Add, AddAssign, BitAnd, BitOr, BitXor, Div, Mul, Neg, Rem, Shl, S
 use super::error::{Error, Result};
 use super::AlgZero;
 
-const BABYJUB_FIELD: &'static str =
+const BABYJUB_FIELD: &str =
     "21888242871839275222246405745257275088548364400416034343698204186575808495617";
 
 lazy_static! {
@@ -273,7 +273,7 @@ impl<'a> Shl<&'a FS> for &'a FS {
     type Output = Result<FS>;
     fn shl(self, rhs: &'a FS) -> Result<FS> {
         if let Some(rhs_usize) = rhs.0.to_usize() {
-            return Ok(FS::from(&self.0 << rhs_usize));
+            Ok(FS::from(&self.0 << rhs_usize))
         } else {
             Err(Error::InvalidOperation(
                 "Only can shl on 64 bit values".to_string(),
@@ -287,7 +287,7 @@ impl<'a> Shr<&'a FS> for &'a FS {
     type Output = Result<FS>;
     fn shr(self, rhs: &'a FS) -> Result<FS> {
         if let Some(rhs_usize) = rhs.0.to_usize() {
-            return Ok(FS::from(&self.0 >> rhs_usize));
+            Ok(FS::from(&self.0 >> rhs_usize))
         } else {
             Err(Error::InvalidOperation(
                 "Only can shr on 64 bit values".to_string(),

@@ -1,6 +1,7 @@
 # ZA!
 [![Build Status](https://github.com/adria0/za/workflows/Rust/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3ARust)
 [![Code Coverage](https://github.com/adria0/za/workflows/Code%20Coverage/badge.svg)](https://codecov.io/gh/adria0/za)
+[![Clippy](https://github.com/adria0/za/workflows/Clippy/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3AClippy)
 
 An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover.
 

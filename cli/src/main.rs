@@ -191,18 +191,18 @@ fn main() {
     let cmd = Command::from_args();
     match cmd {
         Command::Compile { circuit, print, cuda } => {
-            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
+            let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
             compile_ram(&circuit,print,cuda)
         }
         Command::Setup { circuit, pk, verifier_file, verifier_type } => {
-            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
-            let pk = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
-            let verifier_type = match verifier_type.unwrap_or(DEFAULT_VERIFIER_TYPE.to_string()).as_ref() {
+            let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
+            let pk = pk.unwrap_or_else(|| DEFAULT_PROVING_KEY.to_string());
+            let verifier_type = match verifier_type.unwrap_or_else(|| DEFAULT_VERIFIER_TYPE.to_string()).as_ref() {
                 VERIFIER_TYPE_JSON => groth16::helper::VerifierType::JSON,
                 VERIFIER_TYPE_SOLIDITY => groth16::helper::VerifierType::Solidity,
                 _ => panic!("unknown verifier type")
             };
-            let verifier_file = verifier_file.unwrap_or(
+            let verifier_file = verifier_file.unwrap_or_else(||
                 match verifier_type {
                     groth16::helper::VerifierType::Solidity => DEFAULT_VERIFIER_SOLIDITY,
                     groth16::helper::VerifierType::JSON => DEFAULT_VERIFIER_JSON,
@@ -218,8 +218,8 @@ fn main() {
 
         }
         Command::Test { circuit, debug, outputwitness, skipcompile, prefix } => {
-            let circuit = circuit.unwrap_or(DEFAULT_CIRCUIT.to_string());
-            let prefix = prefix.unwrap_or("".to_string());
+            let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
+            let prefix = prefix.unwrap_or_else(|| "".to_string());
             match tester::run_embeeded_tests(".", &circuit, debug, skipcompile, outputwitness, &prefix) {
                 Ok(Some((eval, err))) => dump_error(&eval, &err),
                 Err(err) => warn!("Error: {:?}", err),
@@ -227,9 +227,9 @@ fn main() {
             }
         }
         Command::Prove { pk, input, proof } => {
-            let pk_path = pk.unwrap_or(DEFAULT_PROVING_KEY.to_string());
-            let input_path = input.unwrap_or(DEFAULT_INPUT.to_string());
-            let proof_path = proof.unwrap_or(DEFAULT_PROOF.to_string());
+            let pk_path = pk.unwrap_or_else(|| DEFAULT_PROVING_KEY.to_string());
+            let input_path = input.unwrap_or_else(|| DEFAULT_INPUT.to_string());
+            let proof_path = proof.unwrap_or_else(|| DEFAULT_PROOF.to_string());
 
             let mut inputs_json = String::new();
             File::open(input_path)

@@ -4,7 +4,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lalrpop_util;
 
-lalrpop_mod!(pub lang); // synthesized by LALRPOP
+lalrpop_mod!(#[allow(clippy::all)] pub lang); // synthesized by LALRPOP
 
 pub mod ast;
 pub mod display;
