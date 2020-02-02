@@ -1,10 +1,16 @@
-# ZA!
-[![Build Status](https://github.com/adria0/za/workflows/Rust/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3ARust)
-[![Code Coverage](https://github.com/adria0/za/workflows/Code%20Coverage/badge.svg)](https://codecov.io/gh/adria0/za)
-[![Clippy](https://github.com/adria0/za/workflows/Clippy/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3AClippy)
-[![Rustfmt](https://github.com/adria0/za/workflows/Rustfmt/badge.svg)](https://github.com/adria0/za/actions?query=workflow%3ARustfmt)
+<h1 align="center">Za!</h1>
 
-An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover, initially created when I was working in iden3.io. Since now is discontinued I forked it just to lean-by-doing. 
+<p align="center">
+    <a href="https://github.com/adria0/za/actions?query=workflow%3ARust"><img src="https://github.com/adria0/za/actions?query=workflow%3ARust"></a>
+    <a href="https://codecov.io/gh/adria0/za"><img src="https://github.com/adria0/za/workflows/Code%20Coverage/badge.svg"></a>
+    <a href="https://github.com/adria0/za/actions?query=workflow%3AClippy"><img src="https://github.com/adria0/za/workflows/Clippy/badge.svg"></a>
+    <a href="https://github.com/adria0/za/actions?query=workflow%3ARustfmt"><img src="https://github.com/adria0/za/workflows/Rustfmt/badge.svg"></a>
+</p>
+
+# ZA! Zk-Snark toolset
+An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover. I created it to PoC how to port the existing javascript compiler to rust when I was working in iden3. Since now is discontinued I forked it from https://www.github.com/iden3/za just to lean-by-doing. 
+
+**WARNING**: This is a proof-of-concept prototype, and in particular has not received careful code review.
 
 ### Building 
 
