@@ -1,5 +1,5 @@
-use crate::algebra::{FS,LC,QEQ,Value,AlgZero};
 use super::signal::Signals;
+use crate::algebra::{AlgZero, Value, FS, LC, QEQ};
 
 pub struct Constraints(Vec<(QEQ, Option<String>)>);
 
@@ -9,7 +9,7 @@ impl Default for Constraints {
     }
 }
 
-impl Constraints  {
+impl Constraints {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -26,10 +26,7 @@ impl Constraints  {
         self.0.push((qeq, debug));
         self.0.len() - 1
     }
-    pub fn satisfies_with_signals(
-        &self,
-        signals: &Signals,
-    ) -> Result<(),String> {
+    pub fn satisfies_with_signals(&self, signals: &Signals) -> Result<(), String> {
         let eval_lc = |lc: &LC| {
             lc.0.iter().fold(Ok(FS::zero()), |acc, (s, v)| {
                 let s_val = if *s == 0 {
@@ -38,12 +35,7 @@ impl Constraints  {
                     let s_val = &*signals.get_by_id(*s).unwrap();
                     match &s_val.value {
                         Some(Value::FieldScalar(fs)) => fs.clone(),
-                        _ => {
-                            return Err(format!(
-                                "signal bad value {:?}",
-                                s_val
-                            ))
-                        }
+                        _ => return Err(format!("signal bad value {:?}", s_val)),
                     }
                 };
                 Ok(&acc? + &(v * &s_val))

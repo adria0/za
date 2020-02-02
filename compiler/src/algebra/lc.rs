@@ -2,8 +2,8 @@ use std::fmt;
 use std::iter;
 use std::ops::{Add, Mul, Neg};
 
-use super::AlgZero;
 use super::fs::FS;
+use super::AlgZero;
 
 pub type SignalId = usize;
 pub const SIGNAL_ONE: SignalId = 0;

@@ -12,33 +12,36 @@ extern crate structopt;
 #[macro_use]
 extern crate log;
 
-use za_compiler::{
-    evaluator::{Evaluator,Mode},
-    tester
-};
-use za_compiler::types::{Constraints, Signals,print_info};
 use za_compiler::tester::dump_error;
+use za_compiler::types::{print_info, Constraints, Signals};
+use za_compiler::{
+    evaluator::{Evaluator, Mode},
+    tester,
+};
 use za_prover::groth16;
 
-use std::time::SystemTime;
 use std::fs::File;
 use std::io::prelude::*;
+use std::time::SystemTime;
 
-const DEFAULT_CIRCUIT : &str = "circuit.circom";
-const DEFAULT_PROVING_KEY : &str = "proving.key";
-const DEFAULT_INPUT : &str = "input.json";
-const DEFAULT_PROOF : &str = "proof.json";
-const DEFAULT_VERIFIER_SOLIDITY : &str = "verifier.sol";
-const DEFAULT_VERIFIER_JSON : &str = "verifier.json";
-const VERIFIER_TYPE_SOLIDITY : &str = "solidity";
-const VERIFIER_TYPE_JSON : &str = "json";
-const DEFAULT_VERIFIER_TYPE : &str = VERIFIER_TYPE_SOLIDITY;
+const DEFAULT_CIRCUIT: &str = "circuit.circom";
+const DEFAULT_PROVING_KEY: &str = "proving.key";
+const DEFAULT_INPUT: &str = "input.json";
+const DEFAULT_PROOF: &str = "proof.json";
+const DEFAULT_VERIFIER_SOLIDITY: &str = "verifier.sol";
+const DEFAULT_VERIFIER_JSON: &str = "verifier.json";
+const VERIFIER_TYPE_SOLIDITY: &str = "solidity";
+const VERIFIER_TYPE_JSON: &str = "json";
+const DEFAULT_VERIFIER_TYPE: &str = VERIFIER_TYPE_SOLIDITY;
 
-fn generate_cuda(constraints:&Constraints, signals:&Signals, cuda_file : Option<String>) {
+fn generate_cuda(constraints: &Constraints, signals: &Signals, cuda_file: Option<String>) {
     if let Some(cuda_file) = cuda_file {
         let start = SystemTime::now();
         cuda::export(&cuda_file, constraints, signals).unwrap();
-        info!("Cuda generation time: {:?}",SystemTime::now().duration_since(start).unwrap());
+        info!(
+            "Cuda generation time: {:?}",
+            SystemTime::now().duration_since(start).unwrap()
+        );
     }
 }
 
@@ -52,21 +55,37 @@ fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
     if let Err(err) = eval.eval_file(".", &filename) {
         dump_error(&eval, &format!("{:?}", err));
     } else {
-        info!("Compile time: {:?}",SystemTime::now().duration_since(start).unwrap());
+        info!(
+            "Compile time: {:?}",
+            SystemTime::now().duration_since(start).unwrap()
+        );
         start = SystemTime::now();
 
-        let Evaluator{constraints,signals,..} = eval;
-        print_info("compile", &constraints,&signals, &[], print_all);
+        let Evaluator {
+            constraints,
+            signals,
+            ..
+        } = eval;
+        print_info("compile", &constraints, &signals, &[], print_all);
 
-        let irreductible_signals = signals.main_input_ids(); 
-        let (constraints, removed_signals) = za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
+        let irreductible_signals = signals.main_input_ids();
+        let (constraints, removed_signals) =
+            za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
 
-        info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
+        info!(
+            "Optimization time: {:?}",
+            SystemTime::now().duration_since(start).unwrap()
+        );
 
-        print_info("optimized", &constraints,&signals, &removed_signals, print_all);
+        print_info(
+            "optimized",
+            &constraints,
+            &signals,
+            &removed_signals,
+            print_all,
+        );
 
-        generate_cuda(&constraints,&signals,cuda_file);
-
+        generate_cuda(&constraints, &signals, cuda_file);
     }
 }
 
@@ -89,15 +108,15 @@ struct Opt {
     cfg: String,
 }
 
-#[derive(StructOpt,Debug)]
+#[derive(StructOpt, Debug)]
 enum VerifierType {
     #[structopt(name = "json")]
-    /// JSON with validation params 
-    JSON{},
+    /// JSON with validation params
+    JSON {},
 
     #[structopt(name = "solidity")]
     /// Solidity smartcontract
-    Solidity{},
+    Solidity {},
 }
 
 #[derive(StructOpt)]
@@ -129,11 +148,11 @@ enum Command {
         pk: Option<String>,
 
         #[structopt(long = "verifier")]
-        /// Output verifier file 
+        /// Output verifier file
         verifier_file: Option<String>,
 
         #[structopt(long = "verifiertype")]
-        /// Verifier type, solidity (default) or json 
+        /// Verifier type, solidity (default) or json
         verifier_type: Option<String>,
     },
 
@@ -164,7 +183,7 @@ enum Command {
         /// Turn on debugging
         debug: bool,
 
-        /// Genetate binary witness file 
+        /// Genetate binary witness file
         #[structopt(long = "outputwitness")]
         outputwitness: bool,
 
@@ -175,7 +194,6 @@ enum Command {
         /// Prefix of the tests to execute
         #[structopt(long = "prefix")]
         prefix: Option<String>,
-
     },
 }
 
@@ -190,37 +208,62 @@ fn main() {
 
     let cmd = Command::from_args();
     match cmd {
-        Command::Compile { circuit, print, cuda } => {
+        Command::Compile {
+            circuit,
+            print,
+            cuda,
+        } => {
             let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
-            compile_ram(&circuit,print,cuda)
+            compile_ram(&circuit, print, cuda)
         }
-        Command::Setup { circuit, pk, verifier_file, verifier_type } => {
+        Command::Setup {
+            circuit,
+            pk,
+            verifier_file,
+            verifier_type,
+        } => {
             let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
             let pk = pk.unwrap_or_else(|| DEFAULT_PROVING_KEY.to_string());
-            let verifier_type = match verifier_type.unwrap_or_else(|| DEFAULT_VERIFIER_TYPE.to_string()).as_ref() {
+            let verifier_type = match verifier_type
+                .unwrap_or_else(|| DEFAULT_VERIFIER_TYPE.to_string())
+                .as_ref()
+            {
                 VERIFIER_TYPE_JSON => groth16::helper::VerifierType::JSON,
                 VERIFIER_TYPE_SOLIDITY => groth16::helper::VerifierType::Solidity,
-                _ => panic!("unknown verifier type")
+                _ => panic!("unknown verifier type"),
             };
-            let verifier_file = verifier_file.unwrap_or_else(||
+            let verifier_file = verifier_file.unwrap_or_else(|| {
                 match verifier_type {
                     groth16::helper::VerifierType::Solidity => DEFAULT_VERIFIER_SOLIDITY,
                     groth16::helper::VerifierType::JSON => DEFAULT_VERIFIER_JSON,
-                }.to_string()
-            );
-            let verifier = groth16::helper::setup(&circuit,&pk,verifier_type)
+                }
+                .to_string()
+            });
+            let verifier = groth16::helper::setup(&circuit, &pk, verifier_type)
                 .expect("unable to create proof");
 
             File::create(verifier_file)
                 .expect("cannot create verifier file")
                 .write_all(verifier.as_bytes())
                 .expect("cannot write verifier file");
-
         }
-        Command::Test { circuit, debug, outputwitness, skipcompile, prefix } => {
+        Command::Test {
+            circuit,
+            debug,
+            outputwitness,
+            skipcompile,
+            prefix,
+        } => {
             let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
             let prefix = prefix.unwrap_or_else(|| "".to_string());
-            match tester::run_embeeded_tests(".", &circuit, debug, skipcompile, outputwitness, &prefix) {
+            match tester::run_embeeded_tests(
+                ".",
+                &circuit,
+                debug,
+                skipcompile,
+                outputwitness,
+                &prefix,
+            ) {
                 Ok(Some((eval, err))) => dump_error(&eval, &err),
                 Err(err) => warn!("Error: {:?}", err),
                 _ => {}
@@ -236,12 +279,11 @@ fn main() {
                 .expect("cannot open inputs file")
                 .read_to_string(&mut inputs_json)
                 .expect("cannot read inputs file");
-            
+
             let inputs = za_prover::groth16::flatten_json("main", &inputs_json)
                 .expect("cannot parse inputs file");
 
-            let proof = groth16::helper::prove(&pk_path,inputs)
-                .expect("cannot generate proof");
+            let proof = groth16::helper::prove(&pk_path, inputs).expect("cannot generate proof");
 
             File::create(proof_path)
                 .expect("cannot create proof file")

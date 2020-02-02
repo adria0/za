@@ -16,11 +16,11 @@ use num_bigint::BigInt;
 
 use crate::algebra;
 use crate::algebra::{AlgZero, SignalId};
-use crate::types::{Signals,Constraints};
+use crate::types::{Constraints, Signals};
 
 use super::error::*;
-use super::types::{List,ReturnValue};
 use super::scope::*;
+use super::types::{List, ReturnValue};
 
 #[derive(Debug)]
 pub struct ErrorContext {
@@ -120,7 +120,7 @@ impl Evaluator {
                 let mut scope = Scope::new(true, Some(scope), path.to_string());
                 Ok(self.eval_statement_p(&mut scope, &stmt)?)
             }
-            _ => Err(err_not_found())
+            _ => Err(err_not_found()),
         }
     }
 
@@ -137,15 +137,23 @@ impl Evaluator {
         use BodyElementP::*;
         for body_element in asts.iter() {
             match body_element {
-                FunctionDef { meta, name, args, stmt }
-                  => self.eval_function_def(meta, &mut scope, name, args, stmt)?,
-                TemplateDef { meta, name, args, stmt }
-                  => self.eval_template_def(meta, &mut scope, name, args, stmt)?,
+                FunctionDef {
+                    meta,
+                    name,
+                    args,
+                    stmt,
+                } => self.eval_function_def(meta, &mut scope, name, args, stmt)?,
+                TemplateDef {
+                    meta,
+                    name,
+                    args,
+                    stmt,
+                } => self.eval_template_def(meta, &mut scope, name, args, stmt)?,
                 _ => (),
             }
         }
         for body_element in asts.iter() {
-            if let Declaration { decl, .. } =  body_element {
+            if let Declaration { decl, .. } = body_element {
                 self.eval_statement_p(&mut scope, decl)?;
             }
         }
@@ -317,9 +325,9 @@ impl Evaluator {
             let err_not_found = || Error::NotFound(format!("function {}", name));
 
             let function = scope.root().get(name).ok_or_else(err_not_found)?;
-            let (args,stmt,path) = match &*function {
-                ScopeValue::Function { args, stmt, path } => Ok((args,stmt,path)),
-                _ => Err(err_not_found())
+            let (args, stmt, path) = match &*function {
+                ScopeValue::Function { args, stmt, path } => Ok((args, stmt, path)),
+                _ => Err(err_not_found()),
             }?;
 
             if args.len() != params.len() {
@@ -374,17 +382,27 @@ impl Evaluator {
         self.trace(meta, || format!("eval_component_inst {}", component_name));
 
         let mut internal = || {
-            let (can_be_expanded_now,component) = {
-                let err_invalid_template = || Error::InvalidType(format!("component {} only can be initialized with existingtemplate",&component_name));
+            let (can_be_expanded_now, component) = {
+                let err_invalid_template = || {
+                    Error::InvalidType(format!(
+                        "component {} only can be initialized with existingtemplate",
+                        &component_name
+                    ))
+                };
 
-                let (template_name,params) = match init {
-                    ExpressionP::FunctionCall { name, args, ..} => Ok((name,args)),
+                let (template_name, params) = match init {
+                    ExpressionP::FunctionCall { name, args, .. } => Ok((name, args)),
                     _ => Err(err_invalid_template()),
                 }?;
-                let template = scope.root().get(template_name).ok_or_else(err_invalid_template)?;
-                let (args,stmt,path) = match &*template {
-                    ScopeValue::Template {args, stmt, path, ..} => Ok((args,stmt,path)),
-                    _ => Err(err_invalid_template())
+                let template = scope
+                    .root()
+                    .get(template_name)
+                    .ok_or_else(err_invalid_template)?;
+                let (args, stmt, path) = match &*template {
+                    ScopeValue::Template {
+                        args, stmt, path, ..
+                    } => Ok((args, stmt, path)),
+                    _ => Err(err_invalid_template()),
                 }?;
 
                 if args.len() != params.len() {
@@ -431,19 +449,15 @@ impl Evaluator {
                                 None
                             }
                         })
-                        .sorted_by(|(_, _, xtype1), (_, _, xtype2)| {
-                            Ord::cmp(xtype1, xtype2)
-                        });
+                        .sorted_by(|(_, _, xtype1), (_, _, xtype2)| Ord::cmp(xtype1, xtype2));
 
                     for (meta, name, xtype) in signals {
-                        let mut pending_signals = self.eval_declaration_signals(
-                            meta,
-                            &mut template_scope,
-                            *xtype,
-                            name,
-                        )?;
-                        let is_public_or_private = *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput;
-                        let is_not_main_in_genconstraints =!(component_name == "main" && self.mode == Mode::GenConstraints); 
+                        let mut pending_signals =
+                            self.eval_declaration_signals(meta, &mut template_scope, *xtype, name)?;
+                        let is_public_or_private =
+                            *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput;
+                        let is_not_main_in_genconstraints =
+                            !(component_name == "main" && self.mode == Mode::GenConstraints);
                         if is_public_or_private && is_not_main_in_genconstraints {
                             all_pending_input_signals.append(&mut pending_signals);
                         }
@@ -461,17 +475,17 @@ impl Evaluator {
                         path: path.to_string(),
                         args: evalargs,
                         pending_inputs: all_pending_input_signals,
-                    }
+                    },
                 )
             };
             {
                 let mut scope_component = scope
                     .get_mut(component_name)
                     .ok_or_else(|| Error::NotFound(component_name.to_string()))?;
-                
+
                 *scope_component = component;
             }
-            
+
             if can_be_expanded_now {
                 self.eval_component_expand(meta, scope, component_name)?;
             }
@@ -490,14 +504,16 @@ impl Evaluator {
         self.trace(meta, || format!("eval_component_expand {}", component_name));
 
         let component = scope.get(component_name).unwrap();
-        let (template,values) = match &*component {
-            ScopeValue::Component{template,args,..} => (template,args),
+        let (template, values) = match &*component {
+            ScopeValue::Component { template, args, .. } => (template, args),
             _ => unreachable!(),
         };
 
         let template = scope.root().get(template).unwrap();
-        let (args,stmt,path) = match &*template {
-            ScopeValue::Template {args, stmt, path,..} => (args,stmt,path),
+        let (args, stmt, path) = match &*template {
+            ScopeValue::Template {
+                args, stmt, path, ..
+            } => (args, stmt, path),
             _ => unreachable!(),
         };
 
@@ -508,8 +524,7 @@ impl Evaluator {
             format!("{}:{}", self.current_file, meta.start),
         );
         for n in 0..args.len() {
-            template_scope
-                .insert(args[n].clone(), ScopeValue::from(values[n].clone()))?;
+            template_scope.insert(args[n].clone(), ScopeValue::from(values[n].clone()))?;
         }
 
         // set new component & file scope
@@ -550,7 +565,9 @@ impl Evaluator {
             }
 
             // check if is a variable
-            let scope_var = scope.get(&var.name).ok_or_else(|| Error::NotFound(name_sel.clone()))?;
+            let scope_var = scope
+                .get(&var.name)
+                .ok_or_else(|| Error::NotFound(name_sel.clone()))?;
             match &*scope_var {
                 ScopeValue::Algebra(a) => Ok(ReturnValue::Algebra(a.clone())),
                 ScopeValue::Bool(a) => Ok(ReturnValue::Bool(*a)),
@@ -940,15 +957,17 @@ impl Evaluator {
         }
 
         let mut internal = || {
-
             // check if we are instatianting a UndefComponent
             let var_sel = self.expand_selectors(scope, var, None)?;
 
-            let is_undef_component = scope.get(&var_sel)
-                .map(|v| if let ScopeValue::UndefComponent = &*v {
-                    true
-                } else {
-                    false
+            let is_undef_component = scope
+                .get(&var_sel)
+                .map(|v| {
+                    if let ScopeValue::UndefComponent = &*v {
+                        true
+                    } else {
+                        false
+                    }
                 })
                 .unwrap_or(false);
 
@@ -984,7 +1003,9 @@ impl Evaluator {
                 scope.update(&var.name, ScopeValue::Algebra(value))?;
             } else if let SelectorP::Index { .. } = &*var.sels[0] {
                 let indexes = self.expand_indexes(scope, &var.sels)?;
-                let mut scope_var = scope.get_mut(&var.name).ok_or_else(|| Error::NotFound(var.name.clone()))?;
+                let mut scope_var = scope
+                    .get_mut(&var.name)
+                    .ok_or_else(|| Error::NotFound(var.name.clone()))?;
                 match &mut *scope_var {
                     ScopeValue::List(ref mut l) => l.set(&value, &indexes),
                     _ => Err(Error::InvalidType(var.name.clone())),
@@ -1089,10 +1110,16 @@ impl Evaluator {
                     }
 
                     if let Some(component_name) = self.signal_component(scope, signal)? {
-                        let err_not_found = || Error::NotFound(format!("signal not found '{}' in scope {:?}", signal.name, meta));
-                        
+                        let err_not_found = || {
+                            Error::NotFound(format!(
+                                "signal not found '{}' in scope {:?}",
+                                signal.name, meta
+                            ))
+                        };
+
                         let needs_expansion = {
-                            let mut component = scope.get_mut(&component_name).ok_or_else(err_not_found)?;
+                            let mut component =
+                                scope.get_mut(&component_name).ok_or_else(err_not_found)?;
                             match &mut *component {
                                 ScopeValue::Component { pending_inputs, .. } => {
                                     if !pending_inputs.is_empty() {
@@ -1101,8 +1128,8 @@ impl Evaluator {
                                     } else {
                                         Ok(false)
                                     }
-                                },
-                                _ => Err(err_not_found())
+                                }
+                                _ => Err(err_not_found()),
                             }
                         }?;
 
@@ -1497,7 +1524,7 @@ impl Evaluator {
                 return Ok(());
             }
             if var.name == "SCOPE" {
-                println!("{:?}",scope);
+                println!("{:?}", scope);
                 return Ok(());
             }
             if var.name == "TRACEON" {
@@ -1509,18 +1536,17 @@ impl Evaluator {
                 return Ok(());
             }
         }
-        
+
         if let ExpressionP::Variable { name: var, .. } = &expr {
             let full_name = self.expand_selectors(scope, var, None)?;
-            let scope_var = scope.get(&full_name).ok_or_else(|| Error::NotFound(full_name.to_string()))?;
+            let scope_var = scope
+                .get(&full_name)
+                .ok_or_else(|| Error::NotFound(full_name.to_string()))?;
             if let ScopeValue::Component { pending_inputs, .. } = &*scope_var {
                 let pending_inputs_str = pending_inputs
                     .iter()
                     .map(|signal| {
-                        format!(
-                            "{:?}",
-                            self.signals.get_by_id(*signal).unwrap().full_name
-                        )
+                        format!("{:?}", self.signals.get_by_id(*signal).unwrap().full_name)
                     })
                     .collect::<Vec<_>>()
                     .join(",");
@@ -1532,7 +1558,7 @@ impl Evaluator {
                 processed = true;
             }
         }
-        
+
         if !processed {
             let value = self.eval_expression_p(scope, expr)?;
             print!("{:?} ⇨ ", expr);

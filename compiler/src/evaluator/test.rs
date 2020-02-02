@@ -1,22 +1,14 @@
 #[cfg(test)]
 mod test {
-    use super::super::error::{Error,Result};
+    use super::super::error::{Error, Result};
     use super::super::scope::Scope;
     use crate::algebra;
     use crate::evaluator::eval::{Evaluator, Mode};
     use crate::types::{Constraints, Signals};
     use std::borrow::Cow;
 
-    fn constrain_eq<'a>(
-        eval: &Evaluator,
-        index: usize,
-        value: &str,
-    ) {
-        let name_of = |id| {
-            (*(eval.signals.get_by_id(id).unwrap()))
-                .full_name
-                .clone()
-        };
+    fn constrain_eq<'a>(eval: &Evaluator, index: usize, value: &str) {
+        let name_of = |id| (*(eval.signals.get_by_id(id).unwrap())).full_name.clone();
 
         let formatted = eval
             .constraints
@@ -34,20 +26,18 @@ mod test {
     }
     fn scope_eq(scope: &Scope, name: &str, value: &str) {
         let v = match scope.get(name) {
-            Some(v) => Cow::Owned(format!("Some({:?})",&*v)),
+            Some(v) => Cow::Owned(format!("Some({:?})", &*v)),
             None => Cow::Borrowed("None"),
         };
-        assert_eq!(value,v);
+        assert_eq!(value, v);
     }
 
     fn eval_generic(
         mode: Mode,
         s: &str,
         deferred_values: Vec<(String, u64)>,
-    ) -> Result<(Evaluator, Scope)>
-    {
-        let mut evaluator =
-            Evaluator::new(mode, Signals::default(), Constraints::default());
+    ) -> Result<(Evaluator, Scope)> {
+        let mut evaluator = Evaluator::new(mode, Signals::default(), Constraints::default());
 
         deferred_values
             .into_iter()
@@ -64,8 +54,7 @@ mod test {
     }
 
     fn eval_witness(s: &str) -> Result<(Evaluator, Scope)> {
-        let (eval_witness, scope_witness) =
-            eval_generic(Mode::GenWitness, s, vec![])?;
+        let (eval_witness, scope_witness) = eval_generic(Mode::GenWitness, s, vec![])?;
         assert_eq!(eval_witness.constraints.len(), 0);
 
         Ok((eval_witness, scope_witness))
@@ -80,7 +69,10 @@ mod test {
 
         let (eval_constraint, _) = eval_generic(Mode::GenConstraints, s, vec![])?;
 
-        eval_constraint.constraints.satisfies_with_signals(&eval.signals).map_err(Error::Unexpected)?;
+        eval_constraint
+            .constraints
+            .satisfies_with_signals(&eval.signals)
+            .map_err(Error::Unexpected)?;
 
         Ok((eval, scope))
     }

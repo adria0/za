@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test {
-    use za_compiler::tester;
-    use za_parser::parse;
     use std::fs::{read_dir, File};
     use std::io::prelude::*;
+    use za_compiler::tester;
+    use za_parser::parse;
 
     #[test]
     fn circomlib_parse() {

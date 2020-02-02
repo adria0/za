@@ -1,6 +1,6 @@
-use std::io;
 use crate::algebra;
 use crate::evaluator;
+use std::io;
 
 #[derive(Debug)]
 pub enum Error {

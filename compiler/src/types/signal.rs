@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use za_parser::ast::SignalType;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
+use za_parser::ast::SignalType;
 
 use crate::algebra;
 use crate::algebra::SignalId;
@@ -80,14 +80,13 @@ impl Default for Signals {
         let names = HashMap::new();
         let mut signals = Self { names, ids };
         // FIX
-        signals
-            .insert("one".to_string(), SignalType::PublicInput, None);
+        signals.insert("one".to_string(), SignalType::PublicInput, None);
 
         signals
     }
 }
 
-impl Signals  {
+impl Signals {
     pub fn is_empty(&self) -> bool {
         self.ids.is_empty()
     }
@@ -114,8 +113,7 @@ impl Signals  {
     }
 
     pub fn get_by_name(&self, full_name: &str) -> Option<Rc<Signal>> {
-        self
-            .names
+        self.names
             .get(full_name)
             .map(|id| self.ids[*id as usize].clone())
     }
@@ -133,7 +131,7 @@ impl Signals  {
             id,
             xtype,
             full_name: full_name_rc.clone(),
-            value
+            value,
         };
 
         self.ids.push(Rc::new(signal));
@@ -143,7 +141,6 @@ impl Signals  {
     }
 
     pub fn main_public_input_names(&self) -> Vec<String> {
-
         let mut inputs = Vec::new();
         for i in 1..self.len() {
             let signal = self.get_by_id(i).unwrap();
@@ -171,7 +168,10 @@ impl Signals  {
     }
 
     pub fn format(&self, a: &algebra::Value) -> String {
-        let sname = |id| self.get_by_id(id).map_or("unwnown".to_string(), |s| s.full_name.to_string());
+        let sname = |id| {
+            self.get_by_id(id)
+                .map_or("unwnown".to_string(), |s| s.full_name.to_string())
+        };
         match a {
             algebra::Value::FieldScalar(fe) => fe.to_string(),
             algebra::Value::LinearCombination(lc) => lc.format(sname),
@@ -189,4 +189,3 @@ impl Debug for Signals {
         Ok(())
     }
 }
-

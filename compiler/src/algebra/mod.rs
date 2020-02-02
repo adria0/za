@@ -1,7 +1,7 @@
+mod error;
 mod fs;
 mod lc;
 mod qeq;
-mod error;
 mod value;
 
 pub trait AlgZero {

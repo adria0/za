@@ -67,11 +67,11 @@ pub struct Scope<'a> {
 }
 
 #[derive(Debug)]
-pub struct ScopeValueGuard<'a,'b> {
-    guard : std::cell::Ref<'a,HashMap<String, ScopeValue>>,
-    key : &'b str,
+pub struct ScopeValueGuard<'a, 'b> {
+    guard: std::cell::Ref<'a, HashMap<String, ScopeValue>>,
+    key: &'b str,
 }
-impl<'a,'b> std::ops::Deref for ScopeValueGuard<'a,'b> {
+impl<'a, 'b> std::ops::Deref for ScopeValueGuard<'a, 'b> {
     type Target = ScopeValue;
 
     fn deref(&self) -> &Self::Target {
@@ -80,18 +80,18 @@ impl<'a,'b> std::ops::Deref for ScopeValueGuard<'a,'b> {
 }
 
 #[derive(Debug)]
-pub struct ScopeValueGuardMut<'a,'b> {
-    guard : std::cell::RefMut<'a,HashMap<String, ScopeValue>>,
-    key : &'b str,
+pub struct ScopeValueGuardMut<'a, 'b> {
+    guard: std::cell::RefMut<'a, HashMap<String, ScopeValue>>,
+    key: &'b str,
 }
-impl<'a,'b> std::ops::Deref for ScopeValueGuardMut<'a,'b> {
+impl<'a, 'b> std::ops::Deref for ScopeValueGuardMut<'a, 'b> {
     type Target = ScopeValue;
 
     fn deref(&self) -> &Self::Target {
         &self.guard.get(self.key).unwrap()
     }
 }
-impl<'a,'b> std::ops::DerefMut for ScopeValueGuardMut<'a,'b> {
+impl<'a, 'b> std::ops::DerefMut for ScopeValueGuardMut<'a, 'b> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.guard.get_mut(self.key).unwrap()
     }
@@ -136,46 +136,53 @@ impl<'a> Scope<'a> {
     pub fn get(&self, key: &'a str) -> Option<ScopeValueGuard> {
         let mut it = self;
         loop {
-           if it.vars.borrow().contains_key(key) {
-              return Some(ScopeValueGuard { guard: it.vars.borrow(), key }) 
-           } else if it.prev.is_none() || it.start {
-               return None
-           }
-           it = it.prev.unwrap();
+            if it.vars.borrow().contains_key(key) {
+                return Some(ScopeValueGuard {
+                    guard: it.vars.borrow(),
+                    key,
+                });
+            } else if it.prev.is_none() || it.start {
+                return None;
+            }
+            it = it.prev.unwrap();
         }
     }
 
     pub fn get_mut(&self, key: &'a str) -> Option<ScopeValueGuardMut> {
         let mut it = self;
         loop {
-           if it.vars.borrow().contains_key(key) {
-              return Some(ScopeValueGuardMut { guard: it.vars.borrow_mut(), key }) 
-           } else if it.prev.is_none() || it.start {
-               return None
-           }
-           it = it.prev.unwrap();
+            if it.vars.borrow().contains_key(key) {
+                return Some(ScopeValueGuardMut {
+                    guard: it.vars.borrow_mut(),
+                    key,
+                });
+            } else if it.prev.is_none() || it.start {
+                return None;
+            }
+            it = it.prev.unwrap();
         }
     }
 
     pub fn contains_key(&self, key: &'a str) -> bool {
         let mut it = self;
         loop {
-           if it.vars.borrow().contains_key(key) {
-              return true; 
-           } else if it.prev.is_none() || it.start {
-              return false;
-           }
-           it = it.prev.unwrap();
+            if it.vars.borrow().contains_key(key) {
+                return true;
+            } else if it.prev.is_none() || it.start {
+                return false;
+            }
+            it = it.prev.unwrap();
         }
     }
 
     pub fn update(&self, key: &'a str, v: ScopeValue) -> Result<()> {
-        let mut scope_value = self.get_mut(key)
-            .ok_or_else(||Error::NotFound(key.to_string()))?; 
+        let mut scope_value = self
+            .get_mut(key)
+            .ok_or_else(|| Error::NotFound(key.to_string()))?;
         *scope_value = v;
         Ok(())
     }
-        
+
     pub fn set_return(&self, v: ReturnValue) {
         *self.start().return_value.borrow_mut() = Some(v);
     }
@@ -214,16 +221,16 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_scope_basic() -> Result<()>{
+    fn test_scope_basic() -> Result<()> {
         let sc = Scope::new(true, None, "sc1".to_string());
         sc.insert("k1".to_string(), ScopeValue::Bool(true))?;
-        
-        assert_eq!("Bool(true)",format!("{:?}",&*sc.get("k1").unwrap()));
+
+        assert_eq!("Bool(true)", format!("{:?}", &*sc.get("k1").unwrap()));
         *sc.get_mut("k1").unwrap() = ScopeValue::Bool(false);
-        assert_eq!("Bool(false)",format!("{:?}",&*sc.get("k1").unwrap()));
-        
-        sc.update("k1",ScopeValue::Bool(true))?;
-        assert_eq!("Bool(true)",format!("{:?}",&*sc.get("k1").unwrap()));
+        assert_eq!("Bool(false)", format!("{:?}", &*sc.get("k1").unwrap()));
+
+        sc.update("k1", ScopeValue::Bool(true))?;
+        assert_eq!("Bool(true)", format!("{:?}", &*sc.get("k1").unwrap()));
 
         Ok(())
     }
@@ -233,7 +240,11 @@ mod test {
         let sc = Scope::new(true, None, "sc1".to_string());
 
         sc.insert("k1".to_string(), ScopeValue::Bool(true))?;
-        assert_eq!(true,sc.insert("k1".to_string(), ScopeValue::Bool(false)).is_err());
+        assert_eq!(
+            true,
+            sc.insert("k1".to_string(), ScopeValue::Bool(false))
+                .is_err()
+        );
 
         Ok(())
     }
@@ -253,9 +264,9 @@ mod test {
         sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
         let sc2 = Scope::new(false, Some(&sc1), "sc2".to_string());
         sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
-        
-        assert_eq!(true, sc2.contains_key("k1"));                
-        
+
+        assert_eq!(true, sc2.contains_key("k1"));
+
         Ok(())
     }
 
@@ -265,10 +276,10 @@ mod test {
         sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
         let sc2 = Scope::new(true, Some(&sc1), "sc2".to_string());
         sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
-        
-        assert_eq!(false, sc2.contains_key("k1"));        
-        assert_eq!(true, sc2.root().contains_key("k1"));        
-        
+
+        assert_eq!(false, sc2.contains_key("k1"));
+        assert_eq!(true, sc2.root().contains_key("k1"));
+
         Ok(())
     }
 
@@ -278,22 +289,20 @@ mod test {
         sc1.insert("k1".to_string(), ScopeValue::Bool(true))?;
         let sc2 = Scope::new(false, Some(&sc1), "sc2".to_string());
         sc2.insert("k2".to_string(), ScopeValue::Bool(true))?;
-        
-        assert_eq!(false, sc1.has_return());        
-        assert_eq!(false, sc2.has_return());        
+
+        assert_eq!(false, sc1.has_return());
+        assert_eq!(false, sc2.has_return());
 
         sc2.set_return(ReturnValue::Bool(true));
-        assert_eq!(true, sc1.has_return());        
-        assert_eq!(true, sc2.has_return());        
+        assert_eq!(true, sc1.has_return());
+        assert_eq!(true, sc2.has_return());
 
         let ret = sc2.take_return();
-        assert_eq!(false, sc1.has_return());        
-        assert_eq!(false, sc2.has_return());        
+        assert_eq!(false, sc1.has_return());
+        assert_eq!(false, sc2.has_return());
 
-        assert_eq!("Some(Bool(true))",format!("{:?}",ret));
-
+        assert_eq!("Some(Bool(true))", format!("{:?}", ret));
 
         Ok(())
     }
-
 }

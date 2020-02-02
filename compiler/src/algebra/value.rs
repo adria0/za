@@ -1,12 +1,12 @@
 use std::fmt;
 
-use za_parser::ast;
 use num_bigint::{BigInt, BigUint};
 use num_traits::identities::Zero;
+use za_parser::ast;
 
 use super::error::{Error, Result};
 use super::fs::FS;
-use super::lc::{SignalId,LC};
+use super::lc::{SignalId, LC};
 use super::qeq::QEQ;
 
 #[derive(Clone, Serialize, Deserialize)]

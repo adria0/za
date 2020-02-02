@@ -15,9 +15,9 @@ extern crate serde_cbor;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+extern crate fxhash;
 extern crate itertools;
 extern crate rand;
-extern crate fxhash;
 
 pub mod algebra;
 pub mod evaluator;
