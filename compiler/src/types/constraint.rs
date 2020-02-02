@@ -60,7 +60,7 @@ impl Constraints  {
 
             if !zero.is_zero() {
                 let nonzero_value = Value::QuadraticEquation(qeq);
-                let debug = self.get_debug(n).unwrap_or("".to_string());
+                let debug = self.get_debug(n).unwrap_or_else(|| "".to_string());
                 let msg = format!(
                     "constrain '{}' ({}) evals to non-zero ({:?})",
                     signals.format(&nonzero_value),

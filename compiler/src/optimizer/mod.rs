@@ -68,7 +68,7 @@ pub fn optimize_n(
         //   a) [][]+[c1S1+c2S2] :>  search: S1 replace: c2/c1 S1 iff S1 is not irreductuble
         //   b) [][]+[c1S1+c2S2] :>  search: S2 replace: c1/c2 S2 iff S2 is not irreductuble
 
-        if cnstr.a.0.len() == 0 && cnstr.b.0.len() == 0 && cnstr.c.0.len() == 2 {
+        if cnstr.a.0.is_empty() && cnstr.b.0.is_empty() && cnstr.c.0.len() == 2 {
             
             let first = &cnstr.c.0[0];
             let second = &cnstr.c.0[1];

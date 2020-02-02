@@ -126,7 +126,7 @@ impl<'a> Scope<'a> {
 
     pub fn insert(&self, k: String, v: ScopeValue) -> Result<()> {
         if self.vars.borrow().contains_key(&k) {
-            Err(Error::AlreadyExists(k.to_string()))
+            Err(Error::AlreadyExists(k))
         } else {
             self.vars.borrow_mut().insert(k, v);
             Ok(())

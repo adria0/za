@@ -1,3 +1,5 @@
+#![allow(clippy::vec_box)]
+
 use num_bigint::BigInt;
 use serde_derive::{Deserialize, Serialize};
 

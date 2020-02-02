@@ -36,7 +36,7 @@ pub fn bellman_verbose(verbose: bool) {
 pub struct CircomCircuit<'a, E: Engine> {
     constraints: &'a Constraints,
     signals: &'a Signals,
-    ignore_signals: &'a Vec<SignalId>,
+    ignore_signals: &'a [SignalId],
     phantom: PhantomData<E>,
 }
 
@@ -104,10 +104,10 @@ impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
 }
 
 pub fn setup<W: Write>(
-    asts : &Vec<BodyElementP>,
+    asts : &[BodyElementP],
     signals: &Signals,
     constraints: &Constraints,
-    ignore_signals : &Vec<SignalId>,
+    ignore_signals : &[SignalId],
     out_pk: W,
 ) -> Result<(bellman::groth16::VerifyingKey<Bn256>, Vec<String>)> {
 
@@ -140,7 +140,7 @@ pub fn setup<W: Write>(
 
 pub fn generate_verified_proof<W: Write>(
     signals: &Signals,
-    ignore_signals : &Vec<SignalId>,
+    ignore_signals : &[SignalId],
     constraints : &Constraints,
     params : &Parameters<Bn256>,
     out_proof: &mut W,
@@ -192,12 +192,12 @@ pub fn generate_verified_proof<W: Write>(
     let verify_public_inputs = public_inputs
         .iter()
         .map(|(_, n)| {
-            Fr::from_str(&(n.to_string())).expect(&format!("cannot parse fe {}", &n.to_string()))
+            Fr::from_str(&(n.to_string())).unwrap_or_else(|| panic!("cannot parse fe {}", &n.to_string()))
         })
         .collect::<Vec<_>>();
 
     verify_proof(&vk, &proof, &verify_public_inputs)?;
-    JsonProofAndInput::from_bellman(proof, public_inputs.clone())?.write(out_proof)?;
+    JsonProofAndInput::json_from_bellman(proof, public_inputs.clone())?.write(out_proof)?;
     info!(
         "Proof verification time: {:?}",
         SystemTime::now().duration_since(start).unwrap()
@@ -341,7 +341,8 @@ mod test {
 
         // Compute witness -------------------------------------------
         let pk = File::open("/tmp/pk").unwrap();
-        let (pk_asts,pk_constraints, pk_ignore_signals, pk_params) = read_pk(pk).unwrap();
+        let pk = read_pk(pk).unwrap();
+
         let mut ev_witness = Evaluator::new(
             Mode::GenWitness,
             Signals::default(),
@@ -351,21 +352,21 @@ mod test {
         ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));
         ev_witness.set_deferred_value("main.b".to_string(), Value::from(3));
         ev_witness
-            .eval_asts(&pk_asts)
+            .eval_asts(&pk.asts)
             .unwrap();
 
         ev_r1cs.constraints.satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check internal evaluator constraints = 0");
-        pk_constraints.satisfies_with_signals(&ev_witness.signals)
+        pk.constraints.satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check optimized constraints = 0");
 
         // Create and verify proof
         let mut proof = Vec::new();
         let public_input = generate_verified_proof(
             &ev_witness.signals,
-            &pk_ignore_signals,
-            &pk_constraints,
-            &pk_params,
+            &pk.ignore_signals,
+            &pk.constraints,
+            &pk.params,
             &mut proof).unwrap();
 
         assert_eq!("[(\"main.c\", 21)]", format!("{:?}", public_input));

@@ -31,7 +31,7 @@ mod extended {
         eval: &super::Evaluator,
         err: &str,
     ) {
-        let msg = format!("{}", err);
+        let msg = err.to_string();
 
         if let Some(ctx) = &eval.last_error {
             let span: ByteSpan = Span::from_offset(
@@ -51,7 +51,7 @@ mod extended {
                     .unwrap_or_else(|_| panic!("cannot read source file '{}'", &ctx.file));
 
                 let error = Diagnostic::new(Severity::Error, "Failed to execute")
-                    .with_label(Label::new_primary(span).with_message(msg.clone()));
+                    .with_label(Label::new_primary(span).with_message(msg));
 
                 let writer = StandardStream::stderr(ColorChoice::Always);
                 emit(&mut writer.lock(), &code_map, &error).unwrap();

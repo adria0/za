@@ -145,9 +145,8 @@ impl Evaluator {
             }
         }
         for body_element in asts.iter() {
-            match body_element {
-                Declaration { decl, .. } => self.eval_statement_p(&mut scope, decl)?,
-                _ => ()
+            if let Declaration { decl, .. } =  body_element {
+                self.eval_statement_p(&mut scope, decl)?;
             }
         }
         Ok(scope)
@@ -443,14 +442,10 @@ impl Evaluator {
                             *xtype,
                             name,
                         )?;
-                        if *xtype == SignalType::PublicInput
-                            || *xtype == SignalType::PrivateInput
-                        {
-                            if !(component_name == "main"
-                                && self.mode == Mode::GenConstraints)
-                            {
-                                all_pending_input_signals.append(&mut pending_signals);
-                            }
+                        let is_public_or_private = *xtype == SignalType::PublicInput || *xtype == SignalType::PrivateInput;
+                        let is_not_main_in_genconstraints =!(component_name == "main" && self.mode == Mode::GenConstraints); 
+                        if is_public_or_private && is_not_main_in_genconstraints {
+                            all_pending_input_signals.append(&mut pending_signals);
                         }
                     }
                 } else {
@@ -460,7 +455,7 @@ impl Evaluator {
                 std::mem::swap(&mut self.current_component, &mut new_current_component);
 
                 (
-                    all_pending_input_signals.len() == 0,
+                    all_pending_input_signals.is_empty(),
                     ScopeValue::Component {
                         template: template_name.to_string(),
                         path: path.to_string(),
@@ -809,7 +804,7 @@ impl Evaluator {
     }
 
     fn eval_return(&mut self, meta: &Meta, scope: &mut Scope, expr: &ExpressionP) -> Result<()> {
-        self.trace(meta, || format!("eval_return"));
+        self.trace(meta, || "eval_return".to_string());
 
         if self.mode.skip_eval(&meta) {
             return Ok(());
@@ -1100,9 +1095,9 @@ impl Evaluator {
                             let mut component = scope.get_mut(&component_name).ok_or_else(err_not_found)?;
                             match &mut *component {
                                 ScopeValue::Component { pending_inputs, .. } => {
-                                    if pending_inputs.len() > 0 {
+                                    if !pending_inputs.is_empty() {
                                         pending_inputs.retain(|s| *s != signal_id);
-                                        Ok(pending_inputs.len() == 0)
+                                        Ok(pending_inputs.is_empty())
                                     } else {
                                         Ok(false)
                                     }
@@ -1518,26 +1513,23 @@ impl Evaluator {
         if let ExpressionP::Variable { name: var, .. } = &expr {
             let full_name = self.expand_selectors(scope, var, None)?;
             let scope_var = scope.get(&full_name).ok_or_else(|| Error::NotFound(full_name.to_string()))?;
-            match &*scope_var {
-                ScopeValue::Component { pending_inputs, .. } => {
-                    let pending_inputs_str = pending_inputs
-                        .iter()
-                        .map(|signal| {
-                            format!(
-                                "{:?}",
-                                self.signals.get_by_id(*signal).unwrap().full_name
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(",");
+            if let ScopeValue::Component { pending_inputs, .. } = &*scope_var {
+                let pending_inputs_str = pending_inputs
+                    .iter()
+                    .map(|signal| {
+                        format!(
+                            "{:?}",
+                            self.signals.get_by_id(*signal).unwrap().full_name
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
 
-                    println!(
-                        "{} ⇨ pending_inputs {{{}}} ",
-                        &full_name, pending_inputs_str
-                    );
-                    processed = true;
-                }
-                _ => {}
+                println!(
+                    "{} ⇨ pending_inputs {{{}}} ",
+                    &full_name, pending_inputs_str
+                );
+                processed = true;
             }
         }
         

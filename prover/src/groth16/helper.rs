@@ -5,7 +5,7 @@ use za_compiler::{
 
 use super::error::{Error, Result};
 use super::ethereum::generate_solidity;
-use super::format::{JsonProofAndInput, JsonVerifyingKey};
+use super::format::{JsonProofAndInput, JsonVerifyingKey, ProvingKey};
 use std::fs::File;
 use std::time::SystemTime;
 
@@ -84,7 +84,7 @@ pub fn prove(
 ) -> Result<String> {
 
     let pk = File::open(proving_key_path)?;
-    let (asts,constraints, ignore_signals, params) = super::format::read_pk(pk)?;
+    let ProvingKey{asts,constraints, ignore_signals, params}= super::format::read_pk(pk)?;
 
     info!("Generating witness...");
 
@@ -105,7 +105,7 @@ pub fn prove(
     );
 
     info!("Checking constraints...");
-    if ev_witness.constraints.len() > 0 {
+    if !ev_witness.constraints.is_empty() {
         return Err(Error::Unexpected(
             "Constrains generated in witnes".to_string(),
         ));
@@ -143,7 +143,7 @@ pub fn verify(json_verifying_key: &str, proof_and_public_input: &str) -> Result<
     info!("Preparing vk...");
     let vk = prepare_verifying_key(&vk);
     info!("Preparing jsonproof...");
-    let (proof, public_inputs) = JsonProofAndInput::to_bellman(proof_and_public_input)?;
+    let (proof, public_inputs) = JsonProofAndInput::json_to_bellman(proof_and_public_input)?;
 
     info!("Verifying proof...");
     Ok(verify_proof(&vk, &proof, &public_inputs)?)
