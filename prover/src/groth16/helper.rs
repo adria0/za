@@ -9,8 +9,8 @@ use super::format::{JsonProofAndInput, JsonVerifyingKey, ProvingKey};
 use std::fs::File;
 use std::time::SystemTime;
 
-use za_compiler::types::{Constraints, Signals, print_info};
 use za_compiler::tester::dump_error;
+use za_compiler::types::{print_info, Constraints, Signals};
 
 use bellman::groth16::{prepare_verifying_key, verify_proof};
 
@@ -24,13 +24,12 @@ pub fn setup(
     proving_key_path: &str,
     verifier_type: VerifierType,
 ) -> Result<String> {
-
     let mut eval = Evaluator::new(
         Mode::GenConstraints,
         Signals::default(),
         Constraints::default(),
     );
-    
+
     info!("Compiling circuit...");
     let start = SystemTime::now();
     if let Err(err) = eval.eval_file(".", &circuit_path) {
@@ -42,29 +41,40 @@ pub fn setup(
         "Compilation time: {:?}",
         SystemTime::now().duration_since(start).unwrap()
     );
-    
-    let Evaluator{constraints, signals, collected_asts, ..} = eval;
 
-    print_info("compile", &constraints,&signals,&[], false);
+    let Evaluator {
+        constraints,
+        signals,
+        collected_asts,
+        ..
+    } = eval;
+
+    print_info("compile", &constraints, &signals, &[], false);
 
     let start = SystemTime::now();
 
-    let irreductible_signals = signals.main_input_ids(); 
-    let (constraints, removed_signals) = za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
+    let irreductible_signals = signals.main_input_ids();
+    let (constraints, removed_signals) =
+        za_compiler::optimizer::optimize(&constraints, &irreductible_signals);
 
-    info!("Optimization time: {:?}",SystemTime::now().duration_since(start).unwrap());
-    print_info("optimized", &constraints,&signals,&removed_signals, false);
-
-    let eval = Evaluator::new(
-        Mode::GenConstraints,
-        signals,
-        constraints,
+    info!(
+        "Optimization time: {:?}",
+        SystemTime::now().duration_since(start).unwrap()
     );
+    print_info("optimized", &constraints, &signals, &removed_signals, false);
+
+    let eval = Evaluator::new(Mode::GenConstraints, signals, constraints);
     info!("Running setup");
 
     let pk = File::create(proving_key_path)?;
 
-    let (vk, inputs) = super::setup(&collected_asts,&eval.signals, &eval.constraints, &removed_signals, pk)?;
+    let (vk, inputs) = super::setup(
+        &collected_asts,
+        &eval.signals,
+        &eval.constraints,
+        &removed_signals,
+        pk,
+    )?;
 
     match verifier_type {
         VerifierType::Solidity => {
@@ -78,21 +88,19 @@ pub fn setup(
     }
 }
 
-pub fn prove(
-    proving_key_path: &str,
-    inputs: Vec<(String, FS)>,
-) -> Result<String> {
-
+pub fn prove(proving_key_path: &str, inputs: Vec<(String, FS)>) -> Result<String> {
     let pk = File::open(proving_key_path)?;
-    let ProvingKey{asts,constraints, ignore_signals, params}= super::format::read_pk(pk)?;
+    let ProvingKey {
+        asts,
+        constraints,
+        ignore_signals,
+        params,
+    } = super::format::read_pk(pk)?;
 
     info!("Generating witness...");
 
-    let mut ev_witness = Evaluator::new(
-        Mode::GenWitness,
-        Signals::default(),
-        Constraints::default()
-    );
+    let mut ev_witness =
+        Evaluator::new(Mode::GenWitness, Signals::default(), Constraints::default());
 
     let start = SystemTime::now();
     for (signal, value) in inputs {
@@ -132,7 +140,8 @@ pub fn prove(
         &ignore_signals,
         &constraints,
         &params,
-        &mut proof)?;
+        &mut proof,
+    )?;
 
     Ok(String::from_utf8_lossy(&proof).to_string())
 }
@@ -148,5 +157,3 @@ pub fn verify(json_verifying_key: &str, proof_and_public_input: &str) -> Result<
     info!("Verifying proof...");
     Ok(verify_proof(&vk, &proof, &public_inputs)?)
 }
-
-    

@@ -1,6 +1,6 @@
 use za_parser::ast::BodyElementP;
 
-use za_compiler::algebra::{FS,SignalId};
+use za_compiler::algebra::{SignalId, FS};
 use za_compiler::types::{Constraints, Signals};
 
 use std::io::Write;
@@ -11,8 +11,8 @@ use pairing::bn256::{Bn256, Fr};
 use pairing::Engine;
 
 use bellman::groth16::{
-    Parameters,
     create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
+    Parameters,
 };
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
@@ -40,9 +40,9 @@ pub struct CircomCircuit<'a, E: Engine> {
     phantom: PhantomData<E>,
 }
 
-impl<'a,E: Engine> CircomCircuit<'a, E> {}
+impl<'a, E: Engine> CircomCircuit<'a, E> {}
 
-impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
+impl<'a, E: Engine> Circuit<E> for CircomCircuit<'a, E> {
     fn synthesize<CS: ConstraintSystem<E>>(
         self,
         cs: &mut CS,
@@ -53,7 +53,6 @@ impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
         let mut ignore_it = self.ignore_signals.iter().peekable();
         // register signals
         for n in 1..self.signals.len() {
-
             let s = self.signals.get_by_id(n).unwrap();
 
             if let Some(ignore) = ignore_it.peek() {
@@ -63,7 +62,7 @@ impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
                     continue;
                 }
             }
-            
+
             let signal = if s.is_main_public_input() {
                 cs.alloc_input(
                     || (*s.full_name.0).clone(),
@@ -104,13 +103,12 @@ impl<'a,E: Engine> Circuit<E> for CircomCircuit<'a, E> {
 }
 
 pub fn setup<W: Write>(
-    asts : &[BodyElementP],
+    asts: &[BodyElementP],
     signals: &Signals,
     constraints: &Constraints,
-    ignore_signals : &[SignalId],
+    ignore_signals: &[SignalId],
     out_pk: W,
 ) -> Result<(bellman::groth16::VerifyingKey<Bn256>, Vec<String>)> {
-
     let rng = &mut thread_rng();
     let circuit = CircomCircuit::<Bn256> {
         signals,
@@ -131,7 +129,7 @@ pub fn setup<W: Write>(
     info!(
         "Proving key write time: {:?}",
         SystemTime::now().duration_since(start).unwrap()
-    ); 
+    );
 
     let inputs = signals.main_public_input_names();
 
@@ -140,9 +138,9 @@ pub fn setup<W: Write>(
 
 pub fn generate_verified_proof<W: Write>(
     signals: &Signals,
-    ignore_signals : &[SignalId],
-    constraints : &Constraints,
-    params : &Parameters<Bn256>,
+    ignore_signals: &[SignalId],
+    constraints: &Constraints,
+    params: &Parameters<Bn256>,
     out_proof: &mut W,
 ) -> Result<Vec<(String, FS)>> {
     let rng = &mut thread_rng();
@@ -154,7 +152,9 @@ pub fn generate_verified_proof<W: Write>(
     );
 
     let start = SystemTime::now();
-    constraints.satisfies_with_signals(&signals).expect("check_constrains_eval_zero failed");
+    constraints
+        .satisfies_with_signals(&signals)
+        .expect("check_constrains_eval_zero failed");
     info!(
         "Constraint check time: {:?} for {} constraint",
         SystemTime::now().duration_since(start).unwrap(),
@@ -192,7 +192,8 @@ pub fn generate_verified_proof<W: Write>(
     let verify_public_inputs = public_inputs
         .iter()
         .map(|(_, n)| {
-            Fr::from_str(&(n.to_string())).unwrap_or_else(|| panic!("cannot parse fe {}", &n.to_string()))
+            Fr::from_str(&(n.to_string()))
+                .unwrap_or_else(|| panic!("cannot parse fe {}", &n.to_string()))
         })
         .collect::<Vec<_>>();
 
@@ -210,16 +211,16 @@ pub fn generate_verified_proof<W: Write>(
 mod test {
     use super::*;
 
+    use super::super::format::read_pk;
     use bellman::groth16::{
         create_random_proof, generate_random_parameters, prepare_verifying_key, verify_proof,
     };
-    use za_compiler::algebra::Value;
-    use za_compiler::evaluator::{Evaluator, Mode, Scope};
     use pairing::bn256::{Bn256, Fr};
     use rand::thread_rng;
     use std::fs::File;
     use std::marker::PhantomData;
-    use super::super::format::read_pk;
+    use za_compiler::algebra::Value;
+    use za_compiler::evaluator::{Evaluator, Mode, Scope};
 
     #[test]
     fn test_generate_internal() {
@@ -263,11 +264,8 @@ mod test {
         let pvk = prepare_verifying_key(&params.vk);
 
         // Compute witness
-        let mut ev_witness = Evaluator::new(
-            Mode::GenWitness,
-            Signals::default(),
-            Constraints::default(),
-        );
+        let mut ev_witness =
+            Evaluator::new(Mode::GenWitness, Signals::default(), Constraints::default());
 
         ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));
         ev_witness.set_deferred_value("main.b".to_string(), Value::from(3));
@@ -276,7 +274,9 @@ mod test {
             .unwrap();
 
         // check constraints
-        &ev_r1cs.constraints.satisfies_with_signals(&ev_witness.signals)
+        &ev_r1cs
+            .constraints
+            .satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check all constraints = 0");
 
         println!("Creating proofs --------------------------------- ");
@@ -307,7 +307,6 @@ mod test {
 
     #[test]
     fn test_setup_and_prove_pk() {
-
         let circuit = "
             template t() {
                 signal private input a;
@@ -336,28 +335,27 @@ mod test {
             &ev_r1cs.signals,
             &ev_r1cs.constraints,
             &Vec::new(),
-            pk
-        ).expect("cannot setup");
+            pk,
+        )
+        .expect("cannot setup");
 
         // Compute witness -------------------------------------------
         let pk = File::open("/tmp/pk").unwrap();
         let pk = read_pk(pk).unwrap();
 
-        let mut ev_witness = Evaluator::new(
-            Mode::GenWitness,
-            Signals::default(),
-            Constraints::default(),
-        );
+        let mut ev_witness =
+            Evaluator::new(Mode::GenWitness, Signals::default(), Constraints::default());
 
         ev_witness.set_deferred_value("main.a".to_string(), Value::from(7));
         ev_witness.set_deferred_value("main.b".to_string(), Value::from(3));
-        ev_witness
-            .eval_asts(&pk.asts)
-            .unwrap();
+        ev_witness.eval_asts(&pk.asts).unwrap();
 
-        ev_r1cs.constraints.satisfies_with_signals(&ev_witness.signals)
+        ev_r1cs
+            .constraints
+            .satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check internal evaluator constraints = 0");
-        pk.constraints.satisfies_with_signals(&ev_witness.signals)
+        pk.constraints
+            .satisfies_with_signals(&ev_witness.signals)
             .expect("cannot check optimized constraints = 0");
 
         // Create and verify proof
@@ -367,10 +365,10 @@ mod test {
             &pk.ignore_signals,
             &pk.constraints,
             &pk.params,
-            &mut proof).unwrap();
+            &mut proof,
+        )
+        .unwrap();
 
         assert_eq!("[(\"main.c\", 21)]", format!("{:?}", public_input));
     }
-
-
 }

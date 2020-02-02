@@ -1,9 +1,9 @@
 use std::fmt;
 use std::ops::{Add, Mul, Neg};
 
-use super::AlgZero;
 use super::fs::FS;
-use super::lc::{SignalId,LC};
+use super::lc::{SignalId, LC};
+use super::AlgZero;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct QEQ {

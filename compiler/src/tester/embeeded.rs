@@ -14,13 +14,8 @@ pub fn run_embeeded_tests(
     skip_compile: bool,
     output_witness: bool,
     test_prefix: &str,
-) -> Result<Option<(Evaluator, String)>>
-{
-    let mut eval = Evaluator::new(
-        Mode::Collect,
-        Signals::default(),
-        Constraints::default(),
-    );
+) -> Result<Option<(Evaluator, String)>> {
+    let mut eval = Evaluator::new(Mode::Collect, Signals::default(), Constraints::default());
 
     match eval.eval_file(&path, &filename) {
         Ok(scan_scope) => {
@@ -41,14 +36,10 @@ pub fn run_embeeded_tests(
 
                 // Generate witness
                 println!("➡ Generating witness");
-                let mut ev_witness = Evaluator::new(
-                    Mode::GenWitness,
-                    Signals::default(),
-                    Constraints::default(),
-                );
+                let mut ev_witness =
+                    Evaluator::new(Mode::GenWitness, Signals::default(), Constraints::default());
                 ev_witness.debug = debug;
-                if let Err(err) = ev_witness.eval_template(&mut scan_scope.clone(), &test_name)
-                {
+                if let Err(err) = ev_witness.eval_template(&mut scan_scope.clone(), &test_name) {
                     dump_error(&ev_witness, &format!("{:?}", &err));
                     return Err(Error::Evaluator(err));
                 }
@@ -113,7 +104,10 @@ pub fn run_embeeded_tests(
                         "➡  Testing {} constraints evals to zero",
                         ev_constraints.constraints.len()
                     );
-                    ev_constraints.constraints.satisfies_with_signals(&ev_witness.signals).map_err(Error::Unexpected)?;
+                    ev_constraints
+                        .constraints
+                        .satisfies_with_signals(&ev_witness.signals)
+                        .map_err(Error::Unexpected)?;
                 }
             }
         }

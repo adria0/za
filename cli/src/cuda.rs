@@ -2,12 +2,11 @@ use za_compiler::algebra::{LC, QEQ};
 use za_compiler::types::{Constraints, Signals};
 
 use byteorder::{LittleEndian, WriteBytesExt};
-use za_parser::ast::SignalType;
 use std::fs::File;
 use std::io::{Seek, SeekFrom, Write};
+use za_parser::ast::SignalType;
 
 pub fn export(path: &str, constraints: &Constraints, signals: &Signals) -> std::io::Result<()> {
-    
     // find the number of public inputs, by now should be ordered
     //   in the following way:
     //
@@ -83,7 +82,7 @@ pub fn export(path: &str, constraints: &Constraints, signals: &Signals) -> std::
         file: &mut File,
         constraints: &Constraints,
         lc_of: &dyn Fn(QEQ) -> LC,
-    ) -> std::io::Result<()>  {
+    ) -> std::io::Result<()> {
         let zeroes = vec![0; 32];
         let constraints_len = constraints.len();
 

@@ -1,6 +1,4 @@
-use crate::{
-    evaluator::Evaluator,
-};
+use crate::evaluator::Evaluator;
 
 #[cfg(not(target_os = "android"))]
 pub fn dump_error(eval: &Evaluator, err: &str) {
@@ -27,10 +25,7 @@ mod extended {
     use codespan_reporting::termcolor::{ColorChoice, StandardStream};
     use codespan_reporting::{emit, Diagnostic, Label, Severity};
 
-    pub fn dump_error_codespan(
-        eval: &super::Evaluator,
-        err: &str,
-    ) {
+    pub fn dump_error_codespan(eval: &super::Evaluator, err: &str) {
         let msg = err.to_string();
 
         if let Some(ctx) = &eval.last_error {

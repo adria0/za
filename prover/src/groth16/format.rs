@@ -2,8 +2,8 @@ extern crate rand;
 
 use pairing::bn256::Bn256;
 
-use za_compiler::algebra::{Value, FS, LC, SignalId};
-use za_compiler::types::{Constraints};
+use za_compiler::algebra::{SignalId, Value, FS, LC};
+use za_compiler::types::Constraints;
 use za_parser::ast::BodyElementP;
 
 use bellman::LinearCombination;
@@ -27,7 +27,7 @@ pub struct ProvingKey {
     pub asts: Vec<BodyElementP>,
     pub constraints: Constraints,
     pub ignore_signals: Vec<SignalId>,
-    pub params :  Parameters<Bn256>,
+    pub params: Parameters<Bn256>,
 }
 
 fn str_to_fq(s: &str) -> Result<pairing::bn256::Fq> {
@@ -203,7 +203,7 @@ pub fn lc_to_bellman<E: Engine>(
     for (s, v) in &lc.0 {
         let signal = signals[*s];
         if signal.is_none() {
-            panic!("signal {} not defined",*s);
+            panic!("signal {} not defined", *s);
         }
         base = base.add((fs_to_bellman_fr::<E>(&v), signal.unwrap()));
     }
@@ -217,7 +217,6 @@ pub fn write_pk<W: Write>(
     ignore_signals: &[SignalId],
     params: &Parameters<Bn256>,
 ) -> Result<()> {
-
     // write asts
     let ast_serial = bincode::serialize(asts)?;
     pk.write_u32::<BigEndian>(ast_serial.len() as u32)?;
@@ -248,7 +247,7 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<ProvingKey> {
 
     // read asts
     let bytes = pk.read_u32::<BigEndian>()?;
-    let mut ast_serial = vec![0;bytes as usize];
+    let mut ast_serial = vec![0; bytes as usize];
     pk.read_exact(&mut ast_serial)?;
     let asts = bincode::deserialize(&ast_serial)?;
 
@@ -275,7 +274,12 @@ pub fn read_pk<R: Read>(mut pk: R) -> Result<ProvingKey> {
     // read proving key
     let params: Parameters<Bn256> = Parameters::read(pk, true)?;
 
-    Ok(ProvingKey{asts,constraints, ignore_signals, params})
+    Ok(ProvingKey {
+        asts,
+        constraints,
+        ignore_signals,
+        params,
+    })
 }
 
 pub fn flatten_json(prefix: &str, json: &str) -> Result<Vec<(String, FS)>> {

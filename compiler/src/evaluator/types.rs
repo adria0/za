@@ -1,8 +1,8 @@
 use crate::types::{Signal, Signals};
 
 use super::algebra;
-use super::error::{Error, Result};
 use super::algebra::{SignalId, FS};
+use super::error::{Error, Result};
 
 #[derive(Debug, Clone)]
 pub enum List {
