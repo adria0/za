@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/License-GPLv3-blue.svg">
 </p>
 
-An experimental implementation of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working in iden3. Since it was discontinued I forked it from https://www.github.com/iden3/za just to learn-by-doing.
+An experimental implementation of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working for iden3. Since it was discontinued I forked it from https://www.github.com/iden3/za just to learn-by-doing.
 
 **WARNING**: This is a proof-of-concept prototype, and in particular has not received careful code review.
 
