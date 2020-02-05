@@ -8,9 +8,11 @@
     <img src="https://img.shields.io/badge/License-GPLv3-blue.svg">
 </p>
 
-An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover. I created it to PoC how to port the existing javascript compiler to rust when I was working in iden3. Since now is discontinued I forked it from https://www.github.com/iden3/za just to lean-by-doing. 
+An experimental implementation of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working in iden3. Since it was discontinued I forked it from https://www.github.com/iden3/za just to learn-by-doing.
 
 **WARNING**: This is a proof-of-concept prototype, and in particular has not received careful code review.
+
+[circom]: https://github.com/iden3/circom
 
 ### Building 
 
@@ -37,8 +39,8 @@ The final binary will be in `target/release/za`
 `za setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol> --verifiertype <solidity|json>`
 
 - `circuit.circom` is an input file with the `main` component that specifies the circuit
-- `proving.key` if a generated output with the key required to generate proofs
-- `verifier.sol` if a generated output with the smartcontract to verify the generated proofs
+- `proving.key` is a generated output with the key required to generate proofs
+- `verifier.sol` is a generated output with the smartcontract to verify the generated proofs
 
 _if you want to do a test, create a file with name `circuit.circom` with the following contents and run the `za setup`_
 
@@ -58,8 +60,8 @@ component main = T();
 `za prove --input <input.json> --pk <proving.key> --proof <proof.json>`
 
 - `input.json` is an input file with the required input signals to generate the full witness
-- `proving.key` if an input file with the key required to generate proofs
-- `proof.json`  the input required to the smartcontract to verify the proof
+- `proving.key` is an input file with the key required to generate proofs
+- `proof.json` is the input required by the smartcontract to verify the proof
 
 _if you want to do a test, create a file with name `input.circom` with the following contents and run the `za prove`_
 
@@ -78,9 +80,9 @@ In order to test if a circuit is correct is possible to write an embedded test b
 
 this will run the tests found in the circuit and all the tests found in the included templates
 
-### Javascript bindings
+### JavaScript bindings
 
-to compile the javascript bindings, go to the `binding/js` folder and run:
+to compile the JavaScript bindings, go to the `binding/js` folder and run:
 
 - `npm i`
 - `npm run install`
