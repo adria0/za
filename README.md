@@ -5,7 +5,7 @@
     <a href="https://codecov.io/gh/adria0/za"><img src="https://github.com/adria0/za/workflows/Code%20Coverage/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3AClippy"><img src="https://github.com/adria0/za/workflows/Clippy/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3ARustfmt"><img src="https://github.com/adria0/za/workflows/Rustfmt/badge.svg"></a>
-    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg">
+    <img src="https://img.shields.io/badge/License-LGPLv2.1-blue.svg">
 </p>
 
 An experimental implementation of circom compiler in rust with embeeded bellman-bn128 prover. I created it to PoC how to port the existing javascript compiler to rust when I was working in iden3. Since now is discontinued I forked it from https://www.github.com/iden3/za just to lean-by-doing. 
