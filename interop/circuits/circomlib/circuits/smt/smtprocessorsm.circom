@@ -17,80 +17,6 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/***************************************************************************************************
-Each level on a SMTProcessor has a state.
-
-The state of the level depends on the state of te botom level and on `xor` and
-`is0` signals.
-
-`isOldLev` 1 when is the level where oldLeaf is.
-
-`xor` signal is 0 if the index bit at the current level is the same in the old
-and the new index, and 1 if it is different.
-
-`is0` signal, is 1 if we are inserting/deleting in an empty leaf and 0 if we
-are inserting/deleting in a leaf that contains an element.
-
-The states are:
-
-top: While the index bits of the old and new insex in the top level is the same, whe are in the top state.
-old0: When the we reach insert level,  we go to old0 state
-if `is0`=1.
-btn: Once in insert level and `is0` =0 we go to btn or new1 level if xor=1
-new1: This level is reached when xor=1. Here is where we insert/delete the hash of the
-old and the new trees with just one element.
-na: Not appliable.  After processing it, we go to the na level.
-
-
-Fnction
-fnc[0]  fnc[1]
-0       0             NOP
-0       1             UPDATE
-1       0             INSERT
-1       1             DELETE
-
-
-                                                ###########
-                                               #           #
-                ┌────────────────────────────▶#    upd      #─────────────────────┐
-                │                              ##         ##                      │
-                │                                #########                        │
-      levIns=1  │                                                                 │
-      fnc[0]=0  │                                                                 │  any
-                │                                                                 │
-                │                                                                 │
-                │                                                                 │
-                │                                ###########                      │
-                │        levIns=1               #           #                     │
-   levIns=0     │         is0=1  ┌────────────▶#    old0     #────────┐           │     any
-   ┌─────┐      │        fnc[0]=1│              ##         ##         │           │   ┌──────┐
-   │     │      │                │                #########           │ any       │   │      │
-   │     ▼      │                │                                    │           ▼   ▼      │
-   │    ###########              │                                    │          ########### │
-   │   #           # ────────────┘                                    └────────▶#           #│
-   └──#    top      #                                                          #    na       #
-       ##         ## ───────────────────┐ levIns=1                          ┌──▶##         ##
-         #########                      │  is0=0                            │     #########
-             │                          │ fnc[0]=1                          │
-             │                          │  xor=1             ###########    │ any
-             │                          └──────────────────▶#           #   │
-             │                                             #    new1     #──┘
-             │                                              ##         ##
-             └────────────────────────────────┐               #########
-                  levIns=1                    │                   ▲
-                   is0=0                      │             ┌─────┘
-                  fnc[0]=1                    │  ###########│  xor=1
-                   xor=0                      │ #           #
-                                              ▼#    btn      #
-                                                ##         ##
-                                                  #########◀───────┐
-                                                      │            │
-                                                      │            │
-                                                      └────────────┘
-                                                          xor=0
-
-***************************************************************************************************/
-
 template SMTProcessorSM() {
   signal input xor;
   signal input is0;
@@ -144,14 +70,14 @@ template SMTProcessorSM() {
   //      + prev_bot
   //      - prev_bot *                         xor
 
-  st_bot <== (1-xor) * (aux2 - st_old0 + prev_bot)
+  st_bot <== (1-xor) * (aux2 - st_old0 + prev_bot);
 
 
   // st_upd = prev_top * (1-fnc[0]) *levIns;
   //    = + prev_top * levIns
   //      - prev_top * levIns * fnc[0]
 
-  st_upd <== aux1 - aux2
+  st_upd <== aux1 - aux2;
 
   // st_na = prev_new1 + prev_old0 + prev_na + prev_upd;
   //    = + prev_new1

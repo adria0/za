@@ -27,7 +27,7 @@ template Sign() {
 
     var i;
 
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         comp.in[i] <== in[i];
     }
 

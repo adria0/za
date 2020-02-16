@@ -30,9 +30,10 @@ template Edwards2Montgomery() {
     signal input in[2];
     signal output out[2];
 
-    out[0] <-- (1 + in[1]) / (1 - in[1]);
-    out[1] <-- out[0] / in[0];
-
+    /*#[w]#*/ {
+        out[0] <-- (1 + in[1]) / (1 - in[1]);
+        out[1] <-- out[0] / in[0];
+    }
 
     out[0] * (1-in[1]) === (1 + in[1]);
     out[1] * in[0] === out[0];
@@ -49,9 +50,10 @@ template Montgomery2Edwards() {
     signal input in[2];
     signal output out[2];
 
-    out[0] <-- in[0] / in[1];
-    out[1] <-- (in[0] - 1) / (in[0] + 1);
-
+    /*#[w]#*/ {
+        out[0] <-- in[0] / in[1];
+        out[1] <-- (in[0] - 1) / (in[0] + 1);
+    }
     out[0] * in[1] === in[0];
     out[1] * (in[0] + 1) === in[0] - 1;
 }
@@ -98,7 +100,7 @@ template MontgomeryAdd() {
 
     signal lamda;
 
-    lamda <-- (in2[1] - in1[1]) / (in2[0] - in1[0]);
+    /*#[w]#*/ lamda <-- (in2[1] - in1[1]) / (in2[0] - in1[0]);
     lamda * (in2[0] - in1[0]) === (in2[1] - in1[1]);
 
     out[0] <== B*lamda*lamda - A - in1[0] -in2[0];
@@ -133,7 +135,7 @@ template MontgomeryDouble() {
 
     x1_2 <== in[0] * in[0];
 
-    lamda <-- (3*x1_2 + 2*A*in[0] + 1 ) / (2*B*in[1]);
+    /*#[w]#*/ lamda <-- (3*x1_2 + 2*A*in[0] + 1 ) / (2*B*in[1]);
     lamda * (2*B*in[1]) === (3*x1_2 + 2*A*in[0] + 1 );
 
     out[0] <== B*lamda*lamda - A - 2*in[0];

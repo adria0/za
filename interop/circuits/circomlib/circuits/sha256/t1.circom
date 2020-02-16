@@ -35,18 +35,20 @@ template T1() {
 
     component bigsigma1 = BigSigma(6, 11, 25);
 
-    for (var ki=0; ki<32; ki++) {
+    for (var ki=0; ki<32; ki+=1) {
         bigsigma1.in[ki] <== e[ki];
         ch.a[ki] <== e[ki];
         ch.b[ki] <== f[ki];
-        ch.c[ki] <== g[ki]
-
+        ch.c[ki] <== g[ki];
+    }
+    for (var ki=0; ki<32; ki+=1) {
         sum.in[0][ki] <== h[ki];
         sum.in[1][ki] <== bigsigma1.out[ki];
         sum.in[2][ki] <== ch.out[ki];
         sum.in[3][ki] <== k[ki];
         sum.in[4][ki] <== w[ki];
-
+    }
+    for (var ki=0; ki<32; ki+=1) {
         out[ki] <== sum.out[ki];
     }
 }

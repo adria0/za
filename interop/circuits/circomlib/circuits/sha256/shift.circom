@@ -21,7 +21,7 @@ template ShR(n, r) {
     signal input in[n];
     signal output out[n];
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
         if (i+r >= n) {
             out[i] <== 0;
         } else {

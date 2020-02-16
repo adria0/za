@@ -21,7 +21,7 @@ async function testInclusion(tree, key, circuit) {
     let siblings = res.siblings;
     while (siblings.length<10) siblings.push(bigInt(0));
 
-    const w = circuit.calculateWitness({
+    const input = {
         enabled: 1,
         fnc: 0,
         root: tree.root,
@@ -31,8 +31,10 @@ async function testInclusion(tree, key, circuit) {
         isOld0: 0,
         key: key,
         value: res.foundValue
-    });
+    };
 
+    console.log(input);
+    const w = circuit.calculateWitness(input);
     assert(circuit.checkWitness(w));
 }
 
@@ -43,7 +45,7 @@ async function testExclusion(tree, key, circuit) {
     let siblings = res.siblings;
     while (siblings.length<10) siblings.push(bigInt(0));
 
-    const w = circuit.calculateWitness({
+    const input = {
         enabled: 1,
         fnc: 1,
         root: tree.root,
@@ -53,8 +55,9 @@ async function testExclusion(tree, key, circuit) {
         isOld0: res.isOld0 ? 1 : 0,
         key: key,
         value: 0
-    });
+    };
 
+    const w = circuit.calculateWitness(input);
     assert(circuit.checkWitness(w));
 }
 

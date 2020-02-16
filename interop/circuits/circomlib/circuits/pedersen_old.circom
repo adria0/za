@@ -44,11 +44,15 @@ template Pedersen(n) {
     var i;
     var j;
     var nexpbits;
-    for (i=0; i<nexps; i++) {
-        nexpbits = (i == nexps-1) ? nlastbits : 250;
+    for (i=0; i<nexps; i+=1) {
+        if (i == nexps-1) {
+            nexpbits = nlastbits; 
+        } else {
+            nexpbits = 250;
+        }
         escalarMuls[i] = EscalarMul(nexpbits, PBASE[i]);
 
-        for (j=0; j<nexpbits; j++) {
+        for (j=0; j<nexpbits; j+=1) {
             escalarMuls[i].in[j] <== in[250*i + j];
         }
 

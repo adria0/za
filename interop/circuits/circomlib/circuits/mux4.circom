@@ -51,7 +51,7 @@ template MultiMux4(n) {
     s210 <==  s21 * s[0];
 
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
 
         a3210[i] <==  ( c[i][15]-c[i][14]-c[i][13]+c[i][12] - c[i][11]+c[i][10]+c[i][ 9]-c[i][ 8]
                        -c[i][ 7]+c[i][ 6]+c[i][ 5]-c[i][ 4] + c[i][ 3]-c[i][ 2]-c[i][ 1]+c[i][ 0] ) * s210;
@@ -70,7 +70,7 @@ template MultiMux4(n) {
            a2[i] <==  ( c[i][ 4]-c[i][ 0] ) * s[2];
            a1[i] <==  ( c[i][ 2]-c[i][ 0] ) * s[1];
            a0[i] <==  ( c[i][ 1]-c[i][ 0] ) * s[0];
-            a[i] <==  ( c[i][ 0] )
+            a[i] <==  ( c[i][ 0] );
 
           out[i] <== ( a3210[i] + a321[i] + a320[i] + a310[i] + a32[i] + a31[i] + a30[i] + a3[i] ) * s[3] +
                      (  a210[i] +  a21[i] +  a20[i] +  a10[i] +  a2[i] +  a1[i] +  a0[i] +  a[i] );
@@ -106,11 +106,11 @@ template Mux4() {
 
     component mux = MultiMux4(1);
 
-    for (i=0; i<16; i++) {
+    for (i=0; i<16; i+=1) {
         mux.c[0][i] <== c[i];
     }
 
-    for (i=0; i<4; i++) {
+    for (i=0; i<4; i+=1) {
       s[i] ==> mux.s[i];
     }
 

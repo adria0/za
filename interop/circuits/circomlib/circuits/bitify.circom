@@ -22,12 +22,13 @@ include "aliascheck.circom";
 
 
 template Num2Bits(n) {
+
     signal input in;
     signal output out[n];
     var lc1=0;
 
-    for (var i = 0; i<n; i++) {
-        out[i] <-- (in >> i) & 1;
+    for (var i = 0; i<n; i+=1) {
+        /*#[w]#*/ out[i] <-- (in >> i) & 1;
         out[i] * (out[i] -1 ) === 0;
         lc1 += out[i] * 2**i;
     }
@@ -43,7 +44,7 @@ template Num2Bits_strict() {
     component n2b = Num2Bits(254);
     in ==> n2b.in;
 
-    for (var i=0; i<254; i++) {
+    for (var i=0; i<254; i+=1) {
         n2b.out[i] ==> out[i];
         n2b.out[i] ==> aliasCheck.in[i];
     }
@@ -54,7 +55,7 @@ template Bits2Num(n) {
     signal output out;
     var lc1=0;
 
-    for (var i = 0; i<n; i++) {
+    for (var i = 0; i<n; i+=1) {
         lc1 += in[i] * 2**i;
     }
 
@@ -68,7 +69,7 @@ template Bits2Num_strict() {
     component aliasCheck = AliasCheck();
     component b2n = Bits2Num(254);
 
-    for (var i=0; i<254; i++) {
+    for (var i=0; i<254; i+=1) {
         in[i] ==> b2n.in[i];
         in[i] ==> aliasCheck.in[i];
     }
@@ -85,9 +86,14 @@ template Num2BitsNeg(n) {
 
     isZero = IsZero();
 
-    var neg = n == 0 ? 0 : 2**n - in;
+    var neg;
+    if  (n == 0) {
+        neg = 0;
+    } else {
+        neg = 2**n - in;
+    }
 
-    for (var i = 0; i<n; i++) {
+    for (var i = 0; i<n; i+=1) {
         out[i] <-- (neg >> i) & 1;
         out[i] * (out[i] -1 ) === 0;
         lc1 += out[i] * 2**i;

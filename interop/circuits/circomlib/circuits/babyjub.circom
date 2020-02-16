@@ -41,10 +41,10 @@ template BabyAdd() {
     delta <== (-a*x1+y1)*(x2 + y2);
     tau <== beta * gamma;
 
-    xout <-- (beta + gamma) / (1+ d*tau);
+    /*#[w]#*/ xout <-- (beta + gamma) / (1+ d*tau);
     (1+ d*tau) * xout === (beta + gamma);
 
-    yout <-- (delta + a*beta - gamma) / (1-d*tau);
+    /*#[w]#*/ yout <-- (delta + a*beta - gamma) / (1-d*tau);
     (1-d*tau)*yout === (delta + a*beta - gamma);
 }
 
@@ -98,7 +98,7 @@ template BabyPbk() {
     component mulFix = EscalarMulFix(253, BASE8);
 
     var i;
-    for (i=0; i<253; i++) {
+    for (i=0; i<253; i+=1) {
         mulFix.e[i] <== pvkBits.out[i];
     }
     Ax  <== mulFix.out[0];

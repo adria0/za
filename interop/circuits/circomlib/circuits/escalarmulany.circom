@@ -82,19 +82,19 @@ template SegmentMulAny(n) {
     var i;
 
     bits[0] = BitElementMulAny();
-    e2m.out[0] ==> bits[0].dblIn[0]
-    e2m.out[1] ==> bits[0].dblIn[1]
-    e2m.out[0] ==> bits[0].addIn[0]
-    e2m.out[1] ==> bits[0].addIn[1]
+    e2m.out[0] ==> bits[0].dblIn[0];
+    e2m.out[1] ==> bits[0].dblIn[1];
+    e2m.out[0] ==> bits[0].addIn[0];
+    e2m.out[1] ==> bits[0].addIn[1];
     e[1] ==> bits[0].sel;
 
-    for (i=1; i<n-1; i++) {
+    for (i=1; i<n-1; i+=1) {
         bits[i] = BitElementMulAny();
 
-        bits[i-1].dblOut[0] ==> bits[i].dblIn[0]
-        bits[i-1].dblOut[1] ==> bits[i].dblIn[1]
-        bits[i-1].addOut[0] ==> bits[i].addIn[0]
-        bits[i-1].addOut[1] ==> bits[i].addIn[1]
+        bits[i-1].dblOut[0] ==> bits[i].dblIn[0];
+        bits[i-1].dblOut[1] ==> bits[i].dblIn[1];
+        bits[i-1].addOut[0] ==> bits[i].addIn[0];
+        bits[i-1].addOut[1] ==> bits[i].addIn[1];
         e[i+1] ==> bits[i].sel;
     }
 
@@ -146,13 +146,16 @@ template EscalarMulAny(n) {
     var i;
     var nseg;
 
-    for (s=0; s<nsegments; s++) {
+    for (s=0; s<nsegments; s+=1) {
 
-        nseg = (s < nsegments-1) ? 148 : nlastsegment;
-
+        if (s < nsegments-1) {
+            nseg = 148;
+        } else {
+            nseg = nlastsegment;
+        }
         segments[s] = SegmentMulAny(nseg);
 
-        for (i=0; i<nseg; i++) {
+        for (i=0; i<nseg; i+=1) {
             e[s*148+i] ==> segments[s].e[i];
         }
 

@@ -31,15 +31,19 @@ template SmallSigma(ra, rb, rc) {
     component rotb = RotR(32, rb);
     component shrc = ShR(32, rc);
 
-    for (var k=0; k<32; k++) {
+    for (var k=0; k<32; k+=1) {
         rota.in[k] <== in[k];
         rotb.in[k] <== in[k];
         shrc.in[k] <== in[k];
-
+    }
+    
+    for (var k=0; k<32; k+=1) {
         xor3.a[k] <== rota.out[k];
         xor3.b[k] <== rotb.out[k];
         xor3.c[k] <== shrc.out[k];
+    }
 
+    for (var k=0; k<32; k+=1) {
         out[k] <== xor3.out[k];
     }
 }
@@ -54,15 +58,17 @@ template BigSigma(ra, rb, rc) {
     component rotb = RotR(32, rb);
     component rotc = RotR(32, rc);
 
-    for (var k=0; k<32; k++) {
+    for (var k=0; k<32; k+=1) {
         rota.in[k] <== in[k];
         rotb.in[k] <== in[k];
         rotc.in[k] <== in[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         xor3.a[k] <== rota.out[k];
         xor3.b[k] <== rotb.out[k];
         xor3.c[k] <== rotc.out[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         out[k] <== xor3.out[k];
     }
 }

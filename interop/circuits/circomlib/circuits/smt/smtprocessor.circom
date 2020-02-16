@@ -17,117 +17,6 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/***************************************************************************************************
-
-SMTProcessor: Sparse Merkle Tree processor is a component to verify an insert/update/delete elements
-into the Sparse Merkle tree.
-
-
-Insert to an empty leaf
-=======================
-
-  STATE                 OLD STATE                                       NEW STATE
-  =====                 =========                                       =========
-
-                         oldRoot                                          newRoot
-                            ▲                                               ▲
-                            │                                               │
-          ┌───────┐     ┏━━━┻━━━┓                         ┌───────┐     ┏━━━┻━━━┓
-   top    │Sibling├────▶┃ Hash  ┃◀─┐                      │Sibling├────▶┃ Hash  ┃◀─┐
-          └───────┘     ┗━━━━━━━┛  │                      └───────┘     ┗━━━━━━━┛  │
-                                   │                                               │
-                                   │                                               │
-                               ┏━━━┻━━━┓   ┌───────┐                           ┏━━━┻━━━┓   ┌───────┐
-   top                  ┌─────▶┃ Hash  ┃◀──┤Sibling│                    ┌─────▶┃ Hash  ┃◀──┤Sibling│
-                        │      ┗━━━━━━━┛   └───────┘                    │      ┗━━━━━━━┛   └───────┘
-                        │                                               │
-                        │                                               │
-        ┌───────┐   ┏━━━┻━━━┓                           ┌───────┐   ┏━━━┻━━━┓
-   top  │Sibling├──▶┃ Hash  ┃◀─────┐                    │Sibling├──▶┃ Hash  ┃◀─────┐
-        └───────┘   ┗━━━━━━━┛      │                    └───────┘   ┗━━━━━━━┛      │
-                                   │                                               │
-                                   │                                               │
-                              ┌────┴────┐                                     ┌────┴────┐
-  old0                        │    0    │                                     │New1Leaf │
-                              └─────────┘                                     └─────────┘
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-
-Insert to a used leaf.
-=====================
-
-  STATE                 OLD STATE                                       NEW STATE
-  =====                 =========                                       =========
-
-
-                         oldRoot                                          newRoot
-                            ▲                                               ▲
-                            │                                               │
-          ┌───────┐     ┏━━━┻━━━┓                         ┌───────┐     ┏━━━┻━━━┓
-   top    │Sibling├────▶┃ Hash  ┃◀─┐                      │Sibling├────▶┃ Hash  ┃◀─┐
-          └───────┘     ┗━━━━━━━┛  │                      └───────┘     ┗━━━━━━━┛  │
-                                   │                                               │
-                                   │                                               │
-                               ┏━━━┻━━━┓   ┌───────┐                           ┏━━━┻━━━┓   ┌───────┐
-   top                  ┌─────▶┃ Hash  ┃◀──┤Sibling│                    ┌─────▶┃ Hash  ┃◀──┤Sibling│
-                        │      ┗━━━━━━━┛   └───────┘                    │      ┗━━━━━━━┛   └───────┘
-                        │                                               │
-                        │                                               │
-        ┌───────┐   ┏━━━┻━━━┓                           ┌───────┐   ┏━━━┻━━━┓
-   top  │Sibling├──▶┃ Hash  ┃◀─────┐                    │Sibling├──▶┃ Hash  ┃◀─────┐
-        └───────┘   ┗━━━━━━━┛      │                    └───────┘   ┗━━━━━━━┛      │
-                                   │                                               │
-                                   │                                               │
-                              ┌────┴────┐                                      ┏━━━┻━━━┓   ┌───────┐
-   bot                        │Old1Leaf │                               ┌─────▶┃ Hash  ┃◀──┼─  0   │
-                              └─────────┘                               │      ┗━━━━━━━┛   └───────┘
-                                                                        │
-                                                                        │
-                     ┏━━━━━━━┓                          ┌───────┐   ┏━━━┻━━━┓
-   bot               ┃ Hash  ┃                          │   0  ─┼──▶┃ Hash  ┃◀─────┐
-                     ┗━━━━━━━┛                          └───────┘   ┗━━━━━━━┛      │
-                                                                                   │
-                                                                                   │
-                     ┏━━━━━━━┓                                                 ┏━━━┻━━━┓   ┌───────┐
-   bot               ┃ Hash  ┃                                          ┌─────▶┃ Hash  ┃◀──│   0   │
-                     ┗━━━━━━━┛                                          │      ┗━━━━━━━┛   └───────┘
-                                                                        │
-                                                                        │
-                     ┏━━━━━━━┓                        ┌─────────┐   ┏━━━┻━━━┓   ┌─────────┐
-  new1               ┃ Hash  ┃                        │Old1Leaf ├──▶┃ Hash  ┃◀──│New1Leaf │
-                     ┗━━━━━━━┛                        └─────────┘   ┗━━━━━━━┛   └─────────┘
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-                     ┏━━━━━━━┓                                      ┏━━━━━━━┓
-   na                ┃ Hash  ┃                                      ┃ Hash  ┃
-                     ┗━━━━━━━┛                                      ┗━━━━━━━┛
-
-
-Fnction
-fnc[0]  fnc[1]
-0       0             NOP
-0       1             UPDATE
-1       0             INSERT
-1       1             DELETE
-
-
-***************************************************************************************************/
-
 include "../gates.circom";
 include "../bitify.circom";
 include "../comparators.circom";
@@ -150,7 +39,7 @@ template SMTProcessor(nLevels) {
 
     signal enabled;
 
-    enabled <== fnc[0] + fnc[1] - fnc[0]*fnc[1]
+    enabled <== fnc[0] + fnc[1] - fnc[0]*fnc[1];
 
     component hash1Old = SMTHash1();
     hash1Old.key <== oldKey;
@@ -167,18 +56,20 @@ template SMTProcessor(nLevels) {
     n2bNew.in <== newKey;
 
     component smtLevIns = SMTLevIns(nLevels);
-    for (var i=0; i<nLevels; i++) smtLevIns.siblings[i] <== siblings[i];
+    for (var i=0; i<nLevels; i+=1) {
+        smtLevIns.siblings[i] <== siblings[i];
+    }
     smtLevIns.enabled <== enabled;
 
     component xors[nLevels];
-    for (var i=0; i<nLevels; i++) {
+    for (var i=0; i<nLevels; i+=1) {
         xors[i] = XOR();
         xors[i].a <== n2bOld.out[i];
         xors[i].b <== n2bNew.out[i];
     }
 
     component sm[nLevels];
-    for (var i=0; i<nLevels; i++) {
+    for (var i=0; i<nLevels; i+=1) {
         sm[i] = SMTProcessorSM();
         if (i==0) {
             sm[i].prev_top <== enabled;
@@ -204,7 +95,7 @@ template SMTProcessor(nLevels) {
     sm[nLevels-1].st_na + sm[nLevels-1].st_new1 + sm[nLevels-1].st_old0 +sm[nLevels-1].st_upd === 1;
 
     component levels[nLevels];
-    for (var i=nLevels-1; i != -1; i--) {
+    for (var i=nLevels-1; i != -1; i=i-1) {
         levels[i] = SMTProcessorLevel();
 
         levels[i].st_top <== sm[i].st_top;

@@ -30,12 +30,12 @@ template MultiMux2(n) {
     signal  s10;
     s10 <== s[1] * s[0];
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
 
           a10[i] <==  ( c[i][ 3]-c[i][ 2]-c[i][ 1]+c[i][ 0] ) * s10;
            a1[i] <==  ( c[i][ 2]-c[i][ 0] ) * s[1];
            a0[i] <==  ( c[i][ 1]-c[i][ 0] ) * s[0];
-            a[i] <==  ( c[i][ 0] )
+            a[i] <==  ( c[i][ 0] );
 
           out[i] <==  (  a10[i] +  a1[i] +  a0[i] +  a[i] );
 
@@ -50,11 +50,11 @@ template Mux2() {
 
     component mux = MultiMux2(1);
 
-    for (i=0; i<4; i++) {
+    for (i=0; i<4; i+=1) {
         mux.c[0][i] <== c[i];
     }
 
-    for (i=0; i<2; i++) {
+    for (i=0; i<2; i+=1) {
       s[i] ==> mux.s[i];
     }
 

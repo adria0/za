@@ -40,7 +40,7 @@ template Ch(n) {
     signal input c[n];
     signal output out[n];
 
-    for (var k=0; k<n; k++) {
+    for (var k=0; k<n; k+=1) {
         out[k] <== a[k] * (b[k]-c[k]) + c[k];
     }
 }

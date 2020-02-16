@@ -40,46 +40,56 @@ template Sha256compression() {
     var i;
 
     component sigmaPlus[48];
-    for (i=0; i<48; i++) sigmaPlus[i] = SigmaPlus();
+    for (i=0; i<48; i+=1) {
+        sigmaPlus[i] = SigmaPlus();
+    }
 
     component ct_k[64];
-    for (i=0; i<64; i++) ct_k[i] = K(i);
-
+    for (i=0; i<64; i+=1) {
+        ct_k[i] = K(i);
+    }
     component t1[64];
-    for (i=0; i<64; i++) t1[i] = T1();
-
+    for (i=0; i<64; i+=1) {
+        t1[i] = T1();
+    }
     component t2[64];
-    for (i=0; i<64; i++) t2[i] = T2();
-
+    for (i=0; i<64; i+=1) {
+        t2[i] = T2();
+    }
     component suma[64];
-    for (i=0; i<64; i++) suma[i] = BinSum(32, 2);
-
+    for (i=0; i<64; i+=1) {
+        suma[i] = BinSum(32, 2);
+    }
     component sume[64];
-    for (i=0; i<64; i++) sume[i] = BinSum(32, 2);
-
+    for (i=0; i<64; i+=1) {
+        sume[i] = BinSum(32, 2);
+    }
     component fsum[8];
-    for (i=0; i<8; i++) fsum[i] = BinSum(32, 2);
-
+    for (i=0; i<8; i+=1) {
+        fsum[i] = BinSum(32, 2);
+    }
     var k;
     var t;
 
-    for (t=0; t<64; t++) {
+    for (t=0; t<64; t+=1) {
         if (t<16) {
-            for (k=0; k<32; k++) {
+            for (k=0; k<32; k+=1) {
                 w[t][k] <== inp[t*32+31-k];
             }
         } else {
-            for (k=0; k<32; k++) {
+            for (k=0; k<32; k+=1) {
                 sigmaPlus[t-16].in2[k] <== w[t-2][k];
                 sigmaPlus[t-16].in7[k] <== w[t-7][k];
                 sigmaPlus[t-16].in15[k] <== w[t-15][k];
                 sigmaPlus[t-16].in16[k] <== w[t-16][k];
+            }
+            for (k=0; k<32; k+=1) {
                 w[t][k] <== sigmaPlus[t-16].out[k];
             }
         }
     }
 
-    for (k=0; k<32; k++ ) {
+    for (k=0; k<32; k+=1 ) {
         a[0][k] <== hin[k];
         b[0][k] <== hin[32*1 + k];
         c[0][k] <== hin[32*2 + k];
@@ -90,8 +100,8 @@ template Sha256compression() {
         h[0][k] <== hin[32*7 + k];
     }
 
-    for (t = 0; t<64; t++) {
-        for (k=0; k<32; k++) {
+    for (t = 0; t<64; t+=1) {
+        for (k=0; k<32; k+=1) {
             t1[t].h[k] <== h[t][k];
             t1[t].e[k] <== e[t][k];
             t1[t].f[k] <== f[t][k];
@@ -104,7 +114,7 @@ template Sha256compression() {
             t2[t].c[k] <== c[t][k];
         }
 
-        for (k=0; k<32; k++) {
+        for (k=0; k<32; k+=1) {
             sume[t].in[0][k] <== d[t][k];
             sume[t].in[1][k] <== t1[t].out[k];
 
@@ -112,7 +122,7 @@ template Sha256compression() {
             suma[t].in[1][k] <== t2[t].out[k];
         }
 
-        for (k=0; k<32; k++) {
+        for (k=0; k<32; k+=1) {
             h[t+1][k] <== g[t][k];
             g[t+1][k] <== f[t][k];
             f[t+1][k] <== e[t][k];
@@ -124,7 +134,7 @@ template Sha256compression() {
         }
     }
 
-    for (k=0; k<32; k++) {
+    for (k=0; k<32; k+=1) {
         fsum[0].in[0][k] <==  hin[32*0+k];
         fsum[0].in[1][k] <==  a[64][k];
         fsum[1].in[0][k] <==  hin[32*1+k];
@@ -143,7 +153,7 @@ template Sha256compression() {
         fsum[7].in[1][k] <==  h[64][k];
     }
 
-    for (k=0; k<32; k++) {
+    for (k=0; k<32; k+=1) {
         out[31-k]     <== fsum[0].out[k];
         out[32+31-k]  <== fsum[1].out[k];
         out[64+31-k]  <== fsum[2].out[k];

@@ -19,7 +19,7 @@
 
 include "constants.circom";
 include "sha256compression.circom";
-include "../bitify.circom"
+include "../bitify.circom";
 
 template Sha256_2() {
     signal input a;
@@ -50,7 +50,7 @@ template Sha256_2() {
     component hg0 = H(6);
     component hh0 = H(7);
 
-    for (k=0; k<32; k++ ) {
+    for (k=0; k<32; k+=1 ) {
         sha256compression.hin[0*32+k] <== ha0.out[k];
         sha256compression.hin[1*32+k] <== hb0.out[k];
         sha256compression.hin[2*32+k] <== hc0.out[k];
@@ -61,14 +61,14 @@ template Sha256_2() {
         sha256compression.hin[7*32+k] <== hh0.out[k];
     }
 
-    for (i=0; i<216; i++) {
+    for (i=0; i<216; i+=1) {
         sha256compression.inp[i] <== num2bits[0].out[215-i];
         sha256compression.inp[i+216] <== num2bits[1].out[215-i];
     }
 
     sha256compression.inp[432] <== 1;
 
-    for (i=433; i<503; i++) {
+    for (i=433; i<503; i+=1) {
         sha256compression.inp[i] <== 0;
     }
 
@@ -82,7 +82,7 @@ template Sha256_2() {
     sha256compression.inp[510] <== 0;
     sha256compression.inp[511] <== 0;
 
-    for (i=0; i<216; i++) {
+    for (i=0; i<216; i+=1) {
         bits2num.in[i] <== sha256compression.out[255-i];
     }
 

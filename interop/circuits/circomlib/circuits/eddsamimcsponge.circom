@@ -44,7 +44,7 @@ template EdDSAMiMCSpongeVerifier() {
 
     component  compConstant = CompConstant(2736030358979909402780800718157159386076813972158567259200215660948447373040);
 
-    for (i=0; i<253; i++) {
+    for (i=0; i<253; i+=1) {
         snum2bits.out[i] ==> compConstant.in[i];
     }
     compConstant.in[253] <== 0;
@@ -83,7 +83,7 @@ template EdDSAMiMCSpongeVerifier() {
     isZero.out === 0;
 
     component mulAny = EscalarMulAny(254);
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         mulAny.e[i] <== h2bits.out[i];
     }
     mulAny.p[0] <== dbl3.xout;
@@ -105,7 +105,7 @@ template EdDSAMiMCSpongeVerifier() {
         16950150798460657717958625567821834550301663161624707787222815936182638968203
     ];
     component mulFix = EscalarMulFix(253, BASE8);
-    for (i=0; i<253; i++) {
+    for (i=0; i<253; i+=1) {
         mulFix.e[i] <== snum2bits.out[i];
     }
 

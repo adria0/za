@@ -1,0 +1,73 @@
+include "../circuits/smt/smtprocessor.circom";
+
+#[test]
+template test_smtprocessor_insert() {
+   component main = SMTProcessor(10);
+
+   main.fnc[0] <== 1;
+   main.fnc[1] <== 0;
+   main.oldRoot <== 12807044298688000263138620233131019457190300857314696739554744980092133110606;
+   main.siblings[0] <== 14352042597084731985167090523380966166849342735501537582515475409458617286578;
+   main.siblings[1] <== 0;
+   main.siblings[2] <== 0;
+   main.siblings[3] <== 0;
+   main.siblings[4] <== 0;
+   main.siblings[5] <== 0;
+   main.siblings[6] <== 0;
+   main.siblings[7] <== 0;
+   main.siblings[8] <== 0;
+   main.siblings[9] <== 0;
+   main.oldKey <== 0;
+   main.oldValue <== 0;
+   main.isOld0 <== 1;
+   main.newKey <== 9;
+   main.newValue <== 99;
+}
+
+#[test]
+template test_smtprocessor_delete() {
+   component main = SMTProcessor(10);
+
+   main.fnc[0] <== 1;
+   main.fnc[1] <== 1;
+   main.oldRoot <== 17513827060318074480488359906471432279114960121917792567048939288990155540182;
+   main.siblings[0] <== 0;
+   main.siblings[1] <== 0;
+   main.siblings[2] <== 0;
+   main.siblings[3] <== 0;
+   main.siblings[4] <== 0;
+   main.siblings[5] <== 0;
+   main.siblings[6] <== 0;
+   main.siblings[7] <== 0;
+   main.siblings[8] <== 0;
+   main.siblings[9] <== 0;
+   main.oldKey <== 8;
+   main.oldValue <== 88;
+   main.isOld0 <== 0;
+   main.newKey <== 9;
+   main.newValue <== 99;
+}
+
+#[test]
+template test_smtprocessor_update() {
+   component main = SMTProcessor(10);
+
+   main.fnc[0] <== 0;
+   main.fnc[1] <== 1;
+   main.oldRoot <== 1762253372807227400065271741288866025048918096836698497898541971067362234587;
+   main.siblings[0] <== 603587849458946318657677285134921910584420549313130943360818304788847572542;
+   main.siblings[1] <== 0;
+   main.siblings[2] <== 0;
+   main.siblings[3] <== 19635146601581224097401783995915193553316189822130788713767923201829446926568;
+   main.siblings[4] <== 0;
+   main.siblings[5] <== 0;
+   main.siblings[6] <== 0;
+   main.siblings[7] <== 0;
+   main.siblings[8] <== 0;
+   main.siblings[9] <== 0;
+   main.oldKey <== 32;
+   main.oldValue <== 3232;
+   main.isOld0 <== 0;
+   main.newKey <== 32;
+   main.newValue <== 323232;
+}

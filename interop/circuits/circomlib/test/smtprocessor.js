@@ -19,7 +19,7 @@ async function testInsert(tree, key, value, circuit, log ) {
     let siblings = res.siblings;
     while (siblings.length<10) siblings.push(bigInt(0));
 
-    const w = circuit.calculateWitness({
+    const input = {
         fnc: [1,0],
         oldRoot: res.oldRoot,
         siblings: siblings,
@@ -28,8 +28,10 @@ async function testInsert(tree, key, value, circuit, log ) {
         isOld0: res.isOld0 ? 1 : 0,
         newKey: key,
         newValue: value
-    }, log);
-
+    };
+	
+    const w = circuit.calculateWitness(input,log)
+    
     const root1 = w[circuit.getSignalIdx("main.newRoot")];
     assert(circuit.checkWitness(w));
     assert(root1.equals(res.newRoot));
@@ -39,8 +41,8 @@ async function testDelete(tree, key, circuit) {
     const res = await tree.delete(key);
     let siblings = res.siblings;
     while (siblings.length<10) siblings.push(bigInt(0));
-
-    const w = circuit.calculateWitness({
+    
+    let input = {
         fnc: [1,1],
         oldRoot: res.oldRoot,
         siblings: siblings,
@@ -49,7 +51,9 @@ async function testDelete(tree, key, circuit) {
         isOld0: res.isOld0 ? 1 : 0,
         newKey: res.delKey,
         newValue: res.delValue
-    });
+    };
+    
+    const w = circuit.calculateWitness(input);
 
     const root1 = w[circuit.getSignalIdx("main.newRoot")];
 
@@ -62,7 +66,7 @@ async function testUpdate(tree, key, newValue, circuit) {
     let siblings = res.siblings;
     while (siblings.length<10) siblings.push(bigInt(0));
 
-    const w = circuit.calculateWitness({
+    const input = {
         fnc: [0,1],
         oldRoot: res.oldRoot,
         siblings: siblings,
@@ -71,8 +75,10 @@ async function testUpdate(tree, key, newValue, circuit) {
         isOld0: 0,
         newKey: res.newKey,
         newValue: res.newValue
-    });
+    };
+console.log(input);
 
+    const w = circuit.calculateWitness(input);
     const root1 = w[circuit.getSignalIdx("main.newRoot")];
 
     assert(circuit.checkWitness(w));

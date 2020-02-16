@@ -1,0 +1,10 @@
+include "../circuits/sha256/sha256_2.circom";
+
+#[test]
+template test_sha256_2() {
+    component main =Sha256_2();
+    main.a <== 1;
+    main.b <== 2;
+    main.out === 0xb0737bf459bcbdf05eb8a8d4aad5b097ed84c37f5de06faea1278b;
+}
+

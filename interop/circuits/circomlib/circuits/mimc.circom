@@ -122,8 +122,12 @@ template MiMC7(nrounds) {
     signal t6[nrounds];
     signal t7[nrounds-1];
 
-    for (var i=0; i<nrounds; i++) {
-        t = (i==0) ? k+x_in : k + t7[i-1] + c[i];
+    for (var i=0; i<nrounds; i+=1) {
+        if (i==0) {
+            t = k+x_in;
+        } else {
+            t = k + t7[i-1] + c[i];
+        }
         t2[i] <== t*t;
         t4[i] <== t2[i]*t2[i];
         t6[i] <== t4[i]*t2[i];
@@ -144,7 +148,7 @@ template MultiMiMC7(nInputs, nRounds) {
     component mims[nInputs];
 
     r[0] <== k;
-    for (var i=0; i<nInputs; i++) {
+    for (var i=0; i<nInputs; i+=1) {
         mims[i] = MiMC7(nRounds);
         mims[i].x_in <== in[i];
         mims[i].k <== r[i];

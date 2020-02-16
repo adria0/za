@@ -9,7 +9,7 @@ template MiMCSponge(nInputs, nRounds, nOutputs) {
   // S = R||C
   component S[nInputs + nOutputs - 1];
 
-  for (var i = 0; i < nInputs; i++) {
+  for (var i = 0; i < nInputs; i+=1) {
     S[i] = MiMCFeistel(nRounds);
     S[i].k <== k;
     if (i == 0) {
@@ -23,7 +23,7 @@ template MiMCSponge(nInputs, nRounds, nOutputs) {
 
   outs[0] <== S[nInputs - 1].xL_out;
 
-  for (var i = 0; i < nOutputs - 1; i++) {
+  for (var i = 0; i < nOutputs - 1; i+=1) {
     S[nInputs + i] = MiMCFeistel(nRounds);
     S[nInputs + i].k <== k;
     S[nInputs + i].xL_in <== S[nInputs + i - 1].xL_out;
@@ -268,18 +268,27 @@ template MiMCFeistel(nrounds) {
     signal xR[nrounds-1];
 
     var c;
-    for (var i=0; i<nrounds; i++) {
+    for (var i=0; i<nrounds; i+=1) {
         if ((i == 0) || (i == nrounds - 1)) {
           c = 0;
         } else {
           c = c_partial[i - 1];
         }
-        t = (i==0) ? k+xL_in : k + xL[i-1] + c;
+        if (i==0) {
+          t = k+xL_in;
+        } else {
+          t = k + xL[i-1] + c;
+        }
         t2[i] <== t*t;
         t4[i] <== t2[i]*t2[i];
         if (i<nrounds-1) {
-          xL[i] <== ((i==0) ? xR_in : xR[i-1]) + t4[i]*t;
-          xR[i] <== (i==0) ? xL_in : xL[i-1];
+          if (i==0) {
+            xL[i] <== xR_in + t4[i]*t;
+            xR[i] <== xL_in;
+          } else {
+            xL[i] <== xR[i-1] + t4[i]*t;
+            xR[i] <== xL[i-1];
+          }
         } else {
           xR_out <== xR[i-1] + t4[i]*t;
           xL_out <== xL[i-1];

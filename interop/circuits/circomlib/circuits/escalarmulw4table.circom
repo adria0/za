@@ -35,13 +35,13 @@ function EscalarMulW4Table(base, k) {
 
     var dbl = base;
 
-    for (i=0; i<k*4; i++) {
+    for (i=0; i<k*4; i+=1) {
         dbl = pointAdd(dbl[0], dbl[1], dbl[0], dbl[1]);
     }
 
     out[0][0] = 0;
     out[0][1] = 1;
-    for (i=1; i<16; i++) {
+    for (i=1; i<16; i+=1) {
         p = pointAdd(out[i-1][0], out[i-1][1], dbl[0], dbl[1]);
         out[i][0] = p[0];
         out[i][1] = p[1];

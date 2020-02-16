@@ -17,8 +17,8 @@
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
 
-include "../binsum.circom"
-include "sigma.circom"
+include "../binsum.circom";
+include "sigma.circom";
 
 template SigmaPlus() {
     signal input in2[32];
@@ -31,15 +31,17 @@ template SigmaPlus() {
     component sigma1 = SmallSigma(17,19,10);
     component sigma0 = SmallSigma(7, 18, 3);
 
-    for (var k=0; k<32; k++) {
+    for (var k=0; k<32; k+=1) {
         sigma1.in[k] <== in2[k];
         sigma0.in[k] <== in15[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         sum.in[0][k] <== sigma1.out[k];
         sum.in[1][k] <== in7[k];
         sum.in[2][k] <== sigma0.out[k];
         sum.in[3][k] <== in16[k];
-
+    }
+    for (var k=0; k<32; k+=1) {
         out[k] <== sum.out[k];
     }
 }

@@ -42,7 +42,7 @@ template EdDSAVerifier(n) {
 
     component  compConstant = CompConstant(2736030358979909402780800718157159386076813972158567259200215660948447373040);
 
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         S[i] ==> compConstant.in[i];
     }
     compConstant.out === 0;
@@ -53,7 +53,7 @@ template EdDSAVerifier(n) {
 
     component bits2pointA = Bits2Point_Strict();
 
-    for (i=0; i<256; i++) {
+    for (i=0; i<256; i+=1) {
         bits2pointA.in[i] <== A[i];
     }
     Ax <== bits2pointA.out[0];
@@ -63,7 +63,7 @@ template EdDSAVerifier(n) {
 
     component bits2pointR8 = Bits2Point_Strict();
 
-    for (i=0; i<256; i++) {
+    for (i=0; i<256; i+=1) {
         bits2pointR8.in[i] <== R8[i];
     }
     R8x <== bits2pointR8.out[0];
@@ -73,11 +73,11 @@ template EdDSAVerifier(n) {
 
     component hash = Pedersen(512+n);
 
-    for (i=0; i<256; i++) {
+    for (i=0; i<256; i+=1) {
         hash.in[i] <== R8[i];
         hash.in[256+i] <== A[i];
     }
-    for (i=0; i<n; i++) {
+    for (i=0; i<n; i+=1) {
         hash.in[512+i] <== msg[i];
     }
 
@@ -105,7 +105,7 @@ template EdDSAVerifier(n) {
     isZero.out === 0;
 
     component mulAny = EscalarMulAny(256);
-    for (i=0; i<256; i++) {
+    for (i=0; i<256; i+=1) {
         mulAny.e[i] <== point2bitsH.out[i];
     }
     mulAny.p[0] <== dbl3.xout;
@@ -127,7 +127,7 @@ template EdDSAVerifier(n) {
         16950150798460657717958625567821834550301663161624707787222815936182638968203
     ];
     component mulFix = EscalarMulFix(256, BASE8);
-    for (i=0; i<256; i++) {
+    for (i=0; i<256; i+=1) {
         mulFix.e[i] <== S[i];
     }
 

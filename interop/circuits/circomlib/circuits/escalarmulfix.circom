@@ -162,7 +162,7 @@ template SegmentMulFix(nWindows) {
     // In the last step we add an extra doubler so that numbers do not match.
     component dblLast = MontgomeryDouble();
 
-    for (i=0; i<nWindows; i++) {
+    for (i=0; i<nWindows; i+=1) {
         windows[i] = WindowMulFix();
         cadders[i] = MontgomeryAdd();
         if (i==0) {
@@ -176,6 +176,9 @@ template SegmentMulFix(nWindows) {
             cadders[i].in1[0] <== cadders[i-1].out[0];
             cadders[i].in1[1] <== cadders[i-1].out[1];
         }
+        for (j=0; j<3; j+=1) {
+            windows[i].in[j] <== e[3*i+j];
+        }
         if (i<nWindows-1) {
             cadders[i].in2[0] <== windows[i].out8[0];
             cadders[i].in2[1] <== windows[i].out8[1];
@@ -185,12 +188,9 @@ template SegmentMulFix(nWindows) {
             cadders[i].in2[0] <== dblLast.out[0];
             cadders[i].in2[1] <== dblLast.out[1];
         }
-        for (j=0; j<3; j++) {
-            windows[i].in[j] <== e[3*i+j];
-        }
     }
 
-    for (i=0; i<nWindows; i++) {
+    for (i=0; i<nWindows; i+=1) {
         adders[i] = MontgomeryAdd();
         if (i==0) {
             adders[i].in1[0] <== dblLast.out[0];
@@ -248,18 +248,22 @@ template EscalarMulFix(n, BASE) {
     var nseg;
     var nWindows;
 
-    for (s=0; s<nsegments; s++) {
+    for (s=0; s<nsegments; s+=1) {
 
-        nseg = (s < nsegments-1) ? 249 : nlastsegment;
+        if (s < nsegments-1) {
+            nseg = 249;
+        } else {
+            nseg = nlastsegment;
+        }
         nWindows = ((nseg - 1)\3)+1;
 
         segments[s] = SegmentMulFix(nWindows);
 
-        for (i=0; i<nseg; i++) {
+        for (i=0; i<nseg; i+=1) {
             segments[s].e[i] <== e[s*249+i];
         }
 
-        for (i = nseg; i<nWindows*3; i++) {
+        for (i = nseg; i<nWindows*3; i+=1) {
             segments[s].e[i] <== 0;
         }
 

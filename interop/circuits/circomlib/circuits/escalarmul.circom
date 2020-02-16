@@ -81,11 +81,11 @@ template EscalarMulWindow(base, k) {
     mux = MultiMux4(2);
     adder = BabyAdd();
 
-    for (i=0; i<4; i++) {
+    for (i=0; i<4; i+=1) {
         sel[i] ==> mux.s[i];
     }
 
-    for (i=0; i<16; i++) {
+    for (i=0; i<16; i+=1) {
         mux.c[0][i] <== table[i][0];
         mux.c[1][i] <== table[i][1];
     }
@@ -136,13 +136,13 @@ template EscalarMul(n, base) {
     component windows[nBlocks];
 
     // Construct the windows
-    for (i=0; i<nBlocks; i++) {
+    for (i=0; i<nBlocks; i+=1) {
       windows[i] = EscalarMulWindow(base, i);
     }
 
     // Connect the selectors
-    for (i=0; i<nBlocks; i++) {
-        for (j=0; j<4; j++) {
+    for (i=0; i<nBlocks; i+=1) {
+        for (j=0; j<4; j+=1) {
             if (i*4+j >= n) {
                 windows[i].sel[j] <== 0;
             } else {
@@ -155,7 +155,7 @@ template EscalarMul(n, base) {
     windows[0].in[0] <== inp[0];
     windows[0].in[1] <== inp[1];
 
-    for(i=0; i<nBlocks-1; i++) {
+    for(i=0; i<nBlocks-1; i+=1) {
         windows[i].out[0] ==> windows[i+1].in[0];
         windows[i].out[1] ==> windows[i+1].in[1];
     }

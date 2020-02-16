@@ -15,7 +15,7 @@ template Sigma() {
 template Ark(t, C) {
     signal input in[t];
     signal output out[t];
-    for (var i=0; i<t; i++) {
+    for (var i=0; i<t; i+=1) {
         out[i] <== in[i] + C;
     }
 }
@@ -25,9 +25,9 @@ template Mix(t, M) {
     signal output out[t];
     var lc;
 
-    for (var i=0; i<t; i++) {
+    for (var i=0; i<t; i+=1) {
         lc = 0;
-        for (var j=0; j<t; j++) {
+        for (var j=0; j<t; j+=1) {
             lc = lc + M[i][j]*in[j];
         }
         out[i] <== lc;
@@ -165,11 +165,11 @@ template Poseidon(nInputs, t, nRoundsF, nRoundsP) {
 
     var k;
 
-    for (var i=0; i<(nRoundsF + nRoundsP); i++) {
+    for (var i=0; i<(nRoundsF + nRoundsP); i+=1) {
         ark[i] = Ark(t, C[i]);
         mix[i] = Mix(t, M);
 
-        for (var j=0; j<t; j++) {
+        for (var j=0; j<t; j+=1) {
             if (i==0) {
                 if (j<nInputs) {
                     ark[i].in[j] <== inputs[j];
@@ -182,8 +182,12 @@ template Poseidon(nInputs, t, nRoundsF, nRoundsP) {
         }
 
         if ((i<(nRoundsF/2)) || (i>= (nRoundsP + nRoundsF/2))) {
-            k= i<nRoundsF/2 ? i : (i-nRoundsP);
-            for (var j=0; j<t; j++) {
+            if (i<nRoundsF/2) {
+                k= i;
+             } else {
+                k=i-nRoundsP;
+             }
+            for (var j=0; j<t; j+=1) {
                 sigmaF[k][j] = Sigma();
                 sigmaF[k][j].in <== ark[i].out[j];
                 mix[i].in[j] <== sigmaF[k][j].out;
@@ -193,7 +197,7 @@ template Poseidon(nInputs, t, nRoundsF, nRoundsP) {
             sigmaP[k] = Sigma();
             sigmaP[k].in <== ark[i].out[0];
             mix[i].in[0] <== sigmaP[k].out;
-            for (var j=1; j<t; j++) {
+            for (var j=1; j<t; j+=1) {
                 mix[i].in[j] <== ark[i].out[j];
             }
         }

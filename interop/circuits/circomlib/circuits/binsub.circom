@@ -48,12 +48,12 @@ template BinSub(n) {
     var lin = 2**n;
     var lout = 0;
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
         lin = lin + in[0][i]*(2**i);
         lin = lin - in[1][i]*(2**i);
     }
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
         out[i] <-- (lin >> i) & 1;
 
         // Ensure out is binary

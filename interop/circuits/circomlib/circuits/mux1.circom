@@ -22,7 +22,7 @@ template MultiMux1(n) {
     signal input s;   // Selector
     signal output out[n];
 
-    for (var i=0; i<n; i++) {
+    for (var i=0; i<n; i+=1) {
 
         out[i] <== (c[i][1] - c[i][0])*s + c[i][0];
 
@@ -37,7 +37,7 @@ template Mux1() {
 
     component mux = MultiMux1(1);
 
-    for (i=0; i<2; i++) {
+    for (i=0; i<2; i+=1) {
         mux.c[0][i] <== c[i];
     }
 

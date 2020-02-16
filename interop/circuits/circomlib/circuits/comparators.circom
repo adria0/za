@@ -25,8 +25,12 @@ template IsZero() {
     signal output out;
 
     signal inv;
-
-    inv <-- in!=0 ? 1/in : 0;
+    /*#[w]#*/ if (in!=0) {
+        inv <-- 1/in;    
+    } else {
+        inv <-- 0;
+    }
+    
 
     out <== -in*inv +1;
     in*out === 0;
@@ -76,7 +80,7 @@ template LessThan(n) {
     in[1] ==> num2Bits1.in;
 
     var i;
-    for (i=0;i<n;i++) {
+    for (i=0;i<n;i+=1) {
         num2Bits0.out[i] ==> adder.in[0][i];
         num2Bits1.out[i] ==> adder.in[1][i];
     }

@@ -32,7 +32,9 @@ function sqrt(n) {
     // Test that have solution
     var res = n ** ((-1) >> 1);
 //        if (res!=1) assert(false, "SQRT does not exists");
-    if (res!=1) return 0;
+    if (res!=1) {
+        return 0;
+    }
 
     var m = 28;
     var c = 19103219067921713944291392827692070036145651957329286315305642004821462161904;
@@ -47,14 +49,15 @@ function sqrt(n) {
         sq = t*t;
         i = 1;
         while (sq!=1) {
-            i++;
+            i+=1;
             sq = sq*sq;
         }
 
         // b = c ^ m-i-1
         b = c;
-        for (j=0; j< m-i-1; j ++) b = b*b;
-
+        for (j=0; j< m-i-1; j +=1) {
+            b = b*b;
+        }
         m = i;
         c = b*b;
         t = t*c;
@@ -82,13 +85,13 @@ template Bits2Point_Strict() {
 
     // Check aliasing
     component aliasCheckY = AliasCheck();
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         aliasCheckY.in[i] <== in[i];
     }
     in[254] === 0;
 
     component b2nY = Bits2Num(254);
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         b2nY.in[i] <== in[i];
     }
 
@@ -101,8 +104,9 @@ template Bits2Point_Strict() {
 
     var x = sqrt(   (1-y2)/(a - d*y2)  );
 
-    if (in[255] == 1) x = -x;
-
+    if (in[255] == 1) {
+        x = -x;
+    }
     out[0] <-- x;
 
     component babyCheck = BabyCheck();
@@ -112,12 +116,12 @@ template Bits2Point_Strict() {
     component n2bX = Num2Bits(254);
     n2bX.in <== out[0];
     component aliasCheckX = AliasCheck();
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         aliasCheckX.in[i] <== n2bX.out[i];
     }
 
     component signCalc = CompConstant(10944121435919637611123202872628637544274182200208017171849102093287904247808);
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         signCalc.in[i] <== n2bX.out[i];
     }
 
@@ -145,17 +149,17 @@ template Point2Bits_Strict() {
 
     component aliasCheckX = AliasCheck();
     component aliasCheckY = AliasCheck();
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         aliasCheckX.in[i] <== n2bX.out[i];
         aliasCheckY.in[i] <== n2bY.out[i];
     }
 
     component signCalc = CompConstant(10944121435919637611123202872628637544274182200208017171849102093287904247808);
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         signCalc.in[i] <== n2bX.out[i];
     }
 
-    for (i=0; i<254; i++) {
+    for (i=0; i<254; i+=1) {
         out[i] <== n2bY.out[i];
     }
     out[254] <== 0;

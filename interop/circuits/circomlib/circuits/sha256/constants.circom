@@ -28,7 +28,7 @@ template H(x) {
              0x1f83d9ab,
              0x5be0cd19];
 
-    for (var i=0; i<32; i++) {
+    for (var i=0; i<32; i+=1) {
         out[i] <== (c[x] >> i) & 1;
     }
 }
@@ -46,7 +46,7 @@ template K(x) {
         0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
     ];
 
-    for (var i=0; i<32; i++) {
+    for (var i=0; i<32; i+=1) {
         out[i] <== (c[x] >> i) & 1;
     }
 }

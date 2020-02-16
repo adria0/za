@@ -1,0 +1,7 @@
+include "babyjub.za";
+include "comparators.za";
+include "eddsamimc.za";
+include "eddsaposeidon.za";
+include "sha256.za";
+include "smtverifier.za";
+include "smtprocessor.za";
