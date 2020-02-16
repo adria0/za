@@ -9,6 +9,8 @@ fn preprocess(expr: &str) -> Result<String> {
     let mut loc = 0;
     let mut block_comment_start = 0;
 
+    let expr = expr.replace("/*#[", "  #[").replace("]#*/", "]   ");
+
     let mut it = expr.chars();
     while let Some(c0) = it.next() {
         loc += 1;
@@ -98,11 +100,12 @@ mod test {
     }
 
     #[test]
-    fn preprocessor_comments() {
+    fn test_preprocessor_comments() {
         test_preprocess("helo // jalo", "helo        ");
         test_preprocess("helo // jalo\nfoo", "helo        \nfoo");
         test_preprocess("helo /* jalo */\nfoo", "helo           \nfoo");
         test_preprocess("helo /* jalo \n*/foo", "helo            foo");
         test_preprocess("helo /* // */foo", "helo         foo");
+        test_preprocess("a /*#[foo]#*/ b", "a   #[foo]    b");
     }
 }

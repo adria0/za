@@ -149,3 +149,4 @@ There are few differences between this implementation and the official circom:
 - Signal input/outputs arrays should be evaluable with template parameters
 - Stamements tagged with `#[w]` are only evaluated in witness generation
 - `#[test]` tagged templates are used to verify embeeded tests
+- Escape `#[x]` tags with `/*#[x]#*/` to embeed into circomjs 
