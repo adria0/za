@@ -10,7 +10,7 @@ mod test {
         let paths = read_dir("./circuits/circomlib/circuits").unwrap();
         for path in paths {
             let path = path.unwrap().path();
-            if path.is_file() {
+            if path.is_file() && path.to_string_lossy().ends_with(".circom") {
                 println!("+++ parsing testing {} +++", path.display());
                 let mut file = File::open(path).expect("Unable to open the file");
                 let mut contents = String::new();
@@ -26,8 +26,8 @@ mod test {
     #[test]
     fn circomlib_tests() {
         match tester::run_embeeded_tests(
-            "./circuits/circomlib",
-            "all_tests.circom",
+            "./circuits/circomlib/za_test",
+            "all.za",
             false,
             false,
             false,

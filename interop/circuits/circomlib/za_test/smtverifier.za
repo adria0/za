@@ -1,0 +1,122 @@
+include "../circuits/smt/smtverifier.circom";
+
+#[test]
+template test_smtverify_inclusion_1() {
+   component main = SMTVerifier(10);
+
+   main.enabled <== 1;
+   main.fnc <== 0;
+   main.root <== 4677130581325536491486966387607462164138332022971476080171400451642918512081;
+   main.siblings[0]<==14352042597084731985167090523380966166849342735501537582515475409458617286578;
+   main.siblings[1]<==0;
+   main.siblings[2]<==0;
+   main.siblings[3]<==0;
+   main.siblings[4]<==0;
+   main.siblings[5]<==0;
+   main.siblings[6]<==0;
+   main.siblings[7]<==0;
+   main.siblings[8]<==0;
+   main.siblings[9]<==0;
+   main.oldKey<== 0;
+   main.oldValue<==0;
+   main.isOld0<==0;
+   main.key<==7;
+   main.value<==77;
+}
+
+#[test]
+template test_smtverify_inclusion_2() {
+   component main = SMTVerifier(10);
+
+   main.enabled <== 1;
+   main.fnc <== 0;
+   main.root <== 4677130581325536491486966387607462164138332022971476080171400451642918512081;
+   main.siblings[0]<==3663166078965935940798554689567237216195612079341396621785946741270885707796;
+   main.siblings[1]<==0;
+   main.siblings[2]<==0;
+   main.siblings[3]<==15046443585474691638566145046511997009824450152976577947884126962673203641381;
+   main.siblings[4]<==0;
+   main.siblings[5]<==0;
+   main.siblings[6]<==0;
+   main.siblings[7]<==0;
+   main.siblings[8]<==0;
+   main.siblings[9]<==0;
+   main.oldKey<== 0;
+   main.oldValue<==0;
+   main.isOld0<==0;
+   main.key<==32;
+   main.value<==3232;
+}
+
+#[test]
+template test_smtverify_exclusion() {
+
+  component main = SMTVerifier(10);
+
+   main.enabled <== 1;
+   main.fnc <== 1;
+   main.root <== 4677130581325536491486966387607462164138332022971476080171400451642918512081;
+   main.siblings[0]<==3663166078965935940798554689567237216195612079341396621785946741270885707796;
+   main.siblings[1]<==0;
+   main.siblings[2]<==0;
+   main.siblings[3]<==15046443585474691638566145046511997009824450152976577947884126962673203641381;
+   main.siblings[4]<==0;
+   main.siblings[5]<==0;
+   main.siblings[6]<==0;
+   main.siblings[7]<==0;
+   main.siblings[8]<==0;
+   main.siblings[9]<==0;
+   main.oldKey<== 32;
+   main.oldValue<== 3232;
+   main.isOld0<==0;
+   main.key<==0;
+   main.value<==0;
+}
+
+#[test]
+template test_smtverify_inclusion_adr1() {
+  component main = SMTVerifier(10);
+
+   main.enabled <== 1;
+   main.fnc <== 0;
+   main.root <== 17263878444085649501881299057062216149199611823264406310023609700465578534132;
+   main.siblings[0]<==17206595220900713408935596045987660820315619971480455132325458769074194919698;
+   main.siblings[1]<==0;
+   main.siblings[2]<==0;
+   main.siblings[3]<==0;
+   main.siblings[4]<==0;
+   main.siblings[5]<==0;
+   main.siblings[6]<==0;
+   main.siblings[7]<==0;
+   main.siblings[8]<==0;
+   main.siblings[9]<==0;
+   main.oldKey<== 0;
+   main.oldValue<== 0;
+   main.isOld0<==0;
+   main.key<==16498254692537945203721083102154618658340563351558973077349594629411025251262;
+   main.value<==19650379996168153643111744440707177573540245771926102415571667548153444658179;
+}
+
+#[test]
+template test_smtverify_inclusion_adr2() {
+  component main = SMTVerifier(10);
+
+   main.enabled <== 1;
+   main.fnc <== 0;
+   main.root <== 10098172365776731675647750560006272414955720558848459381283584046598817056415;
+   main.siblings[0]<==0;
+   main.siblings[1]<==0;
+   main.siblings[2]<==17206595220900713408935596045987660820315619971480455132325458769074194919698;
+   main.siblings[3]<==0;
+   main.siblings[4]<==0;
+   main.siblings[5]<==0;
+   main.siblings[6]<==0;
+   main.siblings[7]<==0;
+   main.siblings[8]<==0;
+   main.siblings[9]<==0;
+   main.oldKey<== 0;
+   main.oldValue<== 0;
+   main.isOld0<==0;
+   main.key<==17195092312975762537892237130737365903429674363577646686847513978084990105579;
+   main.value<==19650379996168153643111744440707177573540245771926102415571667548153444658179;
+}

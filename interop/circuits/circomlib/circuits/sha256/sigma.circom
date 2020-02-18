@@ -36,11 +36,13 @@ template SmallSigma(ra, rb, rc) {
         rotb.in[k] <== in[k];
         shrc.in[k] <== in[k];
     }
+    
     for (var k=0; k<32; k+=1) {
         xor3.a[k] <== rota.out[k];
         xor3.b[k] <== rotb.out[k];
         xor3.c[k] <== shrc.out[k];
     }
+
     for (var k=0; k<32; k+=1) {
         out[k] <== xor3.out[k];
     }

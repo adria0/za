@@ -25,12 +25,12 @@ template IsZero() {
     signal output out;
 
     signal inv;
-    
-    #[w] if (in!=0) {
-        inv <-- 1/in;   
+    /*#[w]#*/ if (in!=0) {
+        inv <-- 1/in;    
     } else {
         inv <-- 0;
     }
+    
 
     out <== -in*inv +1;
     in*out === 0;
@@ -59,7 +59,7 @@ template ForceEqualIfEnabled() {
     (1 - isz.out)*enabled === 0;
 }
 
-
+/*
 // N is the number of bits the input  have.
 // The MSF is the sign bit.
 template LessThan(n) {
@@ -87,33 +87,57 @@ template LessThan(n) {
 
     adder.out[n-1] ==> out;
 }
+*/
 
-#[test]
-template test_IsZero_true() {
-    component main = IsZero();
-    main.in <== 0;
-    main.out === 1;
+template LessThan(n) {
+    signal input in[2];
+    signal output out;
+
+    component n2b = Num2Bits(n*2+1);
+
+    n2b.in <== in[0]+ (1<<n) - in[1];
+
+    out <== 1-n2b.out[n];
 }
 
-#[test]
-template test_IsZero_false() {
-    component main = IsZero();
-    main.in <== 2;
-    main.out === 0;
+
+
+// N is the number of bits the input  have.
+// The MSF is the sign bit.
+template LessEqThan(n) {
+    signal input in[2];
+    signal output out;
+
+    component lt = LessThan(n);
+
+    lt.in[0] <== in[0];
+    lt.in[1] <== in[1]+1;
+    lt.out ==> out;
 }
 
-#[test]
-template test_IsEqual_true() {
-    component main = IsEqual();
-    main.in[0] <== 2;
-    main.in[1] <== 2;
-    main.out === 1;
+// N is the number of bits the input  have.
+// The MSF is the sign bit.
+template GreaterThan(n) {
+    signal input in[2];
+    signal output out;
+
+    component lt = LessThan(n);
+
+    lt.in[0] <== in[1];
+    lt.in[1] <== in[0];
+    lt.out ==> out;
 }
 
-#[test]
-template test_IsEqual_false() {
-    component main = IsEqual();
-    main.in[0] <== 2;
-    main.in[1] <== 3;
-    main.out === 0;
+// N is the number of bits the input  have.
+// The MSF is the sign bit.
+template GreaterEqThan(n) {
+    signal input in[2];
+    signal output out;
+
+    component lt = LessThan(n);
+
+    lt.in[0] <== in[1];
+    lt.in[1] <== in[0]+1;
+    lt.out ==> out;
 }
+

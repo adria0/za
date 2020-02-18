@@ -80,7 +80,7 @@ template BinSum(n, ops) {
     }
 
     for (k=0; k<nout; k+=1) {
-        #[w] out[k] <-- (lin >> k) & 1;
+        /*#[w]#*/ out[k] <-- (lin >> k) & 1; 
 
         // Ensure out is binary
         out[k] * (out[k] - 1) === 0;

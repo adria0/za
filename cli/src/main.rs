@@ -1,5 +1,3 @@
-mod cuda;
-
 extern crate za_compiler;
 extern crate za_parser;
 extern crate za_prover;
@@ -24,7 +22,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::time::SystemTime;
 
-const DEFAULT_CIRCUIT: &str = "circuit.circom";
+const DEFAULT_CIRCUIT: &str = "circuit.za";
 const DEFAULT_PROVING_KEY: &str = "proving.key";
 const DEFAULT_INPUT: &str = "input.json";
 const DEFAULT_PROOF: &str = "proof.json";
@@ -34,18 +32,7 @@ const VERIFIER_TYPE_SOLIDITY: &str = "solidity";
 const VERIFIER_TYPE_JSON: &str = "json";
 const DEFAULT_VERIFIER_TYPE: &str = VERIFIER_TYPE_SOLIDITY;
 
-fn generate_cuda(constraints: &Constraints, signals: &Signals, cuda_file: Option<String>) {
-    if let Some(cuda_file) = cuda_file {
-        let start = SystemTime::now();
-        cuda::export(&cuda_file, constraints, signals).unwrap();
-        info!(
-            "Cuda generation time: {:?}",
-            SystemTime::now().duration_since(start).unwrap()
-        );
-    }
-}
-
-fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
+fn compile_ram(filename: &str, print_all: bool) {
     let mut start = SystemTime::now();
     let mut eval = Evaluator::new(
         Mode::GenConstraints,
@@ -84,8 +71,6 @@ fn compile_ram(filename: &str, print_all: bool, cuda_file: Option<String>) {
             &removed_signals,
             print_all,
         );
-
-        generate_cuda(&constraints, &signals, cuda_file);
     }
 }
 
@@ -125,22 +110,18 @@ enum Command {
     /// Only compile the circuit
     Compile {
         #[structopt(long = "circuit")]
-        /// Input circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.za
         circuit: Option<String>,
 
         #[structopt(long = "print")]
         /// Print constaints and signals
         print: bool,
-
-        #[structopt(long = "cuda")]
-        /// Export cuda format
-        cuda: Option<String>,
     },
     #[structopt(name = "setup")]
     /// Compile & generate trusted setup
     Setup {
         #[structopt(long = "circuit")]
-        /// Input circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.za
         circuit: Option<String>,
 
         #[structopt(long = "pk")]
@@ -176,7 +157,7 @@ enum Command {
     /// Run embeeded circuit tests
     Test {
         #[structopt(long = "circuit")]
-        /// Input circuit, defaults to circuit.circom
+        /// Input circuit, defaults to circuit.za
         circuit: Option<String>,
 
         #[structopt(long = "debug")]
@@ -208,13 +189,9 @@ fn main() {
 
     let cmd = Command::from_args();
     match cmd {
-        Command::Compile {
-            circuit,
-            print,
-            cuda,
-        } => {
+        Command::Compile { circuit, print } => {
             let circuit = circuit.unwrap_or_else(|| DEFAULT_CIRCUIT.to_string());
-            compile_ram(&circuit, print, cuda)
+            compile_ram(&circuit, print)
         }
         Command::Setup {
             circuit,

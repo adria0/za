@@ -47,7 +47,7 @@ template EdDSAPoseidonVerifier() {
         snum2bits.out[i] ==> compConstant.in[i];
     }
     compConstant.in[253] <== 0;
-    compConstant.out === 0;
+    compConstant.out*enabled === 0;
 
 // Calculate the h = H(R,A, msg)
 
@@ -79,7 +79,7 @@ template EdDSAPoseidonVerifier() {
     // We check that A is not zero.
     component isZero = IsZero();
     isZero.in <== dbl3.x;
-    isZero.out === 0;
+    isZero.out*enabled === 0;
 
     component mulAny = EscalarMulAny(254);
     for (i=0; i<254; i+=1) {
@@ -119,18 +119,4 @@ template EdDSAPoseidonVerifier() {
     eqCheckY.enabled <== enabled;
     eqCheckY.in[0] <== mulFix.out[1];
     eqCheckY.in[1] <== addRight.yout;
-}
-
-#[test]
-template test_eddsaposeidon_verifier() {
-    component main = EdDSAPoseidonVerifier();
-    #[w] {
-        main.enabled <== 1;
-        main.Ax <== 13277427435165878497778222415993513565335242147425444199013288855685581939618;
-        main.Ay <== 13622229784656158136036771217484571176836296686641868549125388198837476602820;
-        main.R8x <== 11220723668893468001994760120794694848178115379170651044669708829805665054484;
-        main.R8y <== 2367470421002446880004241260470975644531657398480773647535134774673409612366;
-        main.S <== 1307100909096544936550139783786226891472336052773077686618468233418583414320;
-        main.M <== 1234;
-    }
 }

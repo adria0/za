@@ -6,7 +6,7 @@
     <a href="https://github.com/adria0/za/actions?query=workflow%3AClippy"><img src="https://github.com/adria0/za/workflows/Clippy/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3ARustfmt"><img src="https://github.com/adria0/za/workflows/Rustfmt/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3AAudit"><img src="https://github.com/adria0/za/workflows/Audit/badge.svg"></a>
-    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg">
+    <img src="https://img.shields.io/badge/License-LGPLv2.1-blue.svg">
 </p>
 
 An experimental implementation of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working for iden3. Since it was discontinued I forked it from https://www.github.com/iden3/za just to learn-by-doing.

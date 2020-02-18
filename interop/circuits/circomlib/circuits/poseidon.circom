@@ -1,3 +1,4 @@
+
 template Sigma() {
     signal input in;
     signal output out;
@@ -182,10 +183,10 @@ template Poseidon(nInputs, t, nRoundsF, nRoundsP) {
 
         if ((i<(nRoundsF/2)) || (i>= (nRoundsP + nRoundsF/2))) {
             if (i<nRoundsF/2) {
-                k = i;
-            } else {
-                k = i-nRoundsP;
-            }
+                k= i;
+             } else {
+                k=i-nRoundsP;
+             }
             for (var j=0; j<t; j+=1) {
                 sigmaF[k][j] = Sigma();
                 sigmaF[k][j].in <== ark[i].out[j];
@@ -203,24 +204,4 @@ template Poseidon(nInputs, t, nRoundsF, nRoundsP) {
     }
 
     out <== mix[nRoundsF + nRoundsP -1].out[0];
-}
-
-#[test]
-template test_poseidon_of_1_2() {
-    component main = Poseidon(2,6,8,57);
-    #[w] {
-        main.inputs[0] <== 1;
-        main.inputs[1] <== 2;
-        main.out === 12242166908188651009877250812424843524687801523336557272219921456462821518061;
-    }
-}
-
-#[test]
-template test_poseidon_of_3_4() {
-    component main = Poseidon(2,6,8,57);
-    #[w] {
-        main.inputs[0] <== 3;
-        main.inputs[1] <== 4;
-        main.out === 17185195740979599334254027721507328033796809509313949281114643312710535000993;
-    }
 }

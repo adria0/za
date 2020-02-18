@@ -35,6 +35,7 @@ template MultiMux3(n) {
     // 4 constrains for the intermediary variables
     signal  s10;
     s10 <== s[1] * s[0];
+
     for (var i=0; i<n; i+=1) {
 
          a210[i] <==  ( c[i][ 7]-c[i][ 6]-c[i][ 5]+c[i][ 4] - c[i][ 3]+c[i][ 2]+c[i][ 1]-c[i][ 0] ) * s10;

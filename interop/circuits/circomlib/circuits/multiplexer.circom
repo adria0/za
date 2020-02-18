@@ -58,6 +58,7 @@ function log2(a) {
     }
     return r;
 }
+*/
 
 template EscalarProduct(w) {
     signal input in1[w];
@@ -79,7 +80,11 @@ template Decoder(w) {
     var lc=0;
 
     for (var i=0; i<w; i+=1) {
-        out[i] <-- (inp == i) ? 1 : 0;
+        if (inp == i) {
+            out[i] <--1;
+        } else {
+            out[i] <--0;
+        }
         out[i] * (inp-i) === 0;
         lc = lc + out[i];
     }
@@ -89,12 +94,17 @@ template Decoder(w) {
 }
 
 
-template Multiplexor(wIn, nIn) {
+template Multiplexer(wIn, nIn) {
     signal input inp[nIn][wIn];
     signal input sel;
     signal output out[wIn];
-    component dec = Decoder(nIn) ;
-    component ep[wIn] = EscalarProduct(nIn) ;
+    component dec = Decoder(nIn);
+    component ep[wIn];
+
+    for (var k=0; k<wIn; k+=1) {
+        ep[k] = EscalarProduct(nIn);
+    }
+
     sel ==> dec.inp;
     for (var j=0; j<wIn; j+=1) {
         for (var k=0; k<nIn; k+=1) {
@@ -105,7 +115,3 @@ template Multiplexor(wIn, nIn) {
     }
     dec.success === 1;
 }
-
-component main = Multiplexor(8,3);
-
-

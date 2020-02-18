@@ -22,12 +22,13 @@ include "aliascheck.circom";
 
 
 template Num2Bits(n) {
+
     signal input in;
     signal output out[n];
     var lc1=0;
 
     for (var i = 0; i<n; i+=1) {
-        #[w] out[i] <-- (in >> i) & 1;
+        /*#[w]#*/ out[i] <-- (in >> i) & 1;
         out[i] * (out[i] -1 ) === 0;
         lc1 += out[i] * 2**i;
     }
@@ -86,11 +87,10 @@ template Num2BitsNeg(n) {
     isZero = IsZero();
 
     var neg;
-    
-    if (n == 0) {
-         neg = 2**n;
-    } else { 
-        neg = - in;
+    if  (n == 0) {
+        neg = 0;
+    } else {
+        neg = 2**n - in;
     }
 
     for (var i = 0; i<n; i+=1) {
@@ -104,24 +104,4 @@ template Num2BitsNeg(n) {
 
 
     lc1 + isZero.out * 2**n === 2**n - in;
-}
-
-#[test]
-template test_num2bits() {
-    component main = Num2Bits(2);
-    #[w] {
-        main.in <== 2;
-        main.out[0] === 0;
-        main.out[1] === 1;
-    }
-}
-
-#[test]
-template test_bits2num() {
-    component main = Bits2Num(2);
-    #[w] {
-        main.in[0] <== 0;
-        main.in[1] <== 1;
-        main.out === 2;
-    }
 }

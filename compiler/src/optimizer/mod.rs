@@ -15,15 +15,8 @@ pub fn optimize(
     constraints: &Constraints,
     irreductible_signals: &[SignalId],
 ) -> (Constraints, Vec<SignalId>) {
-    let (constraints, mut r1) = optimize_n(&constraints, irreductible_signals);
+    let (constraints, r1) = optimize_n(&constraints, irreductible_signals);
     println!("Optimize L1 {} {}", constraints.len(), r1.len());
-    let (constraints, mut r2) = optimize_n(&constraints, irreductible_signals);
-    println!("Optimize L2 {} {}", constraints.len(), r2.len());
-    let (constraints, mut r3) = optimize_n(&constraints, irreductible_signals);
-    println!("Optimize L3 {} {}", constraints.len(), r3.len());
-
-    r1.append(&mut r2);
-    r1.append(&mut r3);
 
     (constraints, r1)
 }

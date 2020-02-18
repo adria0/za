@@ -22,15 +22,20 @@ include "aliascheck.circom";
 include "compconstant.circom";
 include "babyjub.circom";
 
+
 function sqrt(n) {
+
     if (n == 0) {
         return 0;
     }
+
     // Test that have solution
     var res = n ** ((-1) >> 1);
+//        if (res!=1) assert(false, "SQRT does not exists");
     if (res!=1) {
         return 0;
     }
+
     var m = 28;
     var c = 19103219067921713944291392827692070036145651957329286315305642004821462161904;
     var t = n ** 81540058820840996586704275553141814055101440848469862132140264610111;
@@ -47,23 +52,23 @@ function sqrt(n) {
             i+=1;
             sq = sq*sq;
         }
+
         // b = c ^ m-i-1
         b = c;
-        for (j=0; j< m-i-1; j+=1)  {
+        for (j=0; j< m-i-1; j +=1) {
             b = b*b;
-        } 
-
+        }
         m = i;
         c = b*b;
         t = t*c;
         r = r*b;
     }
+
     if (r > ((-1) >> 1)) {
         r = -r;
     }
 
     return r;
-
 }
 
 
@@ -71,6 +76,7 @@ template Bits2Point() {
     signal input in[256];
     signal output out[2];
 }
+
 template Bits2Point_Strict() {
     signal input in[256];
     signal output out[2];
@@ -91,18 +97,17 @@ template Bits2Point_Strict() {
 
     out[1] <== b2nY.out;
 
-    #[w] {
-        var a = 168700;
-        var d = 168696;
+    var a = 168700;
+    var d = 168696;
 
-        var y2 = out[1] * out[1];
-        var x = sqrt(   (1-y2)/(a - d*y2)  );
-    
-        if (in[255] == 1) {
-            x = -x;
-        }
-        out[0] <-- x;
+    var y2 = out[1] * out[1];
+
+    var x = sqrt(   (1-y2)/(a - d*y2)  );
+
+    if (in[255] == 1) {
+        x = -x;
     }
+    out[0] <-- x;
 
     component babyCheck = BabyCheck();
     babyCheck.x <== out[0];
@@ -122,8 +127,6 @@ template Bits2Point_Strict() {
 
     signCalc.out === in[255];
 }
-
-
 
 
 template Point2Bits() {
