@@ -67,7 +67,7 @@ component main = T();
 _if you want to do a test, create a file with name `input.json` with the following contents and run the `za prove`_
 
 ```
-{ a : 2, b: 3 }
+{ "p" : "2", "q": "3" , "r" : "6"}
 ```
 
 _then deploy the `verifier.sol` smartcontract and exec the `verifyTx` method with the contents of the `proof.json`_
