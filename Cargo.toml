@@ -10,5 +10,6 @@ members = [
 exclude = [
     "binding/js/native",
     "binding/python3/native",
+    "binding/flutter/native",
     "binding/c/native"
 ]
