@@ -3,11 +3,11 @@
   "version": "0.1.0-alpha",
   "description": "js bindings for za",
   "main": "lib/index.js",
-  "author": "OKims",
+  "author": "Za authors",
   "directories": {
     "test": "test"
   },
-  "license": "GPL3",
+  "license": "LGPL2.1",
   "dependencies": {
     "chai": "^4.2.0",
     "neon-cli": "^0.2.0"
