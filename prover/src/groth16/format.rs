@@ -78,23 +78,33 @@ fn g2_bellman_to_jstruct(
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JsonProofAndInput(G1JsonStruct, G2JsonStruct, G1JsonStruct, Vec<String>);
+pub struct JsonProofAndInput {
+    a: G1JsonStruct,
+    b: G2JsonStruct,
+    c: G1JsonStruct,
+    public_inputs: Vec<String>,
+}
 
 impl JsonProofAndInput {
     pub fn json_from_bellman(proof: Proof<Bn256>, public_input: Vec<(String, FS)>) -> Result<Self> {
-        Ok(JsonProofAndInput(
-            g1_bellman_to_jstruct(&proof.a)?,
-            g2_bellman_to_jstruct(&proof.b)?,
-            g1_bellman_to_jstruct(&proof.c)?,
-            public_input
+        Ok(JsonProofAndInput {
+            a: g1_bellman_to_jstruct(&proof.a)?,
+            b: g2_bellman_to_jstruct(&proof.b)?,
+            c: g1_bellman_to_jstruct(&proof.c)?,
+            public_inputs: public_input
                 .into_iter()
                 .map(|(_, v)| v.to_string())
                 .collect::<Vec<_>>(),
-        ))
+        })
     }
 
     pub fn json_to_bellman(json: &str) -> Result<(Proof<Bn256>, Vec<pairing::bn256::Fr>)> {
-        let JsonProofAndInput(a, b, c, inputs) = serde_json::from_str(json)?;
+        let JsonProofAndInput {
+            a,
+            b,
+            c,
+            public_inputs,
+        } = serde_json::from_str(json)?;
         let proof = Proof {
             a: g1_jstruct_to_bellman(&a)?,
             b: g2_jstruct_to_bellman(&b)?,
@@ -102,7 +112,7 @@ impl JsonProofAndInput {
         };
 
         let err_bad_format = || Error::BadFormat("bad format".to_string());
-        let parsed_inputs = inputs
+        let parsed_inputs = public_inputs
             .iter()
             .map(|s| pairing::bn256::Fr::from_str(s).ok_or_else(err_bad_format))
             .collect::<Result<Vec<_>>>()?;
