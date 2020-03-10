@@ -1,0 +1,8 @@
+coverage:
+  status:
+    project:
+      default:
+        treshold: 2%
+    patch:
+      default:
+        enabled: no
