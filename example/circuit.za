@@ -1,0 +1,9 @@
+template Factor() {
+  signal private input p;
+  signal private input q;
+  signal input r;
+  
+  p * q === r;
+}
+
+component main = Factor();
