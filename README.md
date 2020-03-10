@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/License-LGPLv2.1-blue.svg">
 </p>
 
-An experimental implementation of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working for iden3. Since it was discontinued I forked it from https://www.github.com/iden3/za just to learn-by-doing.
+An experimental port of the [circom] zk-SNARK compiler in Rust with embedded bellman-bn128 prover. I created it as a PoC port of the existing JavaScript compiler to Rust when I was working for iden3.
 
 **WARNING**: This is a proof-of-concept prototype, and in particular has not received careful code review.
 
@@ -37,13 +37,13 @@ The final binary will be in `target/release/za`
 
 #### Generating trusted setup
 
-`za setup --circuit <circut.circom> --pk <proving.key> --verifier <verifier.sol> --verifiertype <solidity|json>`
+`za setup --circuit <circut.za> --pk <proving.key> --verifier <verifier.sol> --verifiertype <solidity|json>`
 
-- `circuit.circom` is an input file with the `main` component that specifies the circuit
+- `circuit.za` is an input file with the `main` component that specifies the circuit
 - `proving.key` is a generated output with the key required to generate proofs
 - `verifier.sol` is a generated output with the smartcontract to verify the generated proofs
 
-_if you want to do a test, create a file with name `circuit.circom` with the following contents and run the `za setup`_
+_if you want to do a test, create a file with name `circuit.za` with the following contents and run the `za setup`_
 
 ```
 template T() {
@@ -64,10 +64,10 @@ component main = T();
 - `proving.key` is an input file with the key required to generate proofs
 - `proof.json` is the input required by the smartcontract to verify the proof
 
-_if you want to do a test, create a file with name `input.circom` with the following contents and run the `za prove`_
+_if you want to do a test, create a file with name `input.json` with the following contents and run the `za prove`_
 
 ```
-{ a : 2, b: 3 }
+{ "p" : "2", "q": "3" , "r" : "6"}
 ```
 
 _then deploy the `verifier.sol` smartcontract and exec the `verifyTx` method with the contents of the `proof.json`_
@@ -77,7 +77,7 @@ _then deploy the `verifier.sol` smartcontract and exec the `verifyTx` method wit
 
 In order to test if a circuit is correct is possible to write an embedded test by using the `#[test]` tag before a template definition (see `interop/circomlib/babyjub.circom`), to execute the test, run:
 
-- `za test --circuit <circuit.circom>`
+- `za test --circuit <circuit.za>`
 
 this will run the tests found in the circuit and all the tests found in the included templates
 
@@ -126,7 +126,7 @@ Then, you need to run the ndk script to build your compile targets from the root
 - Go to `binding/flutter` and run `flutter run`
 
 
-### Differences between official circom version
+### Differences with circom
 
 There are few differences between this implementation and the official circom:
 
