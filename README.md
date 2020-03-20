@@ -81,6 +81,10 @@ In order to test if a circuit is correct is possible to write an embedded test b
 
 this will run the tests found in the circuit and all the tests found in the included templates
 
+### Golang verification
+
+you can verify the za! generated proofs generated with za! with the https://github.com/arnaucube/go-bellman-verifier tool (thanks @arnaucube)
+
 ### JavaScript bindings
 
 to compile the JavaScript bindings, go to the `binding/js` folder and run:
@@ -90,41 +94,6 @@ to compile the JavaScript bindings, go to the `binding/js` folder and run:
 - `npm test`
 
 check the test located in `binding/js/test/test.js`
-
-### Flutter bindings
-
-The code is based on https://github.com/mimirblockchainsolutions/flutter-rust-middleware 
-
-#### Prerequisites
-
-- [Rust](https://www.rust-lang.org)
-- [Flutter](https://github.com/flutter/flutter)
-- [cargo-lipo](https://github.com/TimNN/cargo-lipo)
-- [Android Studio](https://developer.android.com/studio/)
-- [NDK](https://developer.android.com/ndk/)
-- [Xcode](https://developer.apple.com/xcode/)
-
-Export vars
-
-- `export ANDROID_HOME=/Users/$USER/Library/Android/sdk`
-- `export NDK_HOME=$ANDROID_HOME/ndk-bundle`
-
-Then, you need to run the ndk script to build your compile targets from the root folder of the project
-
-`./ndk.sh`
-
-
-#### Build
-
-- Go to `binding/flutter/cargo` and run `./build.sh`
-- Go to `binding/flutter` and run
-    - `flutter build ios` or
-    - `flutter build apk`
-
-#### Test
-
-- Go to `binding/flutter` and run `flutter run`
-
 
 ### Differences with circom
 
