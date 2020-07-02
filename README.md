@@ -2,7 +2,6 @@
 
 <p align="center">
     <a href="https://github.com/adria0/za/actions?query=workflow%3ARust"><img src="https://github.com/adria0/za/workflows/Rust/badge.svg"></a>
-    <a href="https://codecov.io/gh/adria0/za"><img src="https://github.com/adria0/za/workflows/Code%20Coverage/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3AClippy"><img src="https://github.com/adria0/za/workflows/Clippy/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3ARustfmt"><img src="https://github.com/adria0/za/workflows/Rustfmt/badge.svg"></a>
     <a href="https://github.com/adria0/za/actions?query=workflow%3AAudit"><img src="https://github.com/adria0/za/workflows/Audit/badge.svg"></a>
